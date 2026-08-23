@@ -1,0 +1,3 @@
+@props(['title', 'options' => [], 'name' => 'filter', 'selected' => []])
+@php($selected = (array) $selected)
+<fieldset class="border-t border-store-border pt-4"><legend class="text-sm font-bold text-store-ink">{{ $title }}</legend><div class="mt-3 space-y-3">@foreach ($options as $option) @php($value = is_array($option) ? ($option['value'] ?? $option['label']) : $option) @php($label = is_array($option) ? ($option['label'] ?? $value) : $option)<label class="flex items-center gap-2 text-sm text-store-text"><input type="checkbox" name="{{ $name }}[]" value="{{ $value }}" @checked(in_array((string) $value, array_map('strval', $selected), true)) class="size-4 rounded border-store-border text-store-blue focus:ring-store-blue">{{ $label }}</label>@endforeach</div></fieldset>

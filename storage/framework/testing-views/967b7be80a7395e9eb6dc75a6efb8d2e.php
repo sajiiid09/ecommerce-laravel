@@ -1,0 +1,55 @@
+<?php extract((new \Illuminate\Support\Collection($attributes->getAttributes()))->mapWithKeys(function ($value, $key) { return [Illuminate\Support\Str::camel(str_replace([':', '.'], ' ', $key)) => $value]; })->all(), EXTR_SKIP); ?>
+<?php $attributes ??= new \Illuminate\View\ComponentAttributeBag;
+
+$__newAttributes = [];
+$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames((['dataSlot','class']));
+
+foreach ($attributes->all() as $__key => $__value) {
+    if (in_array($__key, $__propNames)) {
+        $$__key = $$__key ?? $__value;
+    } else {
+        $__newAttributes[$__key] = $__value;
+    }
+}
+
+$attributes = new \Illuminate\View\ComponentAttributeBag($__newAttributes);
+
+unset($__propNames);
+unset($__newAttributes);
+
+foreach (array_filter((['dataSlot','class']), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+    $$__key = $$__key ?? $__value;
+}
+
+$__defined_vars = get_defined_vars();
+
+foreach ($attributes->all() as $__key => $__value) {
+    if (array_key_exists($__key, $__defined_vars)) unset($$__key);
+}
+
+unset($__defined_vars, $__key, $__value); ?>
+<?php if (isset($component)) { $__componentOriginalada446aeea0fb3877a727b56b0e62f98 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalada446aeea0fb3877a727b56b0e62f98 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'heroicons::components.solid.check-circle','data' => ['dataSlot' => $dataSlot,'class' => $class]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('heroicons::solid.check-circle'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['data-slot' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($dataSlot),'class' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($class)]); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+
+
+<?php echo e($slot ?? ""); ?>
+
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalada446aeea0fb3877a727b56b0e62f98)): ?>
+<?php $attributes = $__attributesOriginalada446aeea0fb3877a727b56b0e62f98; ?>
+<?php unset($__attributesOriginalada446aeea0fb3877a727b56b0e62f98); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalada446aeea0fb3877a727b56b0e62f98)): ?>
+<?php $component = $__componentOriginalada446aeea0fb3877a727b56b0e62f98; ?>
+<?php unset($__componentOriginalada446aeea0fb3877a727b56b0e62f98); ?>
+<?php endif; ?><?php /**PATH storage/framework/testing-views/acc4fc1bc1da21f92f0594fbcee00359.blade.php ENDPATH**/ ?>

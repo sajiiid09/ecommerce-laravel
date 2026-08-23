@@ -1,0 +1,29 @@
+{
+    "files": {
+        "resources/js/components/select.js": [
+            "select"
+        ],
+        "resources/js/globals/modals.js": [
+            "modal"
+        ],
+        "resources/js/utils.js": [
+            "modal"
+        ]
+    },
+    "helpers": {
+        "popup": [
+            "select"
+        ]
+    },
+    "internalDependencies": {
+        "icon": [
+            "button",
+            "input",
+            "select",
+            "radio"
+        ],
+        "text": [
+            "select"
+        ]
+    }
+}

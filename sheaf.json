@@ -1,0 +1,32 @@
+{
+    "project_hash": "a7c79077-e049-4cfd-931f-6c9cacfcf4d3",
+    "components": {
+        "button": {
+            "installationTime": 1787466031
+        },
+        "icon": {
+            "installationTime": 1787466038
+        },
+        "input": {
+            "installationTime": 1787466054
+        },
+        "select": {
+            "installationTime": 1787466063
+        },
+        "popup": {
+            "installationTime": 1787466063
+        },
+        "text": {
+            "installationTime": 1787466069
+        },
+        "checkbox": {
+            "installationTime": 1787466076
+        },
+        "radio": {
+            "installationTime": 1787466089
+        },
+        "modal": {
+            "installationTime": 1787466108
+        }
+    }
+}

@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-store-blue: #0756c9;
+    --color-store-blue-dark: #0647a6;
+    --color-store-logo-blue: #0046e2;
+    --color-store-red: #f10b12;
+    --color-store-logo-red: #fb0111;
+    --color-store-navy: #07366f;
+    --color-store-ink: #0f172a;
+    --color-store-text: #334155;
+    --color-store-muted: #64748b;
+    --color-store-placeholder: #94a3b8;
+    --color-store-border: #e2e8f0;
+    --color-store-soft: #f8fafc;
+    --color-store-blue-soft: #eff6ff;
+    --color-store-promo-soft: #fff4e8;
+    --color-store-success: #16a34a;
+    --color-store-warning: #f59e0b;
+    --color-store-error: #dc2626;
+
+    --radius-control: 0.5rem;
+    --radius-card: 0.75rem;
+    --shadow-store-soft: 0 8px 30px rgb(15 23 42 / 0.08);
+    --container-8xl: 90rem;
+}
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    html {
+        @apply scroll-smooth;
+    }
+
+    body {
+        @apply min-h-screen bg-white font-sans text-store-text antialiased;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-store-blue;
+    }
+}

@@ -1,0 +1,2 @@
+@props(['title', 'subtitle' => null, 'href' => null, 'linkLabel' => null])
+<div class="flex flex-wrap items-end justify-between gap-2"><div><h2 class="text-xl font-extrabold tracking-tight text-store-ink">{{ $title }}</h2>@if ($subtitle)<p class="mt-1 text-xs text-store-muted">{{ $subtitle }}</p>@endif</div>@if ($href)<a href="{{ $href }}" class="text-sm font-semibold text-store-blue hover:underline">{{ $linkLabel ?? 'View All' }} →</a>@endif</div>
