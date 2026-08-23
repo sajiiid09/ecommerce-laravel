@@ -1,5 +1,40 @@
 @php($allProducts = \App\Support\StorefrontDemoData::products())
 @php($brandName = strtoupper($slug ?? 'TEER'))
-@php($products = collect($allProducts)->filter(fn ($product) => strtoupper($product['brand'] ?? '') === $brandName)->values())
-@if ($products->isEmpty()) @php($products = collect($allProducts)->take(6)) @endif
-<main class="bg-store-soft pb-12"><x-store.ui.container><div class="py-8"><p class="text-sm font-semibold text-store-blue">Home / Brands / {{ $brandName }}</p><div class="mt-4 flex flex-wrap items-center justify-between gap-4"><div><h1 class="text-3xl font-black text-store-ink">{{ $brandName }}</h1><p class="mt-2 text-store-muted">Shop trusted {{ $brandName }} products at StoreZ.</p></div><button type="button" class="rounded-control border border-store-blue bg-white px-4 py-2 text-sm font-bold text-store-blue">Follow brand</button></div></div><section class="rounded-card border border-store-border bg-white p-5"><div class="flex items-center gap-4"><div class="grid size-20 place-items-center rounded-card bg-store-soft text-xl font-black text-store-blue">{{ substr($brandName, 0, 2) }}</div><div><p class="text-sm text-store-muted">Official StoreZ collection</p><p class="mt-1 text-sm font-semibold text-store-ink">{{ $products->count() }} featured products</p></div></div></section><section class="mt-8"><h2 class="text-xl font-extrabold text-store-ink">{{ $brandName }} products</h2><div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">@foreach ($products as $product)<x-store.catalog.product-card :product="$product" compact />@endforeach</div></section></x-store.ui.container></main>
+@php($products = collect($allProducts)->filter(fn($product) => strtoupper($product['brand'] ?? '') === $brandName)->values())
+@if ($products->isEmpty())
+    @php($products = collect($allProducts)->take(6))
+@endif
+<main class="bg-store-soft pb-12">
+    <x-store.ui.container>
+        <div class="py-8">
+            <p class="text-sm font-semibold text-store-blue">Home / Brands / {{ $brandName }}</p>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-black text-store-ink">{{ $brandName }}</h1>
+                    <p class="mt-2 text-store-muted">Shop trusted {{ $brandName }} products at StoreZ.</p>
+                </div><button type="button"
+                    class="rounded-control border border-store-blue bg-white px-4 py-2 text-sm font-bold text-store-blue">Follow
+                    brand</button>
+            </div>
+        </div>
+        <section class="rounded-card border border-store-border bg-white p-5">
+            <div class="flex items-center gap-4">
+                <div
+                    class="grid size-20 place-items-center rounded-card bg-store-soft text-xl font-black text-store-blue">
+                    {{ substr($brandName, 0, 2) }}</div>
+                <div>
+                    <p class="text-sm text-store-muted">Official StoreZ collection</p>
+                    <p class="mt-1 text-sm font-semibold text-store-ink">{{ $products->count() }} featured products</p>
+                </div>
+            </div>
+        </section>
+        <section class="mt-8">
+            <h2 class="text-xl font-extrabold text-store-ink">{{ $brandName }} products</h2>
+            <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+                @foreach ($products as $product)
+                    <x-store.catalog.product-card :product="$product" compact />
+                @endforeach
+            </div>
+        </section>
+    </x-store.ui.container>
+</main>

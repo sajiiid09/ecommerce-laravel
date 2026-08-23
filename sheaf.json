@@ -27,6 +27,9 @@
         },
         "modal": {
             "installationTime": 1787466108
+        },
+        "toast": {
+            "installationTime": 1787497020
         }
     }
 }

@@ -1,1 +1,26 @@
-<main class="bg-store-soft py-6 sm:py-8"><x-store.ui.container><div class="grid gap-5 lg:grid-cols-[240px_1fr]"><x-store.account.sidebar /><div><h1 class="text-2xl font-extrabold text-store-ink sm:text-3xl">My Orders</h1><p class="mt-1 text-sm text-store-muted">View and track your StoreZ orders.</p><div class="mt-6 space-y-4"><article class="rounded-card border border-store-border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-sm font-bold text-store-ink">Order #SZ-100248</p><p class="mt-1 text-xs text-store-muted">Placed August 20, 2026 · 2 items · ৳5,180</p></div><x-store.ui.status-badge status="out_for_delivery" /></div><div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-store-border pt-4"><p class="text-sm text-store-muted">Expected delivery: <strong class="text-store-ink">August 24, 2026</strong></p><a href="{{ route('account.tracking', ['order' => 'SZ-100248']) }}" wire:navigate class="inline-flex h-10 items-center rounded-control bg-store-blue px-4 text-sm font-bold text-white">Track Order</a></div></article></div></div></div></x-store.ui.container></main>
+<main class="bg-store-soft py-6 sm:py-8"><x-store.ui.container>
+        <div class="grid gap-5 lg:grid-cols-[240px_1fr]"><x-store.account.sidebar />
+            <div>
+                <h1 class="text-2xl font-extrabold text-store-ink sm:text-3xl">My Orders</h1>
+                <p class="mt-1 text-sm text-store-muted">View and track your StoreZ orders.</p>
+                <div class="mt-6 space-y-4">
+                    <article class="rounded-card border border-store-border bg-white p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-store-ink">Order #SZ-100248</p>
+                                <p class="mt-1 text-xs text-store-muted">Placed August 20, 2026 · 2 items · ৳5,180</p>
+                            </div><x-store.ui.status-badge status="out_for_delivery" />
+                        </div>
+                        <div
+                            class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-store-border pt-4">
+                            <p class="text-sm text-store-muted">Expected delivery: <strong class="text-store-ink">August
+                                    24, 2026</strong></p><a
+                                href="{{ route('account.tracking', ['order' => 'SZ-100248']) }}" wire:navigate
+                                class="inline-flex h-10 items-center rounded-control bg-store-blue px-4 text-sm font-bold text-white">Track
+                                Order</a>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </x-store.ui.container></main>

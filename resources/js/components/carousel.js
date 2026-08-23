@@ -3,13 +3,19 @@ import EmblaCarousel from 'embla-carousel';
 document.addEventListener('alpine:init', () => {
     Alpine.data('storeCarousel', (config = {}) => ({
         loop: Boolean(config.loop),
+        autoplay: Boolean(config.autoplay),
+        interval: Number(config.interval) || 5000,
         current: 0,
         embla: null,
+        autoplayTimer: null,
 
         init() {
             this.embla = EmblaCarousel(this.$refs.viewport, {
                 align: 'start',
-                loop: this.loop,
+                // Handle looping manually so Embla does not render cloned
+                // first/last slides at the edges of the viewport.
+                loop: false,
+                containScroll: 'trimSnaps',
                 skipSnaps: false,
                 slides: 'article',
             });
@@ -18,6 +24,7 @@ document.addEventListener('alpine:init', () => {
             this.embla.on('select', this.syncCurrent);
             this.embla.on('reInit', this.syncCurrent);
             this.syncCurrent();
+            this.startAutoplay();
         },
 
         get pageCount() {
@@ -33,11 +40,23 @@ document.addEventListener('alpine:init', () => {
         },
 
         previous() {
-            this.embla?.scrollPrev();
+            if (!this.embla) return;
+
+            if (this.embla.canScrollPrev()) {
+                this.embla.scrollPrev();
+            } else if (this.loop) {
+                this.embla.scrollTo(this.pageCount - 1);
+            }
         },
 
         next() {
-            this.embla?.scrollNext();
+            if (!this.embla) return;
+
+            if (this.embla.canScrollNext()) {
+                this.embla.scrollNext();
+            } else if (this.loop) {
+                this.embla.scrollTo(0);
+            }
         },
 
         goTo(page) {
@@ -48,7 +67,22 @@ document.addEventListener('alpine:init', () => {
             this.current = this.embla?.selectedScrollSnap() || 0;
         },
 
+        startAutoplay() {
+            if (!this.autoplay || !this.embla || this.pageCount < 2) return;
+
+            this.stopAutoplay();
+            this.autoplayTimer = window.setInterval(() => this.next(), this.interval);
+        },
+
+        stopAutoplay() {
+            if (this.autoplayTimer) {
+                window.clearInterval(this.autoplayTimer);
+                this.autoplayTimer = null;
+            }
+        },
+
         destroy() {
+            this.stopAutoplay();
             this.embla?.destroy();
         },
     }));
