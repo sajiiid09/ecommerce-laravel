@@ -1,6 +1,6 @@
 @props(['categories' => []])
 
-<header class="sticky top-0 z-40 border-b border-store-border bg-white">
+<header class="sticky top-0 z-50 border-b border-store-border bg-white">
     <x-store.ui.container>
         <div class="flex h-18 items-center gap-3 py-3 lg:h-21 lg:gap-5">
             <button type="button"

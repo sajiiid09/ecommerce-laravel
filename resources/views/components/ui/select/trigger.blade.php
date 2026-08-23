@@ -15,7 +15,7 @@
     $classes = [
         'border-red-600/30 border-2 data-open:border-red-600/30 data-open:ring-red-600/20 dark:border-red-400/30 dark:data-open:border-red-400/30 dark:data-open:ring-red-400/20' => $invalid,
         'border-black/10 data-open:border-black/15 data-open:ring-neutral-900/15 dark:border-white/15 dark:data-open:border-white/20 dark:data-open:ring-neutral-100/15' => !$invalid,
-        'border bg-white border-gray-300 dark:bg-neutral-900 dark:border-white/10 dark:text-gray-300 rounded-box text-start',
+        'border bg-white border-gray-300 dark:bg-white dark:border-gray-300 dark:text-store-ink rounded-box text-start',
         'data-open:ring-2 data-open:ring-offset-0 data-open:outline-none',
         'col-span-4 col-start-1 row-start-1 justify-self-stretch',
         'disabled:opacity-60 flex items-center disabled:cursor-auto cursor-pointer',
@@ -55,7 +55,7 @@
         aria-label="{{ $placeholder }}"
         x-bind:data-open="__isOpen"
         data-slot="select-control"
-        @class($classes)
+        @class([...$classes, $triggerClass])
         @disabled($disabled)
     >
         <span wire:ignore class="truncate self-center w-full">

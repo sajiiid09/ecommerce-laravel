@@ -1,6 +1,4 @@
 
-import { Alpine } from '../../../vendor/livewire/livewire/dist/livewire.esm';
-
 let LIVEWIRE_ID;
 
 const selectComponent = ({

@@ -101,10 +101,10 @@
 <?php endif; ?>Filters</button>
         </div>
         <form method="GET" class="mt-6 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-            <div x-cloak x-show="filtersOpen" x-transition.opacity class="fixed inset-0 z-40 bg-store-ink/45 lg:hidden"
+            <div x-cloak x-show="filtersOpen" x-transition.opacity class="fixed inset-0 z-30 bg-store-ink/45 lg:hidden"
                 @click="filtersOpen = false" aria-hidden="true"></div>
             <aside id="search-filters" x-cloak x-show="filtersOpen || window.innerWidth >= 1024" x-transition
-                class="fixed inset-y-0 left-0 z-50 h-auto w-[min(88vw,22rem)] overflow-y-auto rounded-none border-r border-store-border bg-white p-4 shadow-2xl lg:static lg:block lg:h-fit lg:w-auto lg:rounded-card lg:border lg:shadow-none"
+                class="fixed inset-y-0 left-0 z-40 h-auto w-[min(88vw,22rem)] overflow-y-auto rounded-none border-r border-store-border bg-white p-4 shadow-2xl lg:static lg:z-auto lg:block lg:h-fit lg:w-auto lg:rounded-card lg:border lg:shadow-none"
                 @keydown.escape.window="filtersOpen = false">
                 <div class="flex items-center justify-between">
                     <h2 class="font-bold text-store-ink">Filter results</h2>
@@ -185,15 +185,113 @@
                     class="flex flex-wrap items-center justify-between gap-3 rounded-card border border-store-border bg-white p-3">
                     <p class="text-sm text-store-muted">Showing <span
                             class="font-bold text-store-ink"><?php echo e(count($products)); ?></span> results</p>
-                    <div class="flex items-center gap-2"><label for="search-sort"
-                            class="text-xs font-semibold text-store-muted">Sort by</label><select id="search-sort"
-                            name="sort" onchange="this.form.submit()"
-                            class="h-10 rounded-control border border-store-border bg-white px-3 text-sm text-store-ink outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10">
-                            <option value="relevance" <?php if($sort === 'relevance'): echo 'selected'; endif; ?>>Relevance</option>
-                            <option value="price_asc" <?php if($sort === 'price_asc'): echo 'selected'; endif; ?>>Price: Low to High</option>
-                            <option value="price_desc" <?php if($sort === 'price_desc'): echo 'selected'; endif; ?>>Price: High to Low</option>
-                            <option value="rating" <?php if($sort === 'rating'): echo 'selected'; endif; ?>>Rating</option>
-                        </select></div>
+                    <div class="flex items-center gap-2" x-data="{ selectedSort: <?php echo \Illuminate\Support\Js::from($sort)->toHtml() ?> }"><label
+                            class="text-xs font-semibold text-store-muted">Sort by</label><?php if (isset($component)) { $__componentOriginal231e2c645bf8af0c5c05a5dc5a94c862 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal231e2c645bf8af0c5c05a5dc5a94c862 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.ui.select.index','data' => ['name' => 'sort','xModel' => 'selectedSort','size' => 'sm','placeholder' => 'Relevance','triggerClass' => '!bg-white !text-store-ink dark:!bg-white dark:!text-store-ink','@change' => 'setTimeout(() => $el.closest(\'form\').submit())','class' => 'w-48']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('ui.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'sort','x-model' => 'selectedSort','size' => 'sm','placeholder' => 'Relevance','trigger-class' => '!bg-white !text-store-ink dark:!bg-white dark:!text-store-ink','@change' => 'setTimeout(() => $el.closest(\'form\').submit())','class' => 'w-48']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+
+                            <?php if (isset($component)) { $__componentOriginalb178088b41690ba18d9960f87fd0bd48 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb178088b41690ba18d9960f87fd0bd48 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.ui.select.option','data' => ['value' => 'relevance']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('ui.select.option'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['value' => 'relevance']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+Relevance <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $attributes = $__attributesOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $component = $__componentOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__componentOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+                            <?php if (isset($component)) { $__componentOriginalb178088b41690ba18d9960f87fd0bd48 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb178088b41690ba18d9960f87fd0bd48 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.ui.select.option','data' => ['value' => 'price_asc']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('ui.select.option'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['value' => 'price_asc']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+Price: Low to High <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $attributes = $__attributesOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $component = $__componentOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__componentOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+                            <?php if (isset($component)) { $__componentOriginalb178088b41690ba18d9960f87fd0bd48 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb178088b41690ba18d9960f87fd0bd48 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.ui.select.option','data' => ['value' => 'price_desc']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('ui.select.option'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['value' => 'price_desc']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+Price: High to Low <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $attributes = $__attributesOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $component = $__componentOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__componentOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+                            <?php if (isset($component)) { $__componentOriginalb178088b41690ba18d9960f87fd0bd48 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb178088b41690ba18d9960f87fd0bd48 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.ui.select.option','data' => ['value' => 'rating']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('ui.select.option'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['value' => 'rating']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+Rating <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $attributes = $__attributesOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__attributesOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb178088b41690ba18d9960f87fd0bd48)): ?>
+<?php $component = $__componentOriginalb178088b41690ba18d9960f87fd0bd48; ?>
+<?php unset($__componentOriginalb178088b41690ba18d9960f87fd0bd48); ?>
+<?php endif; ?>
+                         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal231e2c645bf8af0c5c05a5dc5a94c862)): ?>
+<?php $attributes = $__attributesOriginal231e2c645bf8af0c5c05a5dc5a94c862; ?>
+<?php unset($__attributesOriginal231e2c645bf8af0c5c05a5dc5a94c862); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal231e2c645bf8af0c5c05a5dc5a94c862)): ?>
+<?php $component = $__componentOriginal231e2c645bf8af0c5c05a5dc5a94c862; ?>
+<?php unset($__componentOriginal231e2c645bf8af0c5c05a5dc5a94c862); ?>
+<?php endif; ?></div>
                 </div>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($products)): ?>
                     <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">

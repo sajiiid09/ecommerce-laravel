@@ -49,10 +49,10 @@
                     class="size-4 !text-current" />Filters</button>
         </div>
         <form method="GET" class="mt-6 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-            <div x-cloak x-show="filtersOpen" x-transition.opacity class="fixed inset-0 z-40 bg-store-ink/45 lg:hidden"
+            <div x-cloak x-show="filtersOpen" x-transition.opacity class="fixed inset-0 z-30 bg-store-ink/45 lg:hidden"
                 @click="filtersOpen = false" aria-hidden="true"></div>
             <aside id="search-filters" x-cloak x-show="filtersOpen || window.innerWidth >= 1024" x-transition
-                class="fixed inset-y-0 left-0 z-50 h-auto w-[min(88vw,22rem)] overflow-y-auto rounded-none border-r border-store-border bg-white p-4 shadow-2xl lg:static lg:block lg:h-fit lg:w-auto lg:rounded-card lg:border lg:shadow-none"
+                class="fixed inset-y-0 left-0 z-40 h-auto w-[min(88vw,22rem)] overflow-y-auto rounded-none border-r border-store-border bg-white p-4 shadow-2xl lg:static lg:z-auto lg:block lg:h-fit lg:w-auto lg:rounded-card lg:border lg:shadow-none"
                 @keydown.escape.window="filtersOpen = false">
                 <div class="flex items-center justify-between">
                     <h2 class="font-bold text-store-ink">Filter results</h2>
@@ -73,15 +73,16 @@
                     class="flex flex-wrap items-center justify-between gap-3 rounded-card border border-store-border bg-white p-3">
                     <p class="text-sm text-store-muted">Showing <span
                             class="font-bold text-store-ink">{{ count($products) }}</span> results</p>
-                    <div class="flex items-center gap-2"><label for="search-sort"
-                            class="text-xs font-semibold text-store-muted">Sort by</label><select id="search-sort"
-                            name="sort" onchange="this.form.submit()"
-                            class="h-10 rounded-control border border-store-border bg-white px-3 text-sm text-store-ink outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10">
-                            <option value="relevance" @selected($sort === 'relevance')>Relevance</option>
-                            <option value="price_asc" @selected($sort === 'price_asc')>Price: Low to High</option>
-                            <option value="price_desc" @selected($sort === 'price_desc')>Price: High to Low</option>
-                            <option value="rating" @selected($sort === 'rating')>Rating</option>
-                        </select></div>
+                    <div class="flex items-center gap-2" x-data="{ selectedSort: @js($sort) }"><label
+                            class="text-xs font-semibold text-store-muted">Sort by</label><x-ui.select name="sort"
+                            x-model="selectedSort" size="sm" placeholder="Relevance"
+                            trigger-class="!bg-white !text-store-ink dark:!bg-white dark:!text-store-ink"
+                            @change="setTimeout(() => $el.closest('form').submit())" class="w-48">
+                            <x-ui.select.option value="relevance">Relevance</x-ui.select.option>
+                            <x-ui.select.option value="price_asc">Price: Low to High</x-ui.select.option>
+                            <x-ui.select.option value="price_desc">Price: High to Low</x-ui.select.option>
+                            <x-ui.select.option value="rating">Rating</x-ui.select.option>
+                        </x-ui.select></div>
                 </div>
                 @if (count($products))
                     <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">

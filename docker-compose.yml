@@ -1,0 +1,110 @@
+services:
+  app:
+    image: storez-app
+    build: { context: ., dockerfile: docker/php/Dockerfile }
+    working_dir: /var/www/html
+    volumes: ["./:/var/www/html", "composer_cache:/tmp/composer"]
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-storez}
+      DB_USERNAME: ${DB_USERNAME:-storez}
+      DB_PASSWORD: ${DB_PASSWORD:-storez}
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["${APP_PORT:-8080}:80"]
+    volumes: ["./:/var/www/html:ro", "./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"]
+    depends_on: [app]
+
+  queue:
+    image: storez-app
+    working_dir: /var/www/html
+    command: php artisan queue:work --verbose --tries=3 --timeout=90
+    volumes: ["./:/var/www/html"]
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-storez}
+      DB_USERNAME: ${DB_USERNAME:-storez}
+      DB_PASSWORD: ${DB_PASSWORD:-storez}
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  scheduler:
+    image: storez-app
+    working_dir: /var/www/html
+    command: php artisan schedule:work
+    volumes: ["./:/var/www/html"]
+    env_file: .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-storez}
+      DB_USERNAME: ${DB_USERNAME:-storez}
+      DB_PASSWORD: ${DB_PASSWORD:-storez}
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-storez}
+      POSTGRES_USER: ${DB_USERNAME:-storez}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-storez}
+    ports: ["${DB_FORWARD_PORT:-5432}:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-storez} -d ${DB_DATABASE:-storez}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["${REDIS_FORWARD_PORT:-6379}:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+
+  node:
+    image: node:22-alpine
+    working_dir: /var/www/html
+    command: sh -c "npm install && npm run dev"
+    ports: ["${VITE_FORWARD_PORT:-5173}:5173"]
+    volumes: ["./:/var/www/html", "node_modules:/var/www/html/node_modules"]
+    profiles: ["dev"]
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports: ["${MAILPIT_SMTP_PORT:-1025}:1025", "${MAILPIT_DASHBOARD_PORT:-8025}:8025"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  composer_cache:
+  node_modules:

@@ -105,7 +105,7 @@ unset($__defined_vars, $__key, $__value); ?>
     <?php echo e($attributes->class([
         'relative [--popup-round:var(--radius-box)] [--popup-padding:--spacing(1)]',
         'dark:border-red-400! dark:shadow-red-400 text-red-400! placeholder:text-red-400!' => $invalid,
-        ])); ?>
+        ]),); ?>
 
     x-rover
 >
@@ -191,5 +191,4 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php unset($__componentOriginalfa3eae50b2ed1c2b7aa861ecb3f28421); ?>
 <?php endif; ?>
     </div>
-</div>
-<?php /**PATH D:\projects\laravel\storez\resources\views/components/ui/select/index.blade.php ENDPATH**/ ?>
+</div><?php /**PATH D:\projects\laravel\storez\resources\views/components/ui/select/index.blade.php ENDPATH**/ ?>
