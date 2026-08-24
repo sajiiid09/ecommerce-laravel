@@ -30,6 +30,24 @@
         },
         "toast": {
             "installationTime": 1787497020
+        },
+        "sidebar": {
+            "installationTime": 1787583044
+        },
+        "navlist": {
+            "installationTime": 1787583044
+        },
+        "layout": {
+            "installationTime": 1787583045
+        },
+        "navbar": {
+            "installationTime": 1787583046
+        },
+        "badge": {
+            "installationTime": 1787583182
+        },
+        "textarea": {
+            "installationTime": 1787586197
         }
     }
 }

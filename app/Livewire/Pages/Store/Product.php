@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Store;
 
-use App\Support\StorefrontDemoData;
+use App\Support\StorefrontCatalog;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -13,7 +13,7 @@ class Product extends Component
 
     public function mount(string $slug): void
     {
-        $product = collect(StorefrontDemoData::products())->firstWhere('slug', $slug);
+        $product = StorefrontCatalog::product($slug);
         abort_unless($product, 404);
         $this->product = $product;
     }

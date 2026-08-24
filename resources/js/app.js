@@ -8,5 +8,6 @@ Alpine.plugin(rover);
 import './globals/modals';
 import './components/carousel';
 import './components/select';
+import './components/rich-text-editor';
 
 Livewire.start();

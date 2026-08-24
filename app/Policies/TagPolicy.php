@@ -1,0 +1,2 @@
+<?php
+namespace App\Policies; use App\Models\{Tag,User}; class TagPolicy { public function before(User $user):?bool{return $user->is_admin?true:null;} public function viewAny(User $user):bool{return $user->is_admin;} public function create(User $user):bool{return $user->is_admin;} public function update(User $user,Tag $tag):bool{return $user->is_admin;} public function delete(User $user,Tag $tag):bool{return $user->is_admin;} }

@@ -24,3 +24,24 @@ Route::livewire('/account', new \App\Livewire\Pages\Account\Dashboard)->name('ac
 Route::livewire('/orders', new \App\Livewire\Pages\Account\Orders)->name('account.orders');
 Route::livewire('/account/orders/{order?}/track', new \App\Livewire\Pages\Account\Tracking)->name('account.tracking');
 Route::get('/orders/SZ-100248/tracking', fn () => redirect()->route('account.tracking', ['order' => 'SZ-100248'], 301));
+
+Route::livewire('/admin', new \App\Livewire\Pages\Admin\Dashboard)->middleware(['auth', 'admin'])->name('admin.dashboard');
+Route::livewire('/admin/media', new \App\Livewire\Pages\Admin\Media\Index)->middleware(['auth', 'admin'])->name('admin.media');
+
+Route::prefix('admin/catalog')->middleware(['auth', 'admin'])->group(function (): void {
+    Route::livewire('/products', new \App\Livewire\Pages\Admin\Catalog\Products\Index)->name('admin.catalog.products');
+    Route::livewire('/products/create', new \App\Livewire\Pages\Admin\Catalog\Products\Edit)->name('admin.catalog.products.create');
+    Route::livewire('/products/{product}/edit', new \App\Livewire\Pages\Admin\Catalog\Products\Edit)->name('admin.catalog.products.edit');
+    Route::livewire('/products/{product}/variants', new \App\Livewire\Pages\Admin\Catalog\Products\Variants)->name('admin.catalog.products.variants');
+    Route::livewire('/products/import', new \App\Livewire\Pages\Admin\Catalog\Products\Import)->name('admin.catalog.products.import');
+    Route::livewire('/products/export', new \App\Livewire\Pages\Admin\Catalog\Products\Export)->name('admin.catalog.products.export');
+    Route::livewire('/categories', new \App\Livewire\Pages\Admin\Catalog\Categories\Index)->name('admin.catalog.categories');
+    Route::livewire('/brands', new \App\Livewire\Pages\Admin\Catalog\Brands\Index)->name('admin.catalog.brands');
+    Route::livewire('/tags', new \App\Livewire\Pages\Admin\Catalog\Tags\Index)->name('admin.catalog.tags');
+    Route::livewire('/attributes', new \App\Livewire\Pages\Admin\Catalog\Attributes\Index)->name('admin.catalog.attributes');
+    Route::livewire('/variants', new \App\Livewire\Pages\Admin\Catalog\Variants\Index)->name('admin.catalog.variants');
+    Route::livewire('/inventory', new \App\Livewire\Pages\Admin\Catalog\Inventory\Index)->name('admin.catalog.inventory');
+    Route::livewire('/inventory/{variant}/history', new \App\Livewire\Pages\Admin\Catalog\Inventory\History)->name('admin.catalog.inventory.history');
+});
+
+Route::post('/logout', function (): \Illuminate\Http\RedirectResponse { auth()->logout(); request()->session()->invalidate(); request()->session()->regenerateToken(); return redirect()->route('login'); })->middleware('auth')->name('logout');

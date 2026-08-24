@@ -1,5 +1,5 @@
 @php
-    $allProducts = \App\Support\StorefrontDemoData::products();
+    $allProducts = \App\Support\StorefrontCatalog::products();
     $queryLower = strtolower($query);
     $products =
         $query === ''

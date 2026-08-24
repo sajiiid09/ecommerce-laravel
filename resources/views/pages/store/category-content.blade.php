@@ -1,9 +1,15 @@
 @php
-    $allProducts = \App\Support\StorefrontDemoData::products();
-    $categories = \App\Support\StorefrontDemoData::categories();
+    $allProducts = \App\Support\StorefrontCatalog::products();
+    $categories = \App\Support\StorefrontCatalog::categories();
     $activeCategory = collect($categories)->firstWhere('slug', $slug ?? null);
     $categoryName = $activeCategory['name'] ?? 'All Products';
     $products = $allProducts;
+    if ($slug) {
+        $products = array_values(array_filter($products, fn($product) => ($product['categorySlug'] ?? null) === $slug));
+        if (!$products) {
+            $products = $allProducts;
+        }
+    }
     $selectedBrands = (array) request('brand', []);
     if ($selectedBrands) {
         $products = array_values(

@@ -1,0 +1,4 @@
+@props(['value' => null])
+<div x-data="richTextEditor($wire, @js($value))" x-init="init()" x-on:livewire:navigating.window="destroy()" class="rounded-lg border border-slate-300 bg-white" wire:ignore>
+    <div class="flex flex-wrap gap-1 border-b border-slate-200 p-2 text-xs"><button type="button" @click="toggle('toggleBold')" class="rounded px-2 py-1 hover:bg-slate-100"><strong>B</strong></button><button type="button" @click="toggle('toggleItalic')" class="rounded px-2 py-1 hover:bg-slate-100"><em>I</em></button><button type="button" @click="toggle('toggleBulletList')" class="rounded px-2 py-1 hover:bg-slate-100">List</button><button type="button" @click="toggle('toggleHeading')" class="rounded px-2 py-1 hover:bg-slate-100">Heading</button></div><div x-ref="editor" class="prose max-w-none min-h-40 p-3 focus:outline-none"></div>
+</div>

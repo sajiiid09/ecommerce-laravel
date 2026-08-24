@@ -15,6 +15,7 @@
     'size' => null,
     'kbd' => null,
     'as' => null,
+    'controlClass' => null,
     'bindScopeToParent' => false
 ])
 
@@ -200,6 +201,7 @@
                 'border-black/10 focus:border-black/15 focus:ring-neutral-900/15 dark:border-white/15 dark:focus:border-white/20 dark:focus:ring-neutral-100/15' => !$invalid,
                 'border-red-600/30 border-2 focus:border-red-600/30 focus:ring-red-600/20 dark:border-red-400/30 dark:focus:border-red-400/30 dark:focus:ring-red-400/20' => $invalid,
                 'cursor-pointer caret-transparent select-none' => $asButton,
+                $controlClass,
             ])
             name="{{ $name }}"
             type="{{ $type }}"

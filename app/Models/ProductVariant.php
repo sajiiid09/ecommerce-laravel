@@ -1,0 +1,4 @@
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\SoftDeletes;
+class ProductVariant extends Model { use SoftDeletes; protected $guarded=[]; protected $casts=['is_active'=>'boolean','is_default'=>'boolean']; public function product(){return $this->belongsTo(Product::class);} public function optionValues(){return $this->belongsToMany(ProductOptionValue::class,'product_variant_option_value');} public function inventory(){return $this->hasOne(InventoryItem::class);} public function media(){return $this->hasMany(ProductMedia::class);} public function currentPriceMinor(){return $this->sale_price_minor ?? $this->regular_price_minor ?? $this->price ?? 0;} public function availableQuantity(){return (int)($this->inventory?->quantity_on_hand ?? $this->stock_quantity ?? 0)- (int)($this->inventory?->quantity_reserved ?? 0);} }

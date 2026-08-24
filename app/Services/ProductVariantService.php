@@ -1,0 +1,8 @@
+<?php
+namespace App\Services;
+use App\Models\{Product,ProductOption,ProductVariant}; use Illuminate\Support\Facades\DB;
+class ProductVariantService
+{
+    public function ensureDefault(Product $product): ProductVariant { return DB::transaction(function() use($product){ $variant=$product->variants()->where('is_default',true)->first() ?: $product->variants()->first(); if(!$variant) $variant=$product->variants()->create(['sku'=>'STZ-'.$product->id,'combination_key'=>'default','regular_price_minor'=>0,'is_default'=>true,'is_active'=>true]); elseif(!$variant->is_default){$variant->update(['is_default'=>true]);} app(InventoryService::class)->initialize($variant); return $variant->fresh(); }); }
+    public function generate(Product $product): array { $options=$product->options()->with('values')->get(); if($options->isEmpty() || $options->contains(fn($o)=>$o->values->isEmpty())) return []; $combinations=[[]]; foreach($options as $option){$next=[]; foreach($combinations as $base) foreach($option->values as $value) $next[]=$base+[$option->slug ?: str($option->name)->slug()->toString()=>$value]; $combinations=$next;} $created=[]; foreach($combinations as $combination){$ids=collect($combination)->pluck('id')->sort()->values()->all(); $key=implode('-', $ids); $variant=$product->variants()->firstOrCreate(['combination_key'=>$key],['sku'=>'STZ-'.$product->id.'-'.strtoupper(substr(md5($key),0,6)),'name'=>collect($combination)->pluck('value')->implode(' / '),'regular_price_minor'=>0,'is_active'=>true]); $variant->optionValues()->sync($ids); app(InventoryService::class)->initialize($variant); $created[]=$variant; } return $created; }
+}

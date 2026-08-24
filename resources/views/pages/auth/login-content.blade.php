@@ -5,14 +5,14 @@
                 <h1 class="mt-6 text-2xl font-extrabold text-store-ink">Welcome back</h1>
                 <p class="mt-1 text-sm text-store-muted">Sign in to continue shopping.</p>
             </div>
-            <form action="{{ route('store.home') }}" class="mt-8 space-y-4"><label
+            <form wire:submit="login" class="mt-8 space-y-4"><label
                     class="block text-sm font-semibold text-store-ink">Email address<input type="email" required
-                        class="mt-2 h-11 w-full rounded-control border border-store-border px-3 outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10"></label><label
+                        wire:model="email" class="mt-2 h-11 w-full rounded-control border border-store-border px-3 outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10">@error('email')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label><label
                     class="block text-sm font-semibold text-store-ink">Password<input type="password" required
-                        class="mt-2 h-11 w-full rounded-control border border-store-border px-3 outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10"></label>
+                        wire:model="password" class="mt-2 h-11 w-full rounded-control border border-store-border px-3 outline-none focus:border-store-blue focus:ring-2 focus:ring-store-blue/10">@error('password')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label>
                 <div class="flex items-center justify-between text-sm"><label
                         class="flex items-center gap-2 text-store-muted"><input type="checkbox"
-                            class="size-4 rounded border-store-border text-store-blue">Remember me</label><a
+                            wire:model="remember" class="size-4 rounded border-store-border text-store-blue">Remember me</label><a
                         href="#forgot" class="font-semibold text-store-blue">Forgot password?</a></div><button
                     class="h-11 w-full rounded-control bg-store-blue text-sm font-bold text-white hover:bg-store-blue-dark">Sign
                     In</button>

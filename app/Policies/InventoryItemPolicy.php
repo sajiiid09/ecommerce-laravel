@@ -1,0 +1,2 @@
+<?php
+namespace App\Policies; use App\Models\{InventoryItem,User}; class InventoryItemPolicy { public function before(User $user):?bool{return $user->is_admin?true:null;} public function viewAny(User $user):bool{return $user->is_admin;} public function view(User $user,InventoryItem $item):bool{return $user->is_admin;} public function manageInventory(User $user,InventoryItem $item):bool{return $user->is_admin;} }

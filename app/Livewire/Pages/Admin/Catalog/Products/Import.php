@@ -1,0 +1,4 @@
+<?php
+namespace App\Livewire\Pages\Admin\Catalog\Products;
+use App\Models\ProductImport; use App\Services\ProductImportService; use Livewire\Component; use Livewire\WithFileUploads;
+class Import extends Component { use WithFileUploads; public $file; public string $mode='create'; public int $step=1; public ?ProductImport $import=null; public array $summary=[]; public function upload():void{$this->validate(['file'=>'required|file|mimes:csv,txt|max:10240','mode'=>'required|in:create,update_by_sku']);$this->import=app(ProductImportService::class)->upload($this->file,$this->mode);$this->step=2;} public function validateRows():void{$this->summary=app(ProductImportService::class)->validate($this->import);$this->step=3;} public function runImport():void{app(ProductImportService::class)->import($this->import,$this->import->mapping??[]);$this->step=4;} public function render(){return view('livewire.pages.admin.catalog.products.import');} }

@@ -1,4 +1,4 @@
-@php($allProducts = \App\Support\StorefrontDemoData::products())
+@php($allProducts = \App\Support\StorefrontCatalog::products())
 @php($brandName = strtoupper($slug ?? 'TEER'))
 @php($products = collect($allProducts)->filter(fn($product) => strtoupper($product['brand'] ?? '') === $brandName)->values())
 @if ($products->isEmpty())

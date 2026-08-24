@@ -17,9 +17,11 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        User::updateOrCreate(['email' => env('ADMIN_EMAIL', 'admin@storez.local')], [
+            'name' => 'StoreZ Administrator',
+            'password' => env('ADMIN_PASSWORD', 'change-me-local'),
+            'is_admin' => true,
+            'email_verified_at' => now(),
         ]);
     }
 }
