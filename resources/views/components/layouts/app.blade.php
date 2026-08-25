@@ -1,11 +1,5 @@
 @props(['title' => 'StoreZ'])
 
-@php
-    $cartItems = \App\Support\StorefrontDemoData::cartItems();
-    $categories = \App\Support\StorefrontDemoData::categories();
-    $trustItems = \App\Support\StorefrontDemoData::trustItems();
-@endphp
-
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -55,6 +49,7 @@
         @keydown.escape.window="cartOpen = false; mobileMenuOpen = false"
         @scroll.window="showScrollTop = window.scrollY > 400"
     >
+        @foreach($announcements as $announcement)<x-store.layout.announcement :announcement="$announcement" />@endforeach
         <x-store.layout.promo-bar />
         <x-store.layout.header :categories="$categories" />
         <x-store.layout.desktop-nav :categories="$categories" />

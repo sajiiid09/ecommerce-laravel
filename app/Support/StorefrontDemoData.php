@@ -10,6 +10,11 @@ namespace App\Support;
  */
 final class StorefrontDemoData
 {
+    private static function placeholderImage(): string
+    {
+        return asset('images/placeholders/no-image.svg');
+    }
+
     public static function categories(): array
     {
         return [
@@ -46,36 +51,36 @@ final class StorefrontDemoData
             [
                 'id' => 1, 'slug' => 'wireless-noise-cancelling-headphones',
                 'name' => 'Wireless Noise Cancelling Headphones', 'brand' => 'SoundMax',
-                'image' => '/images/placeholders/no-image.svg', 'price' => 4290,
+                'image' => self::placeholderImage(), 'price' => 4290,
                 'oldPrice' => 4990, 'discount' => 14, 'rating' => 4.8,
                 'reviews' => 126, 'inStock' => true,
             ],
             [
                 'id' => 2, 'slug' => 'smart-led-bulb-pack',
                 'name' => 'Smart LED Bulb, Pack of 2', 'brand' => 'BrightHome',
-                'image' => '/images/placeholders/no-image.svg', 'price' => 890,
+                'image' => self::placeholderImage(), 'price' => 890,
                 'oldPrice' => 1090, 'discount' => 18, 'rating' => 4.6,
                 'reviews' => 88, 'inStock' => true,
             ],
             [
                 'id' => 3, 'slug' => 'daily-essential-basket',
                 'name' => 'Daily Essential Grocery Basket', 'brand' => 'StoreZ Fresh',
-                'image' => '/images/placeholders/no-image.svg', 'price' => 1290,
+                'image' => self::placeholderImage(), 'price' => 1290,
                 'oldPrice' => null, 'discount' => null, 'rating' => 4.7,
                 'reviews' => 241, 'inStock' => true,
             ],
-            ['id' => 4, 'slug' => 'premium-basmati-rice', 'name' => 'Premium Basmati Rice 5kg', 'brand' => 'Teer', 'image' => '/images/placeholders/no-image.svg', 'price' => 950, 'oldPrice' => 1180, 'discount' => 19, 'rating' => 4.6, 'reviews' => 2100, 'inStock' => true, 'highlights' => ['Extra long grain premium quality', 'Naturally aromatic, fluffy and non-sticky', 'Perfect for biryani, pulao, fried rice and daily meals', 'Carefully packed for retail freshness'], 'options' => [['label' => '1kg', 'value' => '1kg', 'price' => 210], ['label' => '5kg', 'value' => '5kg', 'price' => 950], ['label' => '10kg', 'value' => '10kg', 'price' => 1780]]],
-            ['id' => 5, 'slug' => 'fresh-soyabean-oil', 'name' => 'Fresh Soyabean Oil 2L', 'brand' => 'Fresh', 'image' => '/images/placeholders/no-image.svg', 'price' => 620, 'oldPrice' => 730, 'discount' => 15, 'rating' => 4.7, 'reviews' => 980, 'inStock' => true],
-            ['id' => 6, 'slug' => 'orix-crystal-detergent', 'name' => 'Orix Crystal Detergent Powder 2kg', 'brand' => 'Orix', 'image' => '/images/placeholders/no-image.svg', 'price' => 520, 'oldPrice' => 695, 'discount' => 25, 'rating' => 4.6, 'reviews' => 850, 'inStock' => true],
-            ['id' => 7, 'slug' => 'redmi-note-13', 'name' => 'Redmi Note 13 (8/128GB)', 'brand' => 'Xiaomi', 'image' => '/images/placeholders/no-image.svg', 'price' => 18999, 'oldPrice' => 24999, 'discount' => 24, 'rating' => 4.6, 'reviews' => 456, 'inStock' => true, 'highlights' => ['6.67-inch AMOLED display', '8GB RAM with 128GB storage', 'All-day battery with fast charging', 'High-resolution camera system'], 'options' => [['label' => '8/128GB', 'value' => '8/128GB', 'price' => 18999], ['label' => '8/256GB', 'value' => '8/256GB', 'price' => 21999]]],
-            ['id' => 8, 'slug' => 'nivea-soft-moisturizer', 'name' => 'Nivea Soft Light Moisturizer 300ml', 'brand' => 'Nivea', 'image' => '/images/placeholders/no-image.svg', 'price' => 390, 'oldPrice' => 475, 'discount' => 18, 'rating' => 4.6, 'reviews' => 930, 'inStock' => true],
-            ['id' => 9, 'slug' => 'miyako-electric-kettle', 'name' => 'Miyako Electric Kettle 1.8L', 'brand' => 'Miyako', 'image' => '/images/placeholders/no-image.svg', 'price' => 850, 'oldPrice' => 1090, 'discount' => 22, 'rating' => 4.5, 'reviews' => 680, 'inStock' => true],
-            ['id' => 10, 'slug' => 'aarong-panjabi', 'name' => 'Classic Cotton Panjabi', 'brand' => 'Aarong', 'image' => '/images/placeholders/no-image.svg', 'price' => 1650, 'oldPrice' => 2100, 'discount' => 21, 'rating' => 4.7, 'reviews' => 790, 'inStock' => true],
-            ['id' => 11, 'slug' => 'samsung-galaxy-a15', 'name' => 'Samsung Galaxy A15', 'brand' => 'Samsung', 'image' => '/images/placeholders/no-image.svg', 'price' => 17499, 'oldPrice' => 19999, 'discount' => 12, 'rating' => 4.6, 'reviews' => 1100, 'inStock' => true],
-            ['id' => 12, 'slug' => 'walton-nonstick-cookware', 'name' => 'Walton Non-Stick Cookware Set', 'brand' => 'Walton', 'image' => '/images/placeholders/no-image.svg', 'price' => 3450, 'oldPrice' => 4200, 'discount' => 18, 'rating' => 4.6, 'reviews' => 670, 'inStock' => true],
-            ['id' => 13, 'slug' => 'apex-casual-shoes', 'name' => 'Apex Casual Shoes', 'brand' => 'Apex', 'image' => '/images/placeholders/no-image.svg', 'price' => 1799, 'oldPrice' => 2390, 'discount' => 25, 'rating' => 4.5, 'reviews' => 820, 'inStock' => true],
-            ['id' => 14, 'slug' => 'fresh-noodles', 'name' => 'Instant Noodles Family Pack', 'brand' => 'Fresh', 'image' => '/images/placeholders/no-image.svg', 'price' => 75, 'oldPrice' => 90, 'discount' => 17, 'rating' => 4.6, 'reviews' => 410, 'inStock' => true],
-            ['id' => 15, 'slug' => 'decorative-table-lamp', 'name' => 'Decorative Table Lamp', 'brand' => 'BrightHome', 'image' => '/images/placeholders/no-image.svg', 'price' => 890, 'oldPrice' => 1200, 'discount' => 26, 'rating' => 4.7, 'reviews' => 320, 'inStock' => true],
+            ['id' => 4, 'slug' => 'premium-basmati-rice', 'name' => 'Premium Basmati Rice 5kg', 'brand' => 'Teer', 'image' => self::placeholderImage(), 'price' => 950, 'oldPrice' => 1180, 'discount' => 19, 'rating' => 4.6, 'reviews' => 2100, 'inStock' => true, 'highlights' => ['Extra long grain premium quality', 'Naturally aromatic, fluffy and non-sticky', 'Perfect for biryani, pulao, fried rice and daily meals', 'Carefully packed for retail freshness'], 'options' => [['label' => '1kg', 'value' => '1kg', 'price' => 210], ['label' => '5kg', 'value' => '5kg', 'price' => 950], ['label' => '10kg', 'value' => '10kg', 'price' => 1780]]],
+            ['id' => 5, 'slug' => 'fresh-soyabean-oil', 'name' => 'Fresh Soyabean Oil 2L', 'brand' => 'Fresh', 'image' => self::placeholderImage(), 'price' => 620, 'oldPrice' => 730, 'discount' => 15, 'rating' => 4.7, 'reviews' => 980, 'inStock' => true],
+            ['id' => 6, 'slug' => 'orix-crystal-detergent', 'name' => 'Orix Crystal Detergent Powder 2kg', 'brand' => 'Orix', 'image' => self::placeholderImage(), 'price' => 520, 'oldPrice' => 695, 'discount' => 25, 'rating' => 4.6, 'reviews' => 850, 'inStock' => true],
+            ['id' => 7, 'slug' => 'redmi-note-13', 'name' => 'Redmi Note 13 (8/128GB)', 'brand' => 'Xiaomi', 'image' => self::placeholderImage(), 'price' => 18999, 'oldPrice' => 24999, 'discount' => 24, 'rating' => 4.6, 'reviews' => 456, 'inStock' => true, 'highlights' => ['6.67-inch AMOLED display', '8GB RAM with 128GB storage', 'All-day battery with fast charging', 'High-resolution camera system'], 'options' => [['label' => '8/128GB', 'value' => '8/128GB', 'price' => 18999], ['label' => '8/256GB', 'value' => '8/256GB', 'price' => 21999]]],
+            ['id' => 8, 'slug' => 'nivea-soft-moisturizer', 'name' => 'Nivea Soft Light Moisturizer 300ml', 'brand' => 'Nivea', 'image' => self::placeholderImage(), 'price' => 390, 'oldPrice' => 475, 'discount' => 18, 'rating' => 4.6, 'reviews' => 930, 'inStock' => true],
+            ['id' => 9, 'slug' => 'miyako-electric-kettle', 'name' => 'Miyako Electric Kettle 1.8L', 'brand' => 'Miyako', 'image' => self::placeholderImage(), 'price' => 850, 'oldPrice' => 1090, 'discount' => 22, 'rating' => 4.5, 'reviews' => 680, 'inStock' => true],
+            ['id' => 10, 'slug' => 'aarong-panjabi', 'name' => 'Classic Cotton Panjabi', 'brand' => 'Aarong', 'image' => self::placeholderImage(), 'price' => 1650, 'oldPrice' => 2100, 'discount' => 21, 'rating' => 4.7, 'reviews' => 790, 'inStock' => true],
+            ['id' => 11, 'slug' => 'samsung-galaxy-a15', 'name' => 'Samsung Galaxy A15', 'brand' => 'Samsung', 'image' => self::placeholderImage(), 'price' => 17499, 'oldPrice' => 19999, 'discount' => 12, 'rating' => 4.6, 'reviews' => 1100, 'inStock' => true],
+            ['id' => 12, 'slug' => 'walton-nonstick-cookware', 'name' => 'Walton Non-Stick Cookware Set', 'brand' => 'Walton', 'image' => self::placeholderImage(), 'price' => 3450, 'oldPrice' => 4200, 'discount' => 18, 'rating' => 4.6, 'reviews' => 670, 'inStock' => true],
+            ['id' => 13, 'slug' => 'apex-casual-shoes', 'name' => 'Apex Casual Shoes', 'brand' => 'Apex', 'image' => self::placeholderImage(), 'price' => 1799, 'oldPrice' => 2390, 'discount' => 25, 'rating' => 4.5, 'reviews' => 820, 'inStock' => true],
+            ['id' => 14, 'slug' => 'fresh-noodles', 'name' => 'Instant Noodles Family Pack', 'brand' => 'Fresh', 'image' => self::placeholderImage(), 'price' => 75, 'oldPrice' => 90, 'discount' => 17, 'rating' => 4.6, 'reviews' => 410, 'inStock' => true],
+            ['id' => 15, 'slug' => 'decorative-table-lamp', 'name' => 'Decorative Table Lamp', 'brand' => 'BrightHome', 'image' => self::placeholderImage(), 'price' => 890, 'oldPrice' => 1200, 'discount' => 26, 'rating' => 4.7, 'reviews' => 320, 'inStock' => true],
         ];
     }
 

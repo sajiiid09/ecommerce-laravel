@@ -1,43 +1,255 @@
-<div class="min-h-[calc(100vh-72px)] bg-[#f7f9fc] px-5 py-7 text-[#17233d] sm:px-8">
+<div class="p-5 sm:p-8">
     <div class="mx-auto max-w-[1480px]">
         <div class="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
-                <div class="mb-3 flex items-center gap-2 text-xs font-semibold text-[#1769e8]"><a href="{{ url('/admin') }}">Dashboard</a><span class="text-[#b2bdcc]">/</span><a href="{{ url('/admin/catalog/products') }}">Catalog</a><span class="text-[#b2bdcc]">/</span><span class="text-[#718099]">{{ $product?->exists ? 'Edit Product' : 'Add Product' }}</span></div>
-                <h1 class="text-[30px] font-extrabold tracking-[-.7px]">{{ $product?->exists ? 'Edit Product' : 'Add New Product' }}</h1>
-                <p class="mt-1 text-sm text-[#718099]">Create a new product and configure pricing, stock, and storefront information.</p>
+                <div class="mb-3 flex items-center gap-2 text-xs font-semibold text-[#2563eb]">
+                    <a href="{{ url('/admin') }}">Dashboard</a>
+                    <span class="text-[#9ca3af]">&rsaquo;</span>
+                    <a href="{{ url('/admin/catalog/products') }}">Products</a>
+                    <span class="text-[#9ca3af]">&rsaquo;</span>
+                    <span class="text-[#6b7280]">{{ $product?->exists ? 'Edit Product' : 'Add Product' }}</span>
+                </div>
+                <h1 class="text-[28px] font-extrabold tracking-tight text-[#111827]">{{ $product?->exists ? 'Edit Product' : 'Add New Product' }}</h1>
+                <p class="mt-1 text-sm text-[#6b7280]">{{ $product?->exists ? 'Update your product information and settings.' : 'Create a new product and configure pricing, stock and storefront information.' }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="{{ url('/admin/catalog/products') }}" class="rounded-lg border border-[#dce4ef] bg-white px-4 py-2.5 text-sm font-semibold text-[#53627b]">Cancel</a>
-                <button form="product-form" type="submit" class="rounded-lg bg-[#1769e8] px-5 py-2.5 text-sm font-bold text-white shadow-[0_5px_12px_rgba(23,105,232,.2)]">Save Product</button>
+                @if($product?->exists)
+                    <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
+                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                        View Product
+                    </button>
+                @endif
+                <button form="product-form" type="submit" wire:loading.attr="disabled" wire:target="saveProduct" class="flex items-center gap-2 rounded-lg bg-[#2563eb] px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8] disabled:cursor-wait disabled:opacity-60">
+                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                    <span wire:loading.remove wire:target="saveProduct">{{ $product?->exists ? 'Save Changes' : 'Publish Product' }}</span><span wire:loading wire:target="saveProduct">Saving...</span>
+                </button>
             </div>
         </div>
 
-        @if (session('status')) <div class="mb-5 rounded-xl border border-[#bcebd7] bg-[#effcf5] p-3 text-sm font-semibold text-[#159669]">{{ session('status') }}</div> @endif
-        @if ($errors->any()) <div class="mb-5 rounded-xl border border-[#ffd5d5] bg-[#fff6f6] p-4 text-sm text-[#c24141]"><p class="font-bold">Please check the form</p><ul class="mt-1 list-disc pl-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div> @endif
+        @if(session('status'))
+            <div class="mb-5 rounded-xl border border-[#bbf7d0] bg-[#dcfce7] p-3 text-sm font-semibold text-[#16a34a]">{{ session('status') }}</div>
+        @endif
 
-        <form id="product-form" wire:submit="saveProduct" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1.65fr)_270px_320px]">
+        @if($errors->any())
+            <div class="mb-5 rounded-xl border border-[#fecaca] bg-[#fef2f2] p-4 text-sm text-[#dc2626]">
+                <p class="font-bold">Please check the form</p>
+                <ul class="mt-1 list-disc pl-5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form id="product-form" wire:submit="saveProduct" class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div class="space-y-5">
-                <section class="rounded-xl border border-[#dfe6ef] bg-white p-5 shadow-[0_3px_12px_rgba(30,55,90,.03)] sm:p-6">
-                    <div class="mb-5 flex items-center justify-between"><div><h2 class="font-bold text-[#17233d]">Basic Information</h2><p class="mt-1 text-xs text-[#8491a5]">Simple products use one default variant for SKU, pricing, and stock.</p></div><span class="rounded-full bg-[#eef4ff] px-2.5 py-1 text-[11px] font-bold text-[#1769e8]">Required fields marked *</span></div>
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550]">Product Name <span class="text-[#ef2c35]">*</span><x-ui.input wire:model.live="name" placeholder="Enter product name" class="!rounded-lg" controlClass="!rounded-lg !border-[#dfe6ef] !bg-white" /></label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550]">Slug <span class="text-[#ef2c35]">*</span><x-ui.input wire:model.live="slug" placeholder="Enter product slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#dfe6ef] !bg-white" /></label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550]">Product Type <span class="text-[#ef2c35]">*</span><x-ui.select wire:model.live="product_type" placeholder="Select product type" class="!w-full"><x-ui.select.option value="simple">Simple</x-ui.select.option><x-ui.select.option value="variable">Variable</x-ui.select.option></x-ui.select></label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550]">Brand<x-ui.select wire:model.live="brand_id" placeholder="Select brand" clearable class="!w-full"><x-ui.select.option value="">None</x-ui.select.option>@foreach ($brands as $brand)<x-ui.select.option value="{{ $brand->id }}">{{ $brand->name }}</x-ui.select.option>@endforeach</x-ui.select></label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550] md:col-span-2">Primary Category<x-ui.select wire:model.live="primary_category_id" placeholder="Select category" clearable class="!w-full"><x-ui.select.option value="">None</x-ui.select.option>@foreach ($categories as $category)<x-ui.select.option value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>@endforeach</x-ui.select></label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#263550] md:col-span-2">Short Description <span class="text-[#ef2c35]">*</span><x-ui.textarea wire:model.live="short_description" rows="3" maxlength="160" resize="vertical" placeholder="Enter a short description about the product..." class="!rounded-lg !border-[#dfe6ef]" /><span class="block text-right text-[11px] font-normal text-[#9aa8bd]">Maximum 160 characters</span></label>
-                        <div class="md:col-span-2"><div class="mb-1.5 text-sm font-semibold text-[#263550]">Product Description</div><x-app.rich-text-editor :value="$description_json" /></div>
+
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm sm:p-6">
+                    <div class="mb-5 flex items-center justify-between">
+                        <div><h2 class="font-bold text-[#111827]">Basic Information</h2></div>
+                        <span class="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-bold text-[#2563eb]">Simple products use one default variant</span>
+                    </div>
+                    <label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#111827]">Additional Categories
+                        <select wire:model.live="category_ids" multiple class="min-h-24 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-normal focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/10">
+                            @foreach($categories as $category)
+                                <option wire:key="product-category-{{ $category->id }}" value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                        <span class="block text-xs font-normal text-[#9ca3af]">Hold Ctrl/Cmd to select multiple categories. The primary category is included automatically.</span>
+                    </label>
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Product Name <span class="text-[#ef4444]">*</span>
+                            <x-ui.input wire:model.live="name" placeholder="Enter product name" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Slug <span class="text-[#ef4444]">*</span>
+                            <x-ui.input wire:model.live="slug" placeholder="Enter product slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Product Type <span class="text-[#ef4444]">*</span>
+                            <x-ui.select wire:model.live="product_type" placeholder="Select product type" class="!w-full">
+                                <x-ui.select.option value="simple">Simple</x-ui.select.option>
+                                <x-ui.select.option value="variable">Variable</x-ui.select.option>
+                            </x-ui.select>
+                        </label>
+                    </div>
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Brand
+                            <x-ui.select wire:model.live="brand_id" placeholder="Select brand" clearable class="!w-full">
+                                <x-ui.select.option value="">None</x-ui.select.option>
+                                @foreach($brands as $brand)
+                                    <x-ui.select.option value="{{ $brand->id }}">{{ $brand->name }}</x-ui.select.option>
+                                @endforeach
+                            </x-ui.select>
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Primary Category <span class="text-[#ef4444]">*</span>
+                            <x-ui.select wire:model.live="primary_category_id" placeholder="Select category" clearable class="!w-full">
+                                <x-ui.select.option value="">None</x-ui.select.option>
+                                @foreach($categories as $category)
+                                    <x-ui.select.option value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>
+                                @endforeach
+                            </x-ui.select>
+                        </label>
+                    </div>
+                    <div class="mt-4">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">Short Description</label>
+                        <x-ui.textarea wire:model.live="short_description" rows="2" maxlength="160" resize="vertical" placeholder="Enter short description about the product..." class="!rounded-lg !border-[#e5e7eb]" />
+                    </div>
+                    <div class="mt-4">
+                        <div class="mb-1.5 text-sm font-semibold text-[#111827]">Description</div>
+                        <x-app.rich-text-editor :value="$description_json" />
+                        <div class="mt-3"><x-admin.media-picker :assets="$mediaAssets" title="Insert content media" context="content" modal /></div>
                     </div>
                 </section>
 
-                <section class="rounded-xl border border-[#dfe6ef] bg-white p-5 shadow-[0_3px_12px_rgba(30,55,90,.03)] sm:p-6"><div class="mb-5"><h2 class="font-bold">Pricing</h2><p class="mt-1 text-xs text-[#8491a5]">Prices are stored in minor currency units for precision.</p></div><div class="grid gap-4 sm:grid-cols-3"><label class="space-y-1.5 text-sm font-semibold text-[#263550]">Regular Price <span class="text-[#ef2c35]">*</span><x-ui.input type="number" min="0" wire:model.live="regular_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#dfe6ef] !bg-white" /></label><label class="space-y-1.5 text-sm font-semibold text-[#263550]">Sale Price<x-ui.input type="number" min="0" wire:model.live="sale_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#dfe6ef] !bg-white" /></label><label class="space-y-1.5 text-sm font-semibold text-[#263550]">Cost Price<x-ui.input type="number" min="0" wire:model.live="cost_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#dfe6ef] !bg-white" /></label></div></section>
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="font-bold text-[#111827]">Product Images</h2>
+                        <button type="button" x-data x-on:click="$dispatch('open-media-picker', { context: 'product-gallery' })" class="rounded-lg border border-[#2563eb] px-3 py-2 text-xs font-bold text-[#2563eb] hover:bg-[#eff6ff]">Select from Media Library</button>
+                    </div>
+                    <label class="mt-4 flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#d1d5db] bg-[#f9fafb] text-center hover:border-[#2563eb] hover:bg-[#eff6ff]">
+                        <svg class="size-10 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+                        <span class="mt-3 text-sm font-semibold text-[#374151]">Drag & drop images here<br>or click to browse</span>
+                        <span class="mt-1 text-[11px] text-[#9ca3af]">Recommended size: 1200 x 1200px<br>Max file size: 5MB</span>
+                        <input type="file" wire:model="image" accept="image/*" class="sr-only">
+                    </label>
+                    @if($image)
+                        <p class="mt-3 rounded-lg bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb]">New upload ready: {{ $image->getClientOriginalName() }}</p>
+                    @endif
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        @forelse($selectedMedia as $asset)
+                            @php($mediaIndex = array_search($asset->id, $selectedMediaIds, true))
+                            <div wire:key="product-media-{{ $asset->id }}" class="group relative aspect-square overflow-hidden rounded-lg border {{ $mediaIndex === 0 ? 'border-2 border-[#2563eb]' : 'border-[#e5e7eb]' }} bg-[#f9fafb]">
+                                <img src="{{ $asset->url() }}" alt="{{ $asset->alt_text ?: $asset->filename }}" class="size-full object-cover">
+                                @if($mediaIndex === 0)<span class="absolute left-2 top-2 rounded bg-[#2563eb] px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>@endif
+                                <div class="absolute inset-x-1 bottom-1 flex justify-center gap-1 opacity-0 transition group-hover:opacity-100"><button type="button" wire:click="moveMedia({{ $mediaIndex }}, -1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">←</button><button type="button" wire:click="moveMedia({{ $mediaIndex }}, 1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">→</button><button type="button" wire:click="removeMedia({{ $asset->id }})" wire:confirm="Remove this product image?" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-red-600 shadow">×</button></div>
+                            </div>
+                        @empty
+                            <div class="col-span-full rounded-lg border border-dashed border-[#d1d5db] bg-[#f9fafb] px-4 py-6 text-center text-xs text-[#9ca3af]">No product images selected yet. Choose existing media or upload a new image.</div>
+                        @endforelse
+                    </div>
+                    <x-admin.media-picker :assets="$mediaAssets" :selected="$selectedMediaIds[0] ?? null" title="Select product gallery media" context="product-gallery" modal />
+                </section>
+
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <h2 class="mb-4 font-bold text-[#111827]">Pricing</h2>
+                    <div class="grid gap-4 sm:grid-cols-4">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Regular Price <span class="text-[#ef4444]">*</span>
+                            <x-ui.input type="number" min="0" wire:model.live="regular_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Sale Price
+                            <x-ui.input type="number" min="0" wire:model.live="sale_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Compare At Price
+                            <x-ui.input type="number" min="0" wire:model.live="compare_at_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Cost Price
+                            <x-ui.input type="number" min="0" wire:model.live="cost_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                    </div>
+                    <div class="mt-4 flex items-center gap-4">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">Tax Class</label>
+                        <select class="rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm"><option>Standard Rate</option></select>
+                        <label class="flex items-center gap-2 text-sm font-semibold text-[#111827]">
+                            <input type="checkbox" wire:model.live="track_quantity" class="rounded border-[#d1d5db] text-[#2563eb]"> Track stock quantity
+                        </label>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <h2 class="mb-4 font-bold text-[#111827]">Search Engine Optimization</h2>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Meta Title
+                            <x-ui.input wire:model.live="meta_title" placeholder="Product name - StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Meta Description
+                            <x-ui.input wire:model.live="meta_description" placeholder="Buy online at StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            URL Key
+                            <x-ui.input wire:model.live="slug" placeholder="product-slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                        </label>
+                    </div>
+                </section>
             </div>
 
-            <section class="rounded-xl border border-[#dfe6ef] bg-white p-5 shadow-[0_3px_12px_rgba(30,55,90,.03)]"><h2 class="font-bold">Product Images</h2><p class="mt-1 text-xs text-[#8491a5]">Upload a main product image.</p><label class="mt-4 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#cfd9e7] bg-[#fbfcfe] px-4 text-center hover:border-[#1769e8] hover:bg-[#f6f9ff]"><svg class="size-9 text-[#1769e8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span class="mt-3 text-sm font-semibold text-[#53627b]">Drag and drop or browse</span><span class="mt-1 text-[11px] text-[#9aa8bd]">PNG, JPG, or WEBP up to 5MB</span><input type="file" wire:model="image" accept="image/*" class="sr-only"></label><div wire:loading wire:target="image" class="mt-2 text-center text-xs font-semibold text-[#1769e8]">Uploading image...</div><button type="button" class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#dce4ef] px-3 py-2.5 text-xs font-bold text-[#1769e8]"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.5"/><path d="m5 17 4-4 3 3 2-2 5 4"/></svg>Add from Media Library</button></section>
-
             <div class="space-y-5">
-                <section class="rounded-xl border border-[#dfe6ef] bg-white p-5 shadow-[0_3px_12px_rgba(30,55,90,.03)]"><h2 class="font-bold">Product Status</h2><label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#263550]">Status<x-ui.select wire:model.live="status" placeholder="Select status" class="!w-full"><x-ui.select.option value="draft">Draft</x-ui.select.option><x-ui.select.option value="published">Published</x-ui.select.option><x-ui.select.option value="archived">Archived</x-ui.select.option></x-ui.select></label><label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#263550]">Visibility<x-ui.select wire:model.live="visibility" placeholder="Select visibility" class="!w-full"><x-ui.select.option value="visible">Visible</x-ui.select.option><x-ui.select.option value="hidden">Hidden</x-ui.select.option></x-ui.select></label><label class="mt-4 flex items-center gap-3 text-sm font-semibold text-[#263550]"><input type="checkbox" wire:model.live="is_featured" class="size-4 rounded border-[#cbd5e1] text-[#1769e8] focus:ring-[#1769e8]"><span>Featured Product</span></label></section>
-                <section class="rounded-xl border border-[#dfe6ef] bg-white p-5 shadow-[0_3px_12px_rgba(30,55,90,.03)]"><div class="flex items-center justify-between"><h2 class="font-bold">Categories</h2><span class="text-[#ef2c35]">*</span></div><p class="mt-1 text-xs text-[#8491a5]">Choose the primary storefront category above.</p><div class="mt-4 space-y-2">@forelse($categories->take(8) as $category)<label class="flex items-center gap-3 rounded-lg px-2 py-2 text-sm text-[#53627b] hover:bg-[#f5f8fc]"><input type="checkbox" @checked($primary_category_id === $category->id) wire:click="$set('primary_category_id', {{ $category->id }})" class="size-4 rounded border-[#cbd5e1] text-[#1769e8] focus:ring-[#1769e8]"><span>{{ $category->name }}</span></label>@empty<p class="text-sm text-[#9aa8bd]">Create categories before assigning products.</p>@endforelse</div></section>
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <h2 class="font-bold text-[#111827]">Product Status</h2>
+                    <div class="mt-4 space-y-4">
+                        <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Status
+                            <x-ui.select wire:model.live="status" placeholder="Select status" class="!w-full">
+                                <x-ui.select.option value="draft">Draft</x-ui.select.option>
+                                <x-ui.select.option value="published">Published</x-ui.select.option>
+                                <x-ui.select.option value="archived">Archived</x-ui.select.option>
+                            </x-ui.select>
+                        </label>
+                        <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
+                            Visibility
+                            <x-ui.select wire:model.live="visibility" placeholder="Select visibility" class="!w-full">
+                                <x-ui.select.option value="visible">Catalog & Search</x-ui.select.option>
+                                <x-ui.select.option value="hidden">Hidden</x-ui.select.option>
+                            </x-ui.select>
+                        </label>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-[#374151]">Stock Management</span>
+                                <span class="text-xs text-[#10b981] font-bold">Tracking stock quantity</span>
+                            </div>
+                            <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                                Quantity
+                                <x-ui.input type="number" min="0" wire:model.live="inventory_quantity" placeholder="0" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            </label>
+                            <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                                Low Stock Threshold
+                                <x-ui.input type="number" min="0" wire:model.live="low_stock_threshold" placeholder="10" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            </label>
+                            <label class="flex items-center gap-2 text-sm font-semibold text-[#111827]"><input type="checkbox" wire:model.live="allow_backorders" class="rounded border-[#d1d5db] text-[#2563eb]"> Allow backorders</label>
+                        </div>
+                        <label class="flex items-center gap-3 text-sm font-semibold text-[#111827]">
+                            <input type="checkbox" wire:model.live="is_featured" class="size-4 rounded border-[#d1d5db] text-[#2563eb] focus:ring-[#2563eb]">
+                            <span>Featured Product</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <h2 class="font-bold text-[#111827]">Tags</h2>
+                    <p class="mt-1 text-xs text-[#9ca3af]">Add tags to help customers find this product.</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @forelse($tags->whereIn('id', $tag_ids) as $tag)
+                            <button type="button" wire:click="$set('tag_ids', {{ json_encode(array_values(array_diff($tag_ids, [$tag->id]))) }})" class="flex items-center gap-1 rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-bold text-[#2563eb]">{{ $tag->name }} ×</button>
+                        @empty
+                            <span class="text-xs text-[#9ca3af]">No tags selected.</span>
+                        @endforelse
+                    </div>
+                    <select wire:model.live="tag_ids" multiple class="mt-3 min-h-24 w-full rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm"><option disabled>Select tags</option>@foreach($tags as $tag)<option wire:key="product-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</option>@endforeach</select>
+                </section>
+
+                <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
+                    <h2 class="font-bold text-[#111827]">Product Attributes</h2>
+                    <div class="mt-4 space-y-3">
+                        @foreach(['Warranty' => 'Select warranty', 'Bluetooth Version' => 'Select version', 'Material' => 'Select material'] as $attr => $placeholder)
+                            <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
+                                {{ $attr }}
+                                <select class="w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm">
+                                    <option>{{ $placeholder }}</option>
+                                </select>
+                            </label>
+                        @endforeach
+                    </div>
+                    <button type="button" class="mt-3 text-xs font-bold text-[#2563eb]">+ Add Attribute</button>
+                </section>
             </div>
         </form>
     </div>

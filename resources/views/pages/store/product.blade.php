@@ -1,9 +1,9 @@
 @php
-    $products = \App\Support\StorefrontDemoData::products();
-    $related = collect($products)->reject(fn(array $item) => $item['id'] === $product['id'])->take(6);
+    $related = $related ?? collect();
     $highlights = $product['highlights'] ?? ['Premium quality and carefully selected', 'Reliable everyday performance', 'Packed securely for delivery'];
     $options = $product['options'] ?? [];
     $gallery = $product['gallery'] ?? [$product['image'], $product['image']];
+    $imageUrl = fn (string $image): string => str($image)->startsWith(['http://', 'https://', '/']) ? $image : asset(ltrim($image, '/'));
 @endphp
 <main x-data="{ quantity: 1, wished: false, selectedOption: @js($options[0]['value'] ?? null), selectedImage: @js($gallery[0]) }" class="bg-white py-6 sm:py-8">
     <x-store.ui.container><x-store.ui.breadcrumb :items="[['label' => 'All Products', 'url' => route('store.category')], ['label' => $product['name']]]" />
@@ -15,13 +15,13 @@
                             :class="selectedImage === @js($image) ? 'border-2 border-store-blue' : 'border-store-border'"
                             @click="selectedImage = @js($image)"
                             :aria-label="'Show image ' + {{ $loop->iteration }} + ' of {{ count($gallery) }}'"><img
-                                src="{{ asset(ltrim($image, '/')) }}" alt="{{ $product['name'] }}"
+                                src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}"
                                 class="size-full object-contain"></button>
                     @endforeach
                 </div>
                 <div
                     class="order-1 flex aspect-square items-center justify-center rounded-card border border-store-border bg-white p-8 sm:order-2">
-                    <img :src="selectedImage" src="{{ asset(ltrim($gallery[0], '/')) }}" alt="{{ $product['name'] }}"
+                    <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}"
                         class="size-full object-contain"></div>
             </section>
             <section>
@@ -138,13 +138,12 @@
                     class="py-4 text-sm font-semibold text-store-muted">Shipping & Returns</button></div>
             <div class="grid gap-6 p-5 text-sm leading-7 text-store-text lg:grid-cols-[1.3fr_1fr]">
                 <div>
-                    <p>{{ $product['name'] }} is carefully selected from trusted suppliers to bring you dependable
-                        quality and excellent value. It is packed for freshness and everyday convenience.</p>
-                    <ul class="mt-4 list-disc space-y-1 pl-5">
-                        <li>Premium quality and carefully packed</li>
-                        <li>Perfect for everyday meals</li>
-                        <li>Store in a cool, dry place away from sunlight</li>
-                    </ul>
+                    @if(! empty($product['descriptionHtml']))
+                        <div class="prose prose-sm max-w-none">{!! $product['descriptionHtml'] !!}</div>
+                    @else
+                        <p>{{ $product['name'] }} is carefully selected from trusted suppliers to bring you dependable quality and excellent value. It is packed for freshness and everyday convenience.</p>
+                        <ul class="mt-4 list-disc space-y-1 pl-5"><li>Premium quality and carefully packed</li><li>Perfect for everyday meals</li><li>Store in a cool, dry place away from sunlight</li></ul>
+                    @endif
                 </div>
                 <dl class="divide-y divide-store-border rounded-control border border-store-border">
                     <div class="flex justify-between gap-4 px-3 py-2">

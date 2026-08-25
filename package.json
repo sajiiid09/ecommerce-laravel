@@ -17,7 +17,9 @@
     "dependencies": {
         "@sheaf/rover": "^1.0.4",
         "@tiptap/core": "^3.30.3",
+        "@tiptap/extension-image": "^3.30.3",
         "@tiptap/extension-link": "^3.30.3",
+        "@tiptap/extension-placeholder": "^3.30.3",
         "@tiptap/starter-kit": "^3.30.3",
         "embla-carousel": "^8.6.0"
     }
