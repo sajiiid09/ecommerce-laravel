@@ -1,4 +1,24 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
-class ProductOptionValue extends Model { protected $guarded=[]; protected $casts=['metadata'=>'array']; public function option(){return $this->belongsTo(ProductOption::class,'product_option_id');} public function variants(){return $this->belongsToMany(ProductVariant::class,'product_variant_option_value');} }
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class ProductOptionValue extends Model
+{
+    protected $fillable = ['product_option_id', 'value', 'slug', 'sort_order', 'metadata'];
+
+    protected $casts = ['metadata' => 'array'];
+
+    public function option(): BelongsTo
+    {
+        return $this->belongsTo(ProductOption::class, 'product_option_id');
+    }
+
+    public function variants(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductVariant::class, 'product_variant_option_value');
+    }
+}

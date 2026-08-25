@@ -1,4 +1,22 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
-class ProductOption extends Model { protected $guarded=[]; public function product(){return $this->belongsTo(Product::class);} public function values(){return $this->hasMany(ProductOptionValue::class);} }
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class ProductOption extends Model
+{
+    protected $fillable = ['product_id', 'name', 'slug', 'sort_order'];
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function values(): HasMany
+    {
+        return $this->hasMany(ProductOptionValue::class);
+    }
+}

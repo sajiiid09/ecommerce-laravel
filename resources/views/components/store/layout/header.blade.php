@@ -1,6 +1,6 @@
 @props(['categories' => []])
 
-<header class="sticky top-0 z-50 border-b border-store-border bg-white">
+<header class="{{ ($headerSticky ?? true) ? 'sticky top-0 z-50' : 'relative' }} border-b border-store-border bg-white">
     <x-store.ui.container>
         <div class="flex h-18 items-center gap-3 py-3 lg:h-21 lg:gap-5">
             <button type="button"
@@ -19,11 +19,12 @@
                 class="hidden shrink-0 items-center gap-2 text-left text-xs text-store-muted lg:flex">
                 <x-ui.icon name="map-pin" class="size-5 !text-store-ink" />
                 <span><span class="block text-[10px] leading-none">Deliver to</span><span
-                        class="mt-1 block font-semibold text-store-ink">Dhaka, 1205</span></span>
+                        class="mt-1 block font-semibold text-store-ink">{{ $headerSupportText ?: 'Dhaka, 1205' }}</span></span>
                 <x-ui.icon name="chevron-down" class="size-3 !text-store-ink" />
             </button>
 
-            <form class="hidden min-w-0 flex-1 md:flex" role="search" action="{{ route('store.search') }}"
+            @if($headerShowSearch ?? true)
+                <form class="hidden min-w-0 flex-1 md:flex" role="search" action="{{ route('store.search') }}"
                 method="get">
                 <label for="global-search" class="sr-only">Search products</label>
                 <div
@@ -44,7 +45,8 @@
                         <x-ui.icon name="magnifying-glass" class="size-5 !text-white" />
                     </button>
                 </div>
-            </form>
+                </form>
+            @endif
 
             <nav class="ml-auto flex items-center gap-2 sm:gap-4" aria-label="Account shortcuts">
                 <a href="{{ route('account.dashboard') }}" wire:navigate
@@ -71,7 +73,8 @@
             </nav>
         </div>
 
-        <form class="pb-3 md:hidden" role="search" action="{{ route('store.search') }}" method="get">
+        @if($headerShowSearch ?? true)
+            <form class="pb-3 md:hidden" role="search" action="{{ route('store.search') }}" method="get">
             <label for="global-search-mobile" class="sr-only">Search products</label>
             <div
                 class="flex h-11 overflow-hidden rounded-control border border-store-border focus-within:border-store-blue focus-within:ring-2 focus-within:ring-store-blue/10">
@@ -81,8 +84,34 @@
                 <button type="submit" class="grid w-12 place-items-center bg-store-blue text-white"
                     aria-label="Search"><x-ui.icon name="magnifying-glass" class="size-5 !text-white" /></button>
             </div>
-        </form>
+            </form>
+        @endif
     </x-store.ui.container>
+
+    @if(count($headerMenu ?? []))
+        <nav class="hidden border-t border-store-border lg:block" aria-label="Primary navigation">
+            <x-store.ui.container>
+                <ul class="flex items-center gap-6 py-3 text-sm font-semibold text-store-text">
+                    @foreach($headerMenu as $item)
+                        @if($item['enabled'])
+                            <li class="relative group">
+                                <a href="{{ $item['url'] }}" wire:navigate class="hover:text-store-blue">{{ $item['label'] }}</a>
+                                @if(count($item['children']))
+                                    <ul class="invisible absolute left-0 top-full z-20 min-w-48 rounded-control border border-store-border bg-white p-2 opacity-0 shadow-store-soft transition group-hover:visible group-hover:opacity-100">
+                                        @foreach($item['children'] as $child)
+                                            @if($child['enabled'])
+                                                <li><a href="{{ $child['url'] }}" wire:navigate class="block rounded px-3 py-2 text-xs hover:bg-store-soft hover:text-store-blue">{{ $child['label'] }}</a></li>
+                                            @endif
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </li>
+                        @endif
+                    @endforeach
+                </ul>
+            </x-store.ui.container>
+        </nav>
+    @endif
 
     <div id="mobile-navigation" x-cloak x-show="mobileMenuOpen" x-transition.opacity
         class="absolute inset-x-0 top-full border-y border-store-border bg-white shadow-store-soft lg:hidden">
@@ -91,10 +120,15 @@
                 class="mb-2 flex items-center gap-2 rounded-control bg-store-blue px-3 py-3 text-sm font-semibold text-white"><x-ui.icon
                     name="squares-2x2" class="size-5 !text-white" />All Categories</a>
             <div class="grid grid-cols-2 gap-1">
-                @foreach ($categories as $category)
-                    <a href="#{{ $category['slug'] }}"
-                        class="rounded-control px-3 py-2 text-sm font-medium text-store-text hover:bg-store-soft">{{ $category['name'] }}</a>
-                @endforeach
+                @forelse (($mobileMenu ?? []) as $item)
+                    @if($item['enabled'])
+                        <a href="{{ $item['url'] }}" wire:navigate class="rounded-control px-3 py-2 text-sm font-medium text-store-text hover:bg-store-soft">{{ $item['label'] }}</a>
+                    @endif
+                @empty
+                    @foreach ($categories as $category)
+                        <a href="{{ route('store.category', ['slug' => $category['slug']]) }}" wire:navigate class="rounded-control px-3 py-2 text-sm font-medium text-store-text hover:bg-store-soft">{{ $category['name'] }}</a>
+                    @endforeach
+                @endforelse
                 <a href="#offers"
                     class="rounded-control bg-store-promo-soft px-3 py-2 text-sm font-semibold text-store-red">Offers
                     Zone</a>

@@ -7,7 +7,7 @@
             </div>
             <div class="flex gap-2">
                 @if($pageId)
-                    <a href="{{ url('/admin/content/pages/'.$pageId.'/preview') }}" target="_blank" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Preview</a>
+                    <a href="{{ URL::signedRoute('admin.content.pages.preview', ['page' => $pageId]) }}" target="_blank" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Preview</a>
                 @endif
                 <button wire:click="savePage" wire:loading.attr="disabled" wire:target="savePage" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">
                     <span wire:loading.remove wire:target="savePage">Save Page</span><span wire:loading wire:target="savePage">Saving…</span>

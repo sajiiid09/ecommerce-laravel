@@ -16,6 +16,7 @@ class PageService
         private readonly RichTextContentService $richText,
         private readonly MediaService $media,
         private readonly ContentPublishingService $publishing,
+        private readonly RedirectService $redirects,
     ) {}
 
     public function save(array $data, ?Page $page = null): Page
@@ -53,6 +54,15 @@ class PageService
                 'updated_by' => auth()->id(),
             ]);
             $page->save();
+
+            if ($previousSlug && $previousSlug !== $page->slug) {
+                $this->redirects->save([
+                    'from_path' => '/'.$previousSlug,
+                    'to_url' => '/'.$page->slug,
+                    'status_code' => 301,
+                    'enabled' => true,
+                ]);
+            }
 
             $this->revision($page, $data['status'] ?? 'draft');
             $this->richText->syncUsages($page, $content['media_ids'], 'page.content');

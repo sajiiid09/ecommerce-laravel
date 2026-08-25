@@ -7,6 +7,10 @@ use App\Enums\ProductType;
 use App\Enums\ProductVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -20,64 +24,73 @@ class Product extends Model
         'canonical_url', 'is_indexable', 'published_at',
     ];
 
-    protected $casts = ['description_json' => 'array', 'is_featured' => 'boolean', 'taxable' => 'boolean', 'is_indexable' => 'boolean', 'published_at' => 'datetime', 'product_type' => ProductType::class, 'status' => ProductStatus::class, 'visibility' => ProductVisibility::class];
+    protected $casts = [
+        'description_json' => 'array',
+        'is_featured' => 'boolean',
+        'taxable' => 'boolean',
+        'is_indexable' => 'boolean',
+        'published_at' => 'datetime',
+        'product_type' => ProductType::class,
+        'status' => ProductStatus::class,
+        'visibility' => ProductVisibility::class,
+    ];
 
-    public function brand()
+    public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
     }
 
-    public function primaryCategory()
+    public function primaryCategory(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'primary_category_id');
     }
 
-    public function categories()
+    public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);
     }
 
-    public function tags()
+    public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class);
     }
 
-    public function attributeValues()
+    public function attributeValues(): HasMany
     {
         return $this->hasMany(ProductAttributeValue::class);
     }
 
-    public function options()
+    public function options(): HasMany
     {
         return $this->hasMany(ProductOption::class);
     }
 
-    public function variants()
+    public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
     }
 
-    public function defaultVariant()
+    public function defaultVariant(): HasOne
     {
         return $this->hasOne(ProductVariant::class)->where('is_default', true);
     }
 
-    public function media()
+    public function media(): HasMany
     {
         return $this->hasMany(ProductMedia::class);
     }
 
-    public function scopePublished(Builder $q)
+    public function scopePublished(Builder $q): Builder
     {
         return $q->where('status', ProductStatus::Published->value);
     }
 
-    public function scopeFeatured(Builder $q)
+    public function scopeFeatured(Builder $q): Builder
     {
         return $q->where('is_featured', true);
     }
 
-    public function scopeSearch(Builder $q, ?string $term)
+    public function scopeSearch(Builder $q, ?string $term): Builder
     {
         return $term ? $q->where(fn ($q) => $q->where('products.name', 'like', "%{$term}%")->orWhere('products.slug', 'like', "%{$term}%")->orWhereHas('variants', fn ($q) => $q->where('sku', 'like', "%{$term}%"))) : $q;
     }

@@ -27,6 +27,8 @@ class Index extends Component
 
     public bool $enabled = true;
 
+    public ?int $editingId = null;
+
     protected RedirectService $redirects;
 
     public function boot(RedirectService $redirects): void
@@ -36,7 +38,7 @@ class Index extends Component
 
     public function saveRedirect(): void
     {
-        $this->authorize('create', Redirect::class);
+        $this->authorize($this->editingId ? 'update' : 'create', $this->editingId ? Redirect::findOrFail($this->editingId) : Redirect::class);
         $data = $this->validate([
             'from_path' => ['required', 'string', 'max:2048'],
             'to_url' => ['required', 'string', 'max:2048'],
@@ -45,15 +47,35 @@ class Index extends Component
         ]);
 
         try {
-            $this->redirects->save($data);
+            $this->redirects->save($data, $this->editingId ? Redirect::findOrFail($this->editingId) : null);
         } catch (\InvalidArgumentException $exception) {
             $this->addError('to_url', $exception->getMessage());
 
             return;
         }
 
-        $this->reset(['from_path', 'to_url']);
+        $this->reset(['from_path', 'to_url', 'editingId']);
+        $this->status_code = 301;
+        $this->enabled = true;
         session()->flash('status', 'Redirect saved.');
+    }
+
+    public function editRedirect(int $id): void
+    {
+        $redirect = Redirect::findOrFail($id);
+        $this->authorize('update', $redirect);
+        $this->editingId = $redirect->id;
+        $this->from_path = $redirect->from_path;
+        $this->to_url = $redirect->to_url;
+        $this->status_code = $redirect->status_code;
+        $this->enabled = $redirect->enabled;
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->reset(['from_path', 'to_url', 'editingId']);
+        $this->status_code = 301;
+        $this->enabled = true;
     }
 
     public function importRedirects(): void
@@ -98,6 +120,7 @@ class Index extends Component
                 'Redirect hits' => Redirect::sum('hit_count'),
                 'Permanent' => Redirect::where('status_code', 301)->count(),
             ],
+            'health' => $this->redirects->health($this->rows()->get()),
         ]);
     }
 }

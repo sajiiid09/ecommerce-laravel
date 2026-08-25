@@ -1,4 +1,3 @@
-@php($products = \App\Support\StorefrontDemoData::products())
 <main class="bg-store-soft py-6 sm:py-8">
     <x-store.ui.container>
         <div class="flex flex-wrap items-end justify-between gap-4">

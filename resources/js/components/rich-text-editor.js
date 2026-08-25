@@ -20,14 +20,14 @@ const MediaImage = Image.extend({
 window.richTextEditor = (wire, initial = null, jsonField = 'description_json', htmlField = 'description_html', placeholder = 'Start writing...') => ({
     editor: null,
     mediaListener: null,
+    syncTimer: null,
     init() {
         this.editor = new Editor({
             element: this.$refs.editor,
             extensions: [StarterKit, Link.configure({ openOnClick: false }), MediaImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder })],
             content: initial || '<p></p>',
             onUpdate: ({ editor }) => {
-                wire.set(jsonField, editor.getJSON(), { shouldValidate: false });
-                wire.set(htmlField, editor.getHTML(), { shouldValidate: false });
+                this.queueSync(editor);
             },
         });
         this.mediaListener = (event) => {
@@ -37,6 +37,19 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
         };
         window.addEventListener('media-selected', this.mediaListener);
     },
+    queueSync(editor) {
+        window.clearTimeout(this.syncTimer);
+        this.syncTimer = window.setTimeout(() => {
+            wire.set(jsonField, editor.getJSON(), { shouldValidate: false });
+            wire.set(htmlField, editor.getHTML(), { shouldValidate: false });
+        }, 350);
+    },
+    flushSync() {
+        if (!this.editor) return;
+        window.clearTimeout(this.syncTimer);
+        wire.set(jsonField, this.editor.getJSON(), { shouldValidate: false });
+        wire.set(htmlField, this.editor.getHTML(), { shouldValidate: false });
+    },
     toggle(command) { this.editor?.chain().focus()[command]().run(); },
     toggleHeading(level) { this.editor?.chain().focus().toggleHeading({ level }).run(); },
     setLink() {
@@ -44,5 +57,5 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
         if (href) this.editor?.chain().focus().setLink({ href }).run();
     },
     insertImage() { window.dispatchEvent(new CustomEvent('open-media-picker', { detail: { context: 'content' } })); },
-    destroy() { if (this.mediaListener) window.removeEventListener('media-selected', this.mediaListener); this.editor?.destroy(); },
+    destroy() { this.flushSync(); if (this.mediaListener) window.removeEventListener('media-selected', this.mediaListener); this.editor?.destroy(); },
 });

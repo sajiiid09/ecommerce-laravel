@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Admin\Content\Header;
 
 use App\Models\MediaAsset;
+use App\Models\Menu;
 use App\Models\SiteSetting;
 use App\Services\SiteSettingsService;
 use Illuminate\Support\Facades\Gate;
@@ -23,6 +24,12 @@ class Edit extends Component
 
     public bool $sticky = true;
 
+    public string $desktop_menu_key = 'header-primary';
+
+    public string $mobile_menu_key = 'mobile';
+
+    public bool $show_announcement = true;
+
     protected SiteSettingsService $settings;
 
     public function boot(SiteSettingsService $settings): void
@@ -38,6 +45,9 @@ class Edit extends Component
         $this->support_text = (string) $this->settings->get('header', 'support_text', '');
         $this->show_search = (bool) $this->settings->get('header', 'show_search', true);
         $this->sticky = (bool) $this->settings->get('header', 'sticky', true);
+        $this->desktop_menu_key = (string) $this->settings->get('header', 'desktop_menu_key', 'header-primary');
+        $this->mobile_menu_key = (string) $this->settings->get('header', 'mobile_menu_key', 'mobile');
+        $this->show_announcement = (bool) $this->settings->get('header', 'show_announcement', true);
     }
 
     #[On('media-selected')]
@@ -62,9 +72,12 @@ class Edit extends Component
             'support_text' => ['nullable', 'string', 'max:255'],
             'show_search' => ['boolean'],
             'sticky' => ['boolean'],
+            'desktop_menu_key' => ['required', 'string', 'max:80'],
+            'mobile_menu_key' => ['required', 'string', 'max:80'],
+            'show_announcement' => ['boolean'],
         ]);
 
-        foreach (['logo_url', 'logo_media_id', 'support_text', 'show_search', 'sticky'] as $key) {
+        foreach (['logo_url', 'logo_media_id', 'support_text', 'show_search', 'sticky', 'desktop_menu_key', 'mobile_menu_key', 'show_announcement'] as $key) {
             $this->settings->set('header', $key, $this->{$key});
         }
 
@@ -75,6 +88,7 @@ class Edit extends Component
     {
         return view('livewire.pages.admin.content.header.edit', [
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
+            'menus' => Menu::enabled()->orderBy('name')->get(['key', 'name']),
         ]);
     }
 }

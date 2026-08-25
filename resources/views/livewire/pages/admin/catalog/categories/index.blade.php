@@ -53,7 +53,17 @@
                     </div>
                     <select wire:model.live="parentFilter" class="h-10 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm text-[#374151]"><option value="">All parents</option>@foreach($parents as $parent)<option wire:key="category-parent-filter-{{ $parent->id }}" value="{{ $parent->id }}">{{ $parent->name }}</option>@endforeach</select>
                     <button wire:click="resetFilters" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#64748b] hover:bg-[#f9fafb]">Reset</button>
+                    <button wire:click="togglePageSelection" class="rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">{{ $selectPage ? 'Clear visible' : 'Select visible' }}</button>
                 </div>
+
+                @if(count($selected))
+                    <div class="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-sm text-[#2563eb]">
+                        <span class="mr-2 font-semibold">{{ count($selected) }} selected</span>
+                        <button wire:click="bulk('activate')" class="rounded-md border border-[#bfdbfe] bg-white px-3 py-1.5 font-semibold hover:bg-[#dbeafe]">Activate</button>
+                        <button wire:click="bulk('deactivate')" class="rounded-md border border-[#bfdbfe] bg-white px-3 py-1.5 font-semibold hover:bg-[#dbeafe]">Deactivate</button>
+                        <button wire:click="bulk('delete')" wire:confirm="Delete the selected categories?" class="rounded-md border border-[#fecaca] bg-white px-3 py-1.5 font-semibold text-[#b91c1c] hover:bg-[#fef2f2]">Delete</button>
+                    </div>
+                @endif
 
                 @if($errors->has('delete'))<div class="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#b91c1c]">{{ $errors->first('delete') }}</div>@endif
 
@@ -63,7 +73,7 @@
                             <thead class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><tr><th class="px-5 py-3">Category</th><th class="px-4 py-3">Parent</th><th class="px-4 py-3">Products</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Sort Order</th><th class="px-4 py-3">Updated</th><th class="px-5 py-3">Actions</th></tr></thead>
                             <tbody class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
-                                    <tr wire:key="category-row-{{ $row->id }}" class="text-[#374151] hover:bg-[#f9fafb]">
+                                    <tr wire:key="category-row-{{ $row->id }}" class="text-[#374151] hover:bg-[#f9fafb]"><td class="px-5 py-4"><input type="checkbox" wire:model.live="selected" value="{{ $row->id }}" class="rounded border-[#d1d5db] text-[#2563eb]" aria-label="Select {{ $row->name }}"></td>
                                         <td class="px-5 py-4"><div class="flex items-center gap-3" style="padding-left: {{ min($depths[$row->id] ?? 0, 4) * 20 }}px"><div class="grid size-8 place-items-center rounded-lg bg-[#fef3c7]"><svg class="size-4 text-[#d97706]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg></div><span class="font-bold text-[#111827]">{{ $row->name }}</span></div></td>
                                         <td class="px-4 py-4 text-[#64748b]">{{ $row->parent?->name ?? '—' }}</td>
                                         <td class="px-4 py-4 font-semibold text-[#374151]">{{ number_format($row->products_count) }}</td>
@@ -73,7 +83,7 @@
                                         <td class="px-5 py-4"><div class="flex items-center gap-1"><button wire:click="openEdit({{ $row->id }})" aria-label="Edit {{ $row->name }}" class="grid size-8 place-items-center rounded-lg text-[#64748b] hover:bg-[#f3f4f6] hover:text-[#2563eb]">✎</button><a href="{{ url('/category/'.$row->slug) }}" target="_blank" aria-label="View {{ $row->name }}" class="grid size-8 place-items-center rounded-lg text-[#64748b] hover:bg-[#f3f4f6] hover:text-[#2563eb]">◉</a><button wire:click="deleteCategory({{ $row->id }})" onclick="return confirm('Delete this category?')" aria-label="Delete {{ $row->name }}" class="grid size-8 place-items-center rounded-lg text-[#64748b] hover:bg-[#fef2f2] hover:text-[#ef4444]">⌫</button></div></td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="px-5 py-12 text-center text-sm text-[#9ca3af]">No categories found.</td></tr>
+                                    <tr><td colspan="8" class="px-5 py-12 text-center text-sm text-[#9ca3af]">No categories found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

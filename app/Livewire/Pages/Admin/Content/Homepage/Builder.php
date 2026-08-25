@@ -18,6 +18,8 @@ class Builder extends Component
 
     public int $selectedSectionIndex = 0;
 
+    public int $selectedTestimonialIndex = 0;
+
     public string $sectionType = 'hero';
 
     public array $sectionTypes = [
@@ -91,17 +93,89 @@ class Builder extends Component
     {
         abort_unless(isset($this->sections[$index]), 404);
         $this->selectedSectionIndex = $index;
+        $this->selectedTestimonialIndex = 0;
+    }
+
+    public function addTestimonial(): void
+    {
+        $this->authorize('update', HomepageSection::class);
+        abort_unless(($this->sections[$this->selectedSectionIndex]['type'] ?? null) === 'testimonials', 422);
+
+        $testimonials = $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] ?? [];
+        $testimonials[] = [
+            'id' => 'testimonial-'.uniqid(),
+            'name' => '',
+            'role' => 'Verified customer',
+            'rating' => 5,
+            'quote' => '',
+            'avatar_media_id' => null,
+            'enabled' => true,
+            'sort_order' => count($testimonials),
+        ];
+        $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] = $testimonials;
+        $this->selectedTestimonialIndex = count($testimonials) - 1;
+    }
+
+    public function removeTestimonial(int $index): void
+    {
+        $this->authorize('update', HomepageSection::class);
+        abort_unless(($this->sections[$this->selectedSectionIndex]['type'] ?? null) === 'testimonials', 422);
+
+        $testimonials = $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] ?? [];
+        unset($testimonials[$index]);
+        $testimonials = array_values($testimonials);
+
+        foreach ($testimonials as $sortOrder => &$testimonial) {
+            $testimonial['sort_order'] = $sortOrder;
+        }
+        unset($testimonial);
+
+        $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] = $testimonials;
+        $this->selectedTestimonialIndex = min($this->selectedTestimonialIndex, max(count($testimonials) - 1, 0));
+    }
+
+    public function moveTestimonial(int $index, int $direction): void
+    {
+        $this->authorize('update', HomepageSection::class);
+        abort_unless(($this->sections[$this->selectedSectionIndex]['type'] ?? null) === 'testimonials', 422);
+
+        $testimonials = $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] ?? [];
+        $target = $index + $direction;
+
+        if (! isset($testimonials[$target])) {
+            return;
+        }
+
+        [$testimonials[$index], $testimonials[$target]] = [$testimonials[$target], $testimonials[$index]];
+
+        foreach ($testimonials as $sortOrder => &$testimonial) {
+            $testimonial['sort_order'] = $sortOrder;
+        }
+        unset($testimonial);
+
+        $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] = $testimonials;
+        $this->selectedTestimonialIndex = $target;
     }
 
     #[On('media-selected')]
     public function selectMedia(int $id, ?string $url = null, ?string $context = null): void
     {
-        if (! in_array($context, ['homepage_desktop', 'homepage_mobile'], true)) {
+        if (! in_array($context, ['homepage_desktop', 'homepage_mobile', 'homepage_testimonial_avatar'], true)) {
             return;
         }
 
         $asset = MediaAsset::findOrFail($id);
         Gate::authorize('view', $asset);
+        if ($context === 'homepage_testimonial_avatar') {
+            abort_unless(($this->sections[$this->selectedSectionIndex]['type'] ?? null) === 'testimonials', 422);
+            $testimonials = $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] ?? [];
+            abort_unless(isset($testimonials[$this->selectedTestimonialIndex]), 404);
+            $testimonials[$this->selectedTestimonialIndex]['avatar_media_id'] = $asset->id;
+            $this->sections[$this->selectedSectionIndex]['settings']['testimonials'] = $testimonials;
+
+            return;
+        }
+
         $key = $context === 'homepage_mobile' ? 'mobile_media_id' : 'desktop_media_id';
         $this->sections[$this->selectedSectionIndex]['settings'][$key] = $asset->id;
     }
@@ -134,6 +208,7 @@ class Builder extends Component
         return view('livewire.pages.admin.content.homepage.builder', [
             'revisions' => HomepageRevision::latest('version')->limit(10)->get(),
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
+            'previewSections' => $this->homepage->preview($this->sections),
         ]);
     }
 }

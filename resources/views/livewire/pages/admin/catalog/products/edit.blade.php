@@ -119,10 +119,10 @@
                     @if($image)
                         <p class="mt-3 rounded-lg bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb]">New upload ready: {{ $image->getClientOriginalName() }}</p>
                     @endif
-                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4" wire:sort="sortMedia" aria-label="Product gallery. Drag images to reorder.">
                         @forelse($selectedMedia as $asset)
                             @php($mediaIndex = array_search($asset->id, $selectedMediaIds, true))
-                            <div wire:key="product-media-{{ $asset->id }}" class="group relative aspect-square overflow-hidden rounded-lg border {{ $mediaIndex === 0 ? 'border-2 border-[#2563eb]' : 'border-[#e5e7eb]' }} bg-[#f9fafb]">
+                            <div wire:key="product-media-{{ $asset->id }}" wire:sort:item="{{ $asset->id }}" class="group relative aspect-square overflow-hidden rounded-lg border {{ $mediaIndex === 0 ? 'border-2 border-[#2563eb]' : 'border-[#e5e7eb]' }} bg-[#f9fafb]">
                                 <img src="{{ $asset->url() }}" alt="{{ $asset->alt_text ?: $asset->filename }}" class="size-full object-cover">
                                 @if($mediaIndex === 0)<span class="absolute left-2 top-2 rounded bg-[#2563eb] px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>@endif
                                 <div class="absolute inset-x-1 bottom-1 flex justify-center gap-1 opacity-0 transition group-hover:opacity-100"><button type="button" wire:click="moveMedia({{ $mediaIndex }}, -1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">←</button><button type="button" wire:click="moveMedia({{ $mediaIndex }}, 1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">→</button><button type="button" wire:click="removeMedia({{ $asset->id }})" wire:confirm="Remove this product image?" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-red-600 shadow">×</button></div>
@@ -239,16 +239,28 @@
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <h2 class="font-bold text-[#111827]">Product Attributes</h2>
                     <div class="mt-4 space-y-3">
-                        @foreach(['Warranty' => 'Select warranty', 'Bluetooth Version' => 'Select version', 'Material' => 'Select material'] as $attr => $placeholder)
-                            <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
-                                {{ $attr }}
-                                <select class="w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm">
-                                    <option>{{ $placeholder }}</option>
-                                </select>
+                        @forelse($attributes as $attribute)
+                            <label wire:key="product-attribute-{{ $attribute->id }}" class="block space-y-1.5 text-sm font-semibold text-[#111827]">
+                                {{ $attribute->name }} @if($attribute->unit)<span class="text-xs font-normal text-[#9ca3af]">({{ $attribute->unit }})</span>@endif
+                                @if(in_array($attribute->type, ['select', 'multi_select'], true))
+                                    <select wire:model.live="attribute_values.{{ $attribute->id }}" @if($attribute->type === 'multi_select') multiple @endif class="min-h-10 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-normal">
+                                        @if($attribute->type !== 'multi_select')<option value="">Select {{ strtolower($attribute->name) }}</option>@endif
+                                        @foreach($attribute->values as $value)
+                                            <option wire:key="product-attribute-value-{{ $value->id }}" value="{{ $value->id }}">{{ $value->value }}</option>
+                                        @endforeach
+                                    </select>
+                                @elseif($attribute->type === 'number')
+                                    <x-ui.input type="number" wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                @elseif($attribute->type === 'boolean')
+                                    <span class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm font-normal"><input type="checkbox" wire:model.live="attribute_values.{{ $attribute->id }}" class="rounded border-[#d1d5db] text-[#2563eb]"> Yes</span>
+                                @else
+                                    <x-ui.input wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                @endif
                             </label>
-                        @endforeach
+                        @empty
+                            <p class="text-xs text-[#9ca3af]">Create reusable attributes before adding product specifications.</p>
+                        @endforelse
                     </div>
-                    <button type="button" class="mt-3 text-xs font-bold text-[#2563eb]">+ Add Attribute</button>
                 </section>
             </div>
         </form>

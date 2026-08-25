@@ -24,9 +24,9 @@
 
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach([
-                ['Total Products', number_format($rows->total()), '#2563eb', 'm21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9'],
-                ['Active Products', App\Models\Product::where('status','published')->count(), '#10b981', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
-                ['Low Stock Products', '0', '#f97316', 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126Z'],
+                ['Total Products', number_format($stats['total']), '#2563eb', 'm21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9'],
+                ['Active Products', number_format($stats['active']), '#10b981', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
+                ['Low Stock Products', number_format($stats['low_stock']), '#f97316', 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126Z'],
                 ['Draft Products', App\Models\Product::where('status','draft')->count(), '#8b5cf6', 'M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z'],
             ] as [$label, $value, $color, $path])
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
@@ -137,17 +137,17 @@
                     <h3 class="text-sm font-bold text-[#111827]">Top Categories</h3>
                     <a href="{{ url('/admin/catalog/categories') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
                     <div class="mt-4 space-y-3">
-                        @foreach(['Grocery'=>856,'Beauty'=>412,'Electronics'=>398,'Home & Kitchen'=>286,'Fashion'=>238] as $cat=>$count)
+                        @foreach($topCategories as $category)
                             <div class="flex items-center justify-between text-sm">
-                                <span class="text-[#374151]">{{ $cat }}</span>
-                                <span class="font-bold text-[#111827]">{{ $count }}</span>
+                                <span class="text-[#374151]">{{ $category->name }}</span>
+                                <span class="font-bold text-[#111827]">{{ $category->products_count }}</span>
                             </div>
                         @endforeach
                     </div>
                     <div class="mt-4 border-t border-[#f3f4f6] pt-3">
                         <div class="flex items-center justify-between text-sm">
                             <span class="text-[#6b7280]">Total Categories</span>
-                            <span class="font-bold text-[#111827]">32</span>
+                            <span class="font-bold text-[#111827]">{{ $totalCategories }}</span>
                         </div>
                     </div>
                 </div>
@@ -158,7 +158,7 @@
                         <a href="{{ url('/admin/catalog/inventory') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
                     </div>
                     <div class="mt-4 space-y-3">
-                        @foreach(['Out of Stock'=>'0','Low Stock'=>'0','Expiring Soon'=>'0'] as $label=>$count)
+                        @foreach($inventoryAlerts as $label=>$count)
                             <div class="flex items-center justify-between text-sm">
                                 <div class="flex items-center gap-2">
                                     <span class="size-2 rounded-full {{ $label === 'Out of Stock' ? 'bg-[#ef4444]' : ($label === 'Low Stock' ? 'bg-[#f97316]' : 'bg-[#eab308]') }}"></span>

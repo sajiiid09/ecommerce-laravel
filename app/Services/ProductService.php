@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Enums\ProductStatus;
 use App\Enums\ProductType;
+use App\Models\Attribute;
 use App\Models\MediaAsset;
 use App\Models\MediaUsage;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class ProductService
 {
@@ -18,11 +20,12 @@ class ProductService
         private readonly InventoryService $inventory,
         private readonly MediaService $media,
         private readonly RichTextContentService $richText,
+        private readonly CatalogCache $catalogCache,
     ) {}
 
     public function save(array $data, ?Product $product = null): Product
     {
-        return DB::transaction(function () use ($data, $product): Product {
+        $saved = DB::transaction(function () use ($data, $product): Product {
             $product ??= new Product;
             $content = $this->richText->prepare($data['description_json'] ?? null, (string) ($data['description_html'] ?? ''));
 
@@ -60,6 +63,10 @@ class ProductService
                 $product->tags()->sync($data['tag_ids'] ?? []);
             }
 
+            if (array_key_exists('attribute_values', $data)) {
+                $this->syncAttributeValues($product, (array) $data['attribute_values']);
+            }
+
             if ($product->product_type === ProductType::Simple) {
                 $variant = $this->variants->ensureDefault($product);
                 $variant->update([
@@ -88,7 +95,7 @@ class ProductService
                 $assets = MediaAsset::query()->whereKey($mediaIds)->get()->keyBy('id');
 
                 if ($assets->count() !== count($mediaIds)) {
-                    throw new \InvalidArgumentException('One or more selected product images are no longer available.');
+                    throw new InvalidArgumentException('One or more selected product images are no longer available.');
                 }
 
                 foreach ($assets as $asset) {
@@ -116,5 +123,64 @@ class ProductService
 
             return $product->fresh(['variants', 'brand', 'primaryCategory']);
         });
+
+        $this->catalogCache->forgetAll();
+
+        return $saved;
+    }
+
+    private function syncAttributeValues(Product $product, array $attributeValues): void
+    {
+        $attributes = Attribute::query()
+            ->with('values')
+            ->whereIn('id', array_keys($attributeValues))
+            ->get()
+            ->keyBy('id');
+
+        $product->attributeValues()->delete();
+
+        foreach ($attributes as $attribute) {
+            if (! $attribute->is_active) {
+                throw new InvalidArgumentException("The {$attribute->name} attribute is inactive.");
+            }
+
+            $rawValue = $attributeValues[$attribute->id] ?? null;
+            $values = $attribute->type === 'multi_select'
+                ? array_values(array_filter((array) $rawValue))
+                : [$rawValue];
+
+            if ($attribute->is_required && collect($values)->filter(fn ($value): bool => filled($value))->isEmpty()) {
+                throw new InvalidArgumentException("The {$attribute->name} attribute is required.");
+            }
+
+            foreach ($values as $sortOrder => $value) {
+                if (! filled($value)) {
+                    continue;
+                }
+
+                $row = [
+                    'attribute_id' => $attribute->id,
+                    'sort_order' => $sortOrder,
+                ];
+
+                match ($attribute->type) {
+                    'select', 'multi_select' => $this->fillSelectAttribute($row, $attribute, (int) $value),
+                    'number' => $row['number_value'] = (float) $value,
+                    'boolean' => $row['boolean_value'] = filter_var($value, FILTER_VALIDATE_BOOLEAN),
+                    default => $row['text_value'] = (string) $value,
+                };
+
+                $product->attributeValues()->create($row);
+            }
+        }
+    }
+
+    private function fillSelectAttribute(array &$row, Attribute $attribute, int $valueId): void
+    {
+        if (! $attribute->values->contains('id', $valueId)) {
+            throw new InvalidArgumentException("The selected value is invalid for {$attribute->name}.");
+        }
+
+        $row['attribute_value_id'] = $valueId;
     }
 }

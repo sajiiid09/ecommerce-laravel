@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Page;
 use App\Models\Redirect;
 use App\Models\RedirectHit;
 use Illuminate\Http\UploadedFile;
@@ -43,8 +44,19 @@ class RedirectService
     public function resolve(string $path): ?Redirect
     {
         $normalizedPath = $this->health->normalizePath($path);
+        $cacheKey = $this->cache->redirect($normalizedPath);
 
-        return cache()->remember($this->cache->redirect($normalizedPath), 300, fn (): ?Redirect => Redirect::enabled()->where('from_path', $normalizedPath)->first());
+        if (cache()->has($cacheKey)) {
+            $cached = cache()->get($cacheKey);
+
+            if ($cached instanceof Redirect || $cached === null) {
+                return $cached;
+            }
+
+            cache()->forget($cacheKey);
+        }
+
+        return cache()->remember($cacheKey, 300, fn (): ?Redirect => Redirect::enabled()->where('from_path', $normalizedPath)->first());
     }
 
     public function recordHit(Redirect $redirect): void
@@ -119,5 +131,69 @@ class RedirectService
         fclose($stream);
 
         return $path;
+    }
+
+    public function health(iterable $redirects): array
+    {
+        $issues = [];
+        $enabled = Redirect::enabled()->pluck('to_url', 'from_path')->all();
+
+        foreach ($redirects as $redirect) {
+            if (! $redirect->enabled) {
+                $issues[$redirect->id][] = 'Disabled';
+
+                continue;
+            }
+
+            if (! $this->isInternalPath($redirect->to_url)) {
+                continue;
+            }
+
+            $destination = $this->normalizeDestination($redirect->to_url);
+            $visited = [];
+            $current = $redirect->from_path;
+            $depth = 0;
+
+            while (isset($enabled[$current]) && $this->isInternalPath($enabled[$current])) {
+                if (isset($visited[$current])) {
+                    $issues[$redirect->id][] = 'Redirect loop';
+
+                    break;
+                }
+
+                $visited[$current] = true;
+                $current = $this->normalizeDestination($enabled[$current]);
+                $depth++;
+            }
+
+            if ($depth > 0) {
+                $issues[$redirect->id][] = 'Redirect chain';
+            }
+
+            if (! isset($enabled[$destination]) && ! $this->knownDestination($destination)) {
+                $issues[$redirect->id][] = 'Broken destination';
+            }
+        }
+
+        return $issues;
+    }
+
+    private function isInternalPath(string $url): bool
+    {
+        return str_starts_with($url, '/') && ! str_starts_with($url, '//');
+    }
+
+    private function normalizeDestination(string $url): string
+    {
+        return $this->health->normalizePath((string) parse_url($url, PHP_URL_PATH));
+    }
+
+    private function knownDestination(string $path): bool
+    {
+        return $path === '/'
+            || $path === '/offers'
+            || str_starts_with($path, '/category/')
+            || str_starts_with($path, '/product/')
+            || Page::published()->where('slug', trim($path, '/'))->exists();
     }
 }

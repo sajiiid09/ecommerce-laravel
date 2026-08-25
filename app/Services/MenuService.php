@@ -16,14 +16,50 @@ class MenuService
 
     public function menu(string $key): ?Menu
     {
-        return cache()->remember($this->cache->menu($key), 300, fn (): ?Menu => Menu::enabled()
+        $cacheKey = $this->cache->menu($key);
+        if (cache()->has($cacheKey)) {
+            $cached = cache()->get($cacheKey);
+
+            if ($cached instanceof Menu || $cached === null) {
+                return $cached;
+            }
+
+            cache()->forget($cacheKey);
+        }
+
+        return cache()->remember($cacheKey, 300, fn (): ?Menu => Menu::enabled()
             ->where('key', $key)
             ->with([
                 'items' => fn ($query) => $query->whereNull('parent_id')->where('enabled', true)->orderBy('sort_order'),
-                'items.children',
+                'items.children' => fn ($query) => $query->where('enabled', true)->orderBy('sort_order'),
+                'items.children.targets.target',
                 'items.targets.target',
             ])
             ->first());
+    }
+
+    /**
+     * @return array<int, array{label: string, url: string, enabled: bool, children: array<int, array{label: string, url: string, enabled: bool}>}>
+     */
+    public function navigation(string $key): array
+    {
+        $menu = $this->menu($key);
+
+        if (! $menu) {
+            return [];
+        }
+
+        return $menu->items
+            ->map(fn (MenuItem $item): array => [
+                'label' => $item->label,
+                'url' => $this->itemUrl($item),
+                'enabled' => $item->enabled,
+                'children' => $item->children->map(fn (MenuItem $child): array => [
+                    'label' => $child->label,
+                    'url' => $this->itemUrl($child),
+                    'enabled' => $child->enabled,
+                ])->all(),
+            ])->all();
     }
 
     public function saveMenu(Menu $menu, array $data): Menu
@@ -80,7 +116,9 @@ class MenuService
         $targetClass = $this->targetClass($item->type);
 
         if ($targetClass) {
-            $target = $item->targets()->where('target_type', $targetClass)->first()?->target;
+            $target = $item->relationLoaded('targets')
+                ? $item->targets->firstWhere('target_type', $targetClass)?->target
+                : $item->targets()->where('target_type', $targetClass)->first()?->target;
 
             return match ($item->type) {
                 'page' => $target instanceof Page && $target->status === 'published' ? '/'.$target->slug : '#',

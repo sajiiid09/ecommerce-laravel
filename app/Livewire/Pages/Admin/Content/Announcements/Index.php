@@ -25,6 +25,10 @@ class Index extends Component
 
     public string $status = 'draft';
 
+    public string $priority = 'normal';
+
+    public ?int $editingId = null;
+
     public string $link_label = '';
 
     public string $link_url = '';
@@ -51,6 +55,7 @@ class Index extends Component
             'style' => ['required', 'in:info,success,warning,danger'],
             'placement' => ['required', 'string', 'max:80'],
             'status' => ['required', 'in:draft,published,scheduled,archived'],
+            'priority' => ['required', 'in:low,normal,high'],
             'dismissible' => ['boolean'],
             'link_label' => ['nullable', 'string', 'max:255'],
             'link_url' => ['nullable', 'url'],
@@ -59,22 +64,41 @@ class Index extends Component
         ]);
 
         try {
-            $this->announcements->save($data);
+            $this->announcements->save($data, $this->editingId ? Announcement::findOrFail($this->editingId) : null);
         } catch (\InvalidArgumentException $exception) {
             $this->addError('ends_at', $exception->getMessage());
 
             return;
         }
 
-        $this->reset(['internal_title', 'message', 'link_label', 'link_url', 'starts_at', 'ends_at']);
+        $this->reset(['internal_title', 'message', 'link_label', 'link_url', 'starts_at', 'ends_at', 'editingId']);
+        $this->status = 'draft';
+        $this->priority = 'normal';
         session()->flash('status', 'Announcement saved.');
+    }
+
+    public function editAnnouncement(int $id): void
+    {
+        $announcement = Announcement::findOrFail($id);
+        $this->authorize('update', $announcement);
+        foreach (['internal_title', 'message', 'style', 'placement', 'status', 'priority', 'link_label', 'link_url', 'starts_at', 'ends_at', 'dismissible'] as $field) {
+            $this->{$field} = $announcement->{$field};
+        }
+        $this->editingId = $announcement->id;
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->reset(['internal_title', 'message', 'link_label', 'link_url', 'starts_at', 'ends_at', 'editingId']);
+        $this->status = 'draft';
+        $this->priority = 'normal';
     }
 
     public function deleteAnnouncement(int $id): void
     {
         $announcement = Announcement::findOrFail($id);
         $this->authorize('delete', $announcement);
-        $announcement->delete();
+        $this->announcements->delete($announcement);
     }
 
     protected function rows()

@@ -20,7 +20,7 @@
         <x-admin.cms.toolbar>
             <div class="flex flex-1 flex-col gap-3 md:flex-row">
                 <div class="relative min-w-0 flex-1"><x-ui.icon name="magnifying-glass" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input wire:model.live.debounce.300ms="search" type="search" placeholder="Search banners..." class="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-400"></div>
-                <select wire:model.live="placementFilter" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All placements</option><option value="homepage">Homepage</option><option value="category">Category</option><option value="offers">Offers</option></select>
+                <select wire:model.live="placementFilter" class="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All placements</option><option value="hero">Hero</option><option value="homepage">Homepage</option><option value="category">Category</option><option value="offers">Offers</option></select>
             </div>
             <button wire:click="$set('search', '')" wire:loading.attr="disabled" class="rounded-lg px-3 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 disabled:opacity-60">Reset</button>
         </x-admin.cms.toolbar>
@@ -36,7 +36,7 @@
                 </tbody></table></div>
                 <div class="mt-4">{{ $banners->links() }}</div>
             </x-admin.cms.panel>
-            <div class="space-y-5"><x-admin.cms.panel title="Placement guide" description="Keep banner content consistent across storefront surfaces."><div class="space-y-3 text-sm"><div class="rounded-lg bg-blue-50 p-3"><p class="font-bold text-blue-800">Homepage</p><p class="mt-1 text-xs text-blue-700">Hero and promotional campaign placements.</p></div><div class="rounded-lg bg-slate-50 p-3"><p class="font-bold text-slate-800">Category</p><p class="mt-1 text-xs text-slate-500">Contextual offers near product listings.</p></div><div class="rounded-lg bg-amber-50 p-3"><p class="font-bold text-amber-800">Offers</p><p class="mt-1 text-xs text-amber-700">Time-sensitive promotional messaging.</p></div></div></x-admin.cms.panel><x-admin.cms.panel title="Upcoming schedule"><p class="text-sm text-slate-500">Scheduled banners will appear here with their publication window.</p></x-admin.cms.panel></div>
+            <div class="space-y-5"><x-admin.cms.panel title="Placement guide" description="Keep banner content consistent across storefront surfaces."><div class="space-y-3 text-sm"><div class="rounded-lg bg-blue-50 p-3"><p class="font-bold text-blue-800">Hero</p><p class="mt-1 text-xs text-blue-700">Rotating primary homepage slides.</p></div><div class="rounded-lg bg-slate-50 p-3"><p class="font-bold text-slate-800">Homepage</p><p class="mt-1 text-xs text-slate-500">Promotional campaign cards below the hero.</p></div><div class="rounded-lg bg-amber-50 p-3"><p class="font-bold text-amber-800">Offers</p><p class="mt-1 text-xs text-amber-700">Time-sensitive promotional messaging.</p></div></div></x-admin.cms.panel><x-admin.cms.panel title="Upcoming schedule"><p class="text-sm text-slate-500">Scheduled banners will appear here with their publication window.</p></x-admin.cms.panel></div>
         </div>
     </div>
 </div>

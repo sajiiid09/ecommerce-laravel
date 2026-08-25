@@ -3,9 +3,14 @@
 namespace App\Livewire\Pages\Admin\Content\Banners;
 
 use App\Models\Banner;
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\MediaAsset;
+use App\Models\Page;
+use App\Models\Product;
 use App\Services\BannerService;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -20,6 +25,8 @@ class Edit extends Component
     public string $name = '';
 
     public string $placement = 'homepage';
+
+    public string $eyebrow = '';
 
     public string $title = '';
 
@@ -43,6 +50,8 @@ class Edit extends Component
 
     public int $sort_order = 0;
 
+    public string $theme = 'blue';
+
     protected BannerService $banners;
 
     public function boot(BannerService $banners): void
@@ -62,11 +71,13 @@ class Edit extends Component
         $this->bannerId = $banner->id;
 
         foreach ([
-            'name', 'placement', 'title', 'description', 'cta_label', 'destination_type', 'destination_value',
+            'name', 'placement', 'eyebrow', 'title', 'description', 'cta_label', 'destination_type', 'destination_value',
             'desktop_media_id', 'mobile_media_id', 'status', 'starts_at', 'ends_at', 'sort_order',
         ] as $field) {
             $this->{$field} = $banner->{$field};
         }
+
+        $this->theme = (string) ($banner->settings['theme'] ?? 'blue');
     }
 
     public function saveBanner(): void
@@ -74,21 +85,42 @@ class Edit extends Component
         $this->authorize($this->bannerId ? 'update' : 'create', $this->bannerId ? $this->banner : Banner::class);
         $data = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'placement' => ['required', 'string', 'max:80'],
+            'placement' => ['required', Rule::in(['hero', 'homepage', 'category', 'offers', 'global'])],
+            'eyebrow' => ['nullable', 'string', 'max:255'],
             'title' => ['nullable', 'string'],
             'description' => ['nullable', 'string'],
             'cta_label' => ['nullable', 'string'],
-            'destination_type' => ['nullable', 'string', 'max:40'],
-            'destination_value' => ['nullable', 'string', 'max:2048'],
+            'destination_type' => ['required', Rule::in(['url', 'page', 'category', 'brand', 'product'])],
+            'destination_value' => [
+                'nullable',
+                'string',
+                'max:2048',
+                Rule::requiredIf(fn (): bool => $this->destination_type !== 'url'),
+            ],
             'desktop_media_id' => ['nullable', 'exists:media_assets,id'],
             'mobile_media_id' => ['nullable', 'exists:media_assets,id'],
             'status' => ['required', 'in:draft,published,scheduled,archived'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date'],
             'sort_order' => ['integer', 'min:0'],
+            'theme' => ['required', Rule::in(['blue', 'red', 'green', 'amber'])],
         ]);
 
-        $this->banner = $this->banners->save($data, $this->bannerId ? Banner::findOrFail($this->bannerId) : null);
+        $data['settings'] = array_merge($this->banner?->settings ?? [], ['theme' => $this->theme]);
+
+        if ($this->status === 'scheduled' && blank($this->starts_at)) {
+            $this->addError('starts_at', 'Scheduled banners require a start time.');
+
+            return;
+        }
+
+        try {
+            $this->banner = $this->banners->save($data, $this->bannerId ? Banner::findOrFail($this->bannerId) : null);
+        } catch (\InvalidArgumentException $exception) {
+            $this->addError('starts_at', $exception->getMessage());
+
+            return;
+        }
         $this->bannerId = $this->banner->id;
         session()->flash('status', 'Banner saved successfully.');
     }
@@ -116,6 +148,15 @@ class Edit extends Component
 
         return view('livewire.pages.admin.content.banners.edit', [
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
+            'previewDesktopUrl' => $this->desktop_media_id ? MediaAsset::find($this->desktop_media_id)?->url() : null,
+            'previewMobileUrl' => $this->mobile_media_id ? MediaAsset::find($this->mobile_media_id)?->url() : null,
+            'previewUrl' => $this->destination_type === 'url' ? ($this->destination_value ?: '#') : '#',
+            'targetOptions' => [
+                'page' => Page::query()->where('status', 'published')->orderBy('title')->get(['id', 'title']),
+                'category' => Category::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'brand' => Brand::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+                'product' => Product::query()->where('status', 'published')->orderBy('name')->get(['id', 'name']),
+            ],
         ]);
     }
 }

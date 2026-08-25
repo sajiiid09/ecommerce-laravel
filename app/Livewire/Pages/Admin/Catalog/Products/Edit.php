@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Catalog\Products;
 
+use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\MediaAsset;
@@ -44,11 +45,23 @@ class Edit extends Component
 
     public array $tag_ids = [];
 
+    public array $attribute_values = [];
+
     public array $selectedMediaIds = [];
 
     public ?string $short_description = '';
 
     public ?string $description_html = '';
+
+    public ?string $meta_title = '';
+
+    public ?string $meta_description = '';
+
+    public ?string $canonical_url = '';
+
+    public bool $is_indexable = true;
+
+    public bool $taxable = true;
 
     public int $regular_price_minor = 0;
 
@@ -84,15 +97,39 @@ class Edit extends Component
         if (! $product?->exists) {
             return;
         }
-        $this->product = $product->load('defaultVariant');
-        $this->fill($product->only(['name', 'slug', 'brand_id', 'primary_category_id', 'short_description', 'description_html', 'is_featured']));
+        $this->product = $product->load('defaultVariant', 'attributeValues.attribute', 'attributeValues.attributeValue');
+        $this->fill($product->only([
+            'name', 'slug', 'brand_id', 'primary_category_id', 'short_description',
+            'description_html', 'meta_title', 'meta_description', 'canonical_url',
+            'is_indexable', 'taxable', 'is_featured',
+        ]));
         $this->category_ids = $product->categories()->pluck('categories.id')->all();
         $this->tag_ids = $product->tags()->pluck('tags.id')->all();
+        foreach ($product->attributeValues as $attributeValue) {
+            $attribute = $attributeValue->attribute;
+            if (! $attribute) {
+                continue;
+            }
+
+            $value = match ($attribute->type) {
+                'select', 'multi_select' => $attributeValue->attribute_value_id,
+                'number' => $attributeValue->number_value,
+                'boolean' => $attributeValue->boolean_value,
+                default => $attributeValue->text_value,
+            };
+
+            if ($attribute->type === 'multi_select') {
+                $this->attribute_values[$attribute->id] ??= [];
+                $this->attribute_values[$attribute->id][] = $value;
+            } else {
+                $this->attribute_values[$attribute->id] = $value;
+            }
+        }
         $this->selectedMediaIds = $product->media()->orderBy('sort_order')->pluck('media_asset_id')->filter()->map(fn ($id) => (int) $id)->all();
         $this->product_type = $product->product_type?->value ?? 'simple';
         $this->status = $product->status?->value ?? 'draft';
         $this->visibility = $product->visibility?->value ?? 'visible';
-        $this->description_json = $product->description_json ?? [];
+        $this->description_json = $product->description_json ?? ['type' => 'doc', 'content' => []];
         $this->regular_price_minor = (int) ($product->defaultVariant?->regular_price_minor ?? 0);
         $this->sale_price_minor = $product->defaultVariant?->sale_price_minor;
         $this->cost_price_minor = $product->defaultVariant?->cost_price_minor;
@@ -109,17 +146,40 @@ class Edit extends Component
         $this->authorize($this->product?->exists ? 'update' : 'create', $this->product?->exists ? $this->product : Product::class);
         $data = $this->validate([
             'name' => 'required|string|max:255', 'slug' => 'nullable|string|max:255', 'product_type' => 'required|in:simple,variable',
-            'status' => 'required|in:draft,published,archived', 'visibility' => 'required|string', 'brand_id' => 'nullable|exists:brands,id',
+            'status' => 'required|in:draft,published,archived', 'visibility' => 'required|in:visible,catalog_search,catalog_only,search_only,hidden', 'brand_id' => 'nullable|exists:brands,id',
             'primary_category_id' => 'nullable|exists:categories,id', 'category_ids' => 'array', 'category_ids.*' => 'integer|exists:categories,id',
             'tag_ids' => 'array', 'tag_ids.*' => 'integer|exists:tags,id', 'regular_price_minor' => 'required|integer|min:0', 'sale_price_minor' => 'nullable|integer|min:0',
+            'attribute_values' => 'array',
             'compare_at_price_minor' => 'nullable|integer|min:0', 'cost_price_minor' => 'nullable|integer|min:0', 'inventory_quantity' => 'required|integer|min:0',
-            'low_stock_threshold' => 'required|integer|min:0', 'track_quantity' => 'boolean', 'allow_backorders' => 'boolean', 'image' => 'nullable|image|max:5120',
+            'low_stock_threshold' => 'required|integer|min:0', 'track_quantity' => 'boolean', 'allow_backorders' => 'boolean',
+            'is_indexable' => 'boolean', 'taxable' => 'boolean', 'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500', 'canonical_url' => 'nullable|url|max:255',
+            'image' => 'nullable|image|max:5120',
         ]);
+
+        if ($data['sale_price_minor'] !== null && $data['sale_price_minor'] > $data['regular_price_minor']) {
+            $this->addError('sale_price_minor', 'Sale price must not exceed the regular price.');
+
+            return;
+        }
+
+        if ($data['compare_at_price_minor'] !== null && $data['compare_at_price_minor'] < $data['regular_price_minor']) {
+            $this->addError('compare_at_price_minor', 'Compare-at price must be at least the regular price.');
+
+            return;
+        }
+
         $data['is_featured'] = $this->is_featured;
+        $data['taxable'] = $this->taxable;
+        $data['is_indexable'] = $this->is_indexable;
+        $data['meta_title'] = $this->meta_title;
+        $data['meta_description'] = $this->meta_description;
+        $data['canonical_url'] = $this->canonical_url;
         $data['description_json'] = $this->description_json;
         $data['description_html'] = $this->description_html;
         $data['category_ids'] = array_values(array_unique(array_map('intval', $this->category_ids ?: array_filter([$this->primary_category_id]))));
         $data['tag_ids'] = array_values(array_unique(array_map('intval', $this->tag_ids)));
+        $data['attribute_values'] = $this->attribute_values;
         $mediaIds = $this->selectedMediaIds;
         if ($this->image) {
             $mediaIds[] = $this->media->upload($this->image, 'products')->id;
@@ -160,6 +220,34 @@ class Edit extends Component
         }
 
         [$this->selectedMediaIds[$index], $this->selectedMediaIds[$target]] = [$this->selectedMediaIds[$target], $this->selectedMediaIds[$index]];
+        $this->persistMediaOrder();
+    }
+
+    public function sortMedia(string|int $item, int $position): void
+    {
+        $this->authorize('update', $this->product);
+        $item = (int) $item;
+        $currentPosition = array_search($item, $this->selectedMediaIds, true);
+
+        if ($currentPosition === false || $position < 0 || $position >= count($this->selectedMediaIds)) {
+            return;
+        }
+
+        array_splice($this->selectedMediaIds, $currentPosition, 1);
+        array_splice($this->selectedMediaIds, $position, 0, [$item]);
+        $this->persistMediaOrder();
+    }
+
+    private function persistMediaOrder(): void
+    {
+        $this->authorize('update', $this->product);
+
+        foreach ($this->selectedMediaIds as $sortOrder => $mediaId) {
+            $this->product->media()->where('media_asset_id', $mediaId)->update([
+                'sort_order' => $sortOrder,
+                'role' => $sortOrder === 0 ? 'main' : 'gallery',
+            ]);
+        }
     }
 
     public function render()
@@ -170,6 +258,7 @@ class Edit extends Component
             'brands' => Brand::orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(),
             'tags' => Tag::orderBy('name')->get(),
+            'attributes' => Attribute::active()->with('values')->orderBy('sort_order')->orderBy('name')->get(),
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
             'selectedMedia' => $this->selectedMediaIds === [] ? collect() : MediaAsset::query()->whereKey($this->selectedMediaIds)->get()->sortBy(fn ($asset) => array_search($asset->id, $this->selectedMediaIds, true))->values(),
         ]);

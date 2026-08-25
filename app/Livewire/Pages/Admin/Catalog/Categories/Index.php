@@ -132,6 +132,35 @@ class Index extends ResourceIndex
         $category->update(['is_active' => ! $category->is_active]);
     }
 
+    public function bulk(string $action): void
+    {
+        $this->validate(['selected' => ['array']]);
+
+        foreach (Category::whereKey($this->selected)->get() as $category) {
+            $this->authorize($action === 'delete' ? 'delete' : 'update', $category);
+
+            if ($action === 'delete') {
+                $category->loadCount(['children', 'products']);
+                if ($category->children_count > 0 || $category->products_count > 0) {
+                    $this->addError('delete', 'Categories with children or product assignments cannot be deleted.');
+
+                    continue;
+                }
+                $category->delete();
+            } elseif ($action === 'activate' || $action === 'deactivate') {
+                $category->update(['is_active' => $action === 'activate']);
+            }
+        }
+
+        $this->clearSelection();
+        $this->resetPage();
+    }
+
+    public function deleteSelected(): void
+    {
+        $this->bulk('delete');
+    }
+
     public function deleteCategory(int $id): void
     {
         $category = Category::withCount(['children', 'products'])->findOrFail($id);

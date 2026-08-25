@@ -23,25 +23,20 @@ use App\Livewire\Pages\Store\Product;
 use App\Livewire\Pages\Store\Search;
 use App\Livewire\Pages\Store\Wishlist;
 use App\Models\CategoryExport;
-use App\Models\HomepageSection;
 use App\Models\Page;
 use App\Models\Redirect;
+use App\Services\CatalogQueryService;
 use App\Services\ContentResolver;
 use App\Services\HomepageService;
 use App\Services\RedirectService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 Route::get('/', function (HomepageService $homepage) {
-    if (Schema::hasTable('homepage_sections') && HomepageSection::exists()) {
-        return view('pages.store.home-cms', ['sections' => $homepage->sections()]);
-    }
-
-    return view('pages.store.home');
+    return view('pages.store.home-cms', ['sections' => $homepage->sections()]);
 })->name('store.home');
 
 Route::livewire('/category/{slug?}', new Category)->name('store.category');
@@ -100,14 +95,20 @@ Route::prefix('admin/content')->middleware(['auth', 'admin'])->group(function ()
         Gate::authorize('view', $page);
 
         return view('pages.store.cms-page', ['page' => $page, 'preview' => true]);
-    })->name('admin.content.pages.preview');
+    })->middleware('signed')->name('admin.content.pages.preview');
     Route::livewire('/pages/{page}/edit', new App\Livewire\Pages\Admin\Content\Pages\Edit)->name('admin.content.pages.edit');
     Route::livewire('/homepage', new Builder)->name('admin.content.homepage');
     Route::livewire('/banners', new App\Livewire\Pages\Admin\Content\Banners\Index)->name('admin.content.banners');
     Route::livewire('/banners/create', new App\Livewire\Pages\Admin\Content\Banners\Edit)->name('admin.content.banners.create');
     Route::livewire('/banners/{banner}/edit', new App\Livewire\Pages\Admin\Content\Banners\Edit)->name('admin.content.banners.edit');
     Route::livewire('/navigation', new Manager)->name('admin.content.navigation');
+    Route::get('/header/preview', function (CatalogQueryService $catalog) {
+        return view('pages.store.header-preview', ['categories' => $catalog->categoryOptions()]);
+    })->name('admin.content.header.preview');
     Route::livewire('/header', new App\Livewire\Pages\Admin\Content\Header\Edit)->name('admin.content.header');
+    Route::get('/footer/preview', function (CatalogQueryService $catalog) {
+        return view('pages.store.footer-preview', ['categories' => $catalog->categoryOptions()]);
+    })->name('admin.content.footer.preview');
     Route::livewire('/footer', new App\Livewire\Pages\Admin\Content\Footer\Edit)->name('admin.content.footer');
     Route::livewire('/redirects', new App\Livewire\Pages\Admin\Content\Redirects\Index)->name('admin.content.redirects');
     Route::get('/redirects/export', function (RedirectService $redirects) {

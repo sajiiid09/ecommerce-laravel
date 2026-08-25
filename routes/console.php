@@ -14,9 +14,9 @@ Artisan::command('inspire', function () {
 
 Artisan::command('content:sync-scheduled', function (ContentPublishingService $publishing): void {
     $now = now();
-    $pages = Page::where('status', 'scheduled')->whereNotNull('scheduled_at')->where('scheduled_at', '<=', $now)->get();
-    $banners = Banner::where('status', 'scheduled')->whereNotNull('starts_at')->where('starts_at', '<=', $now)->get();
-    $announcements = Announcement::where('status', 'scheduled')->whereNotNull('starts_at')->where('starts_at', '<=', $now)->get();
+    $pages = Page::query()->where('status', 'scheduled')->whereNotNull('scheduled_at')->where('scheduled_at', '<=', $now)->lazyById(100);
+    $banners = Banner::query()->where('status', 'scheduled')->whereNotNull('starts_at')->where('starts_at', '<=', $now)->lazyById(100);
+    $announcements = Announcement::query()->where('status', 'scheduled')->whereNotNull('starts_at')->where('starts_at', '<=', $now)->lazyById(100);
 
     foreach ($pages as $page) {
         $page->update(['status' => 'published', 'published_at' => $now]);
@@ -24,12 +24,12 @@ Artisan::command('content:sync-scheduled', function (ContentPublishingService $p
     }
 
     foreach ($banners as $banner) {
-        $banner->update(['status' => 'published']);
+        $banner->update(['status' => $banner->ends_at && $banner->ends_at->lte($now) ? 'archived' : 'published']);
         $publishing->invalidate('banner', $banner->placement);
     }
 
     foreach ($announcements as $announcement) {
-        $announcement->update(['status' => 'published']);
+        $announcement->update(['status' => $announcement->ends_at && $announcement->ends_at->lte($now) ? 'archived' : 'published']);
         $publishing->invalidate('announcement', $announcement->placement);
     }
 

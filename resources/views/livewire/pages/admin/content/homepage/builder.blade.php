@@ -2,6 +2,9 @@
     <div class="mx-auto max-w-[1480px]">
         <x-admin.cms.page-header eyebrow="StoreZ / Content / Homepage Builder" title="Homepage Builder" description="Arrange storefront sections, manage content, and publish a new homepage version.">
             <x-slot:actions>
+                <a href="{{ url('/admin/content/banners?placementFilter=hero') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700">
+                    <x-ui.icon name="photo" class="size-4" /> Manage hero slides
+                </a>
                 <a href="{{ url('/') }}" target="_blank" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-blue-300 hover:text-blue-700">
                     <x-ui.icon name="eye" class="size-4" /> Preview storefront
                 </a>
@@ -52,6 +55,57 @@
                         <label class="block text-sm font-semibold text-slate-700">Section title<input wire:model.live="sections.{{ $selectedSectionIndex }}.title" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
                         <label class="block text-sm font-semibold text-slate-700">Eyebrow<input wire:model.live="sections.{{ $selectedSectionIndex }}.eyebrow" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
                         <label class="block text-sm font-semibold text-slate-700">Subtitle<textarea wire:model.live="sections.{{ $selectedSectionIndex }}.subtitle" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea></label>
+                        @if(in_array($selected['type'], ['flash_deals', 'bestsellers', 'featured_products', 'new_arrivals'], true))
+                            <label class="block text-sm font-semibold text-slate-700">Product limit<input type="number" min="1" max="24" wire:model.live="sections.{{ $selectedSectionIndex }}.settings.limit" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                        @endif
+                        @if(in_array($selected['type'], ['hero', 'banners'], true))
+                            <label class="block text-sm font-semibold text-slate-700">Call to action<input wire:model.live="sections.{{ $selectedSectionIndex }}.settings.cta" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Shop now"></label>
+                        @endif
+                        @if($selected['type'] === 'hero')
+                            <label class="block text-sm font-semibold text-slate-700">CTA URL<input wire:model.live="sections.{{ $selectedSectionIndex }}.settings.url" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="/offers"></label>
+                        @endif
+                        @if(in_array($selected['type'], ['categories', 'brands'], true))
+                            <label class="block text-sm font-semibold text-slate-700">Item limit<input type="number" min="1" max="24" wire:model.live="sections.{{ $selectedSectionIndex }}.settings.limit" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                        @endif
+                        @if($selected['type'] === 'banners')
+                            <div class="grid gap-3 sm:grid-cols-2"><label class="block text-sm font-semibold text-slate-700">Placement<select wire:model.live="sections.{{ $selectedSectionIndex }}.settings.placement" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><option value="homepage">Homepage</option><option value="offers">Offers</option><option value="category">Category</option><option value="global">Global</option></select></label><label class="block text-sm font-semibold text-slate-700">Banner limit<input type="number" min="1" max="12" wire:model.live="sections.{{ $selectedSectionIndex }}.settings.limit" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label></div>
+                        @endif
+                        @if(in_array($selected['type'], ['shop_by_need', 'newsletter'], true))
+                            <label class="block text-sm font-semibold text-slate-700">Content JSON<textarea wire:model.live="sections.{{ $selectedSectionIndex }}.settings.content_json" rows="4" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs" placeholder="[{&quot;title&quot;:&quot;...&quot;}]" spellcheck="false"></textarea></label>
+                        @endif
+                        @if($selected['type'] === 'testimonials')
+                            @php($testimonials = $selected['settings']['testimonials'] ?? [])
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div><p class="text-sm font-bold text-slate-800">Testimonials</p><p class="mt-1 text-xs text-slate-500">Add customer feedback and arrange the carousel order.</p></div>
+                                    <button type="button" wire:click="addTestimonial" class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">Add testimonial</button>
+                                </div>
+                                <div class="mt-4 space-y-3">
+                                    @forelse($testimonials as $testimonialIndex => $testimonial)
+                                        <div wire:key="homepage-testimonial-{{ $testimonial['id'] ?? $testimonialIndex }}" class="rounded-lg border border-slate-200 bg-white p-3">
+                                            <div class="flex items-start justify-between gap-3">
+                                                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Testimonial {{ $testimonialIndex + 1 }}</p>
+                                                <div class="flex items-center gap-2 text-xs font-bold">
+                                                    <button type="button" wire:click="moveTestimonial({{ $testimonialIndex }}, -1)" class="text-slate-500 disabled:opacity-40" @disabled($testimonialIndex === 0) aria-label="Move testimonial up">↑</button>
+                                                    <button type="button" wire:click="moveTestimonial({{ $testimonialIndex }}, 1)" class="text-slate-500 disabled:opacity-40" @disabled($testimonialIndex === count($testimonials) - 1) aria-label="Move testimonial down">↓</button>
+                                                    <button type="button" wire:click="removeTestimonial({{ $testimonialIndex }})" wire:confirm="Remove this testimonial?" class="text-red-600">Remove</button>
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                                <label class="text-xs font-semibold text-slate-700">Name<input wire:model.live="sections.{{ $selectedSectionIndex }}.settings.testimonials.{{ $testimonialIndex }}.name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                                                <label class="text-xs font-semibold text-slate-700">Role<input wire:model.live="sections.{{ $selectedSectionIndex }}.settings.testimonials.{{ $testimonialIndex }}.role" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></label>
+                                                <label class="text-xs font-semibold text-slate-700">Rating<select wire:model.live="sections.{{ $selectedSectionIndex }}.settings.testimonials.{{ $testimonialIndex }}.rating" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">@for($rating = 1; $rating <= 5; $rating++)<option value="{{ $rating }}">{{ $rating }} stars</option>@endfor</select></label>
+                                                <label class="flex items-center gap-2 self-end pb-2 text-xs font-semibold text-slate-600"><input type="checkbox" wire:model.live="sections.{{ $selectedSectionIndex }}.settings.testimonials.{{ $testimonialIndex }}.enabled" class="rounded border-slate-300 text-blue-600"> Show this testimonial</label>
+                                                <label class="text-xs font-semibold text-slate-700 sm:col-span-2">Quote<textarea wire:model.live="sections.{{ $selectedSectionIndex }}.settings.testimonials.{{ $testimonialIndex }}.quote" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea></label>
+                                            </div>
+                                            <button type="button" x-data x-on:click="$dispatch('open-media-picker', { context: 'homepage_testimonial_avatar' }); $wire.selectedTestimonialIndex = {{ $testimonialIndex }}" class="mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-700">Choose optional avatar</button>
+                                        </div>
+                                    @empty
+                                        <p class="py-5 text-center text-xs text-slate-500">No testimonials yet.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @endif
                         <div class="grid gap-3 sm:grid-cols-2">
                             <button type="button" x-data x-on:click="$dispatch('open-media-picker', { context: 'homepage_desktop' })" class="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-left text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-700">Choose desktop media</button>
                             <button type="button" x-data x-on:click="$dispatch('open-media-picker', { context: 'homepage_mobile' })" class="rounded-lg border border-dashed border-slate-300 px-3 py-3 text-left text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-700">Choose mobile media</button>
@@ -67,12 +121,13 @@
                 <x-admin.cms.panel title="Storefront preview" description="A quick view of the current section order.">
                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                         <div class="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2"><span class="text-xs font-bold text-slate-700">StoreZ storefront</span><span class="text-[10px] text-slate-400">Desktop</span></div>
-                        <div class="space-y-2 p-3">
-                            @foreach($sections as $index => $section)
-                                <div wire:key="homepage-preview-{{ $section['section_key'] }}" class="rounded-lg border border-slate-200 bg-white p-3 {{ $section['enabled'] ? '' : 'opacity-40' }}"><div class="flex items-center gap-2"><span class="text-[10px] font-bold text-slate-400">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span><span class="truncate text-xs font-bold text-slate-700">{{ $section['title'] ?: ucwords(str_replace('_', ' ', $section['type'])) }}</span></div><div class="mt-2 h-2 w-2/3 rounded bg-slate-100"></div><div class="mt-1 h-2 w-1/2 rounded bg-slate-100"></div></div>
-                            @endforeach
+                        <div class="max-h-[32rem] overflow-y-auto p-3">
+                            <div class="origin-top scale-[0.72]" style="width: 138%; margin-bottom: -28%;">
+                                @include('pages.store.home-sections', ['sections' => $previewSections, 'preview' => true])
+                            </div>
                         </div>
                     </div>
+                    <a href="{{ route('store.home') }}" target="_blank" rel="noopener" class="mt-3 inline-flex text-xs font-bold text-blue-700 hover:text-blue-900">Open published storefront preview <span aria-hidden="true" class="ml-1">↗</span></a>
                 </x-admin.cms.panel>
 
                 <x-admin.cms.panel title="Version history" description="Restore a saved version or publish it to the storefront.">
@@ -88,5 +143,6 @@
         </div>
         <x-admin.media-picker :assets="$mediaAssets" title="Select desktop media" context="homepage_desktop" modal />
         <x-admin.media-picker :assets="$mediaAssets" title="Select mobile media" context="homepage_mobile" modal />
+        <x-admin.media-picker :assets="$mediaAssets" title="Select testimonial avatar" context="homepage_testimonial_avatar" modal />
     </div>
 </div>

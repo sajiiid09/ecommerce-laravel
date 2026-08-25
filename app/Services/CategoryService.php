@@ -12,7 +12,10 @@ class CategoryService
 {
     public const MAX_DEPTH = 4;
 
-    public function __construct(private readonly MediaService $media) {}
+    public function __construct(
+        private readonly MediaService $media,
+        private readonly CatalogQueryService $catalog,
+    ) {}
 
     public function save(array $data, ?Category $category = null): Category
     {
@@ -31,7 +34,7 @@ class CategoryService
             throw new InvalidArgumentException('This category slug is already in use.');
         }
 
-        return DB::transaction(function () use ($data, $category, $parentId, $slug): Category {
+        $saved = DB::transaction(function () use ($data, $category, $parentId, $slug): Category {
             $category ??= new Category;
             $previousMediaId = $category->exists ? $category->media_asset_id : null;
             $category->fill([
@@ -60,6 +63,10 @@ class CategoryService
 
             return $category->fresh(['parent', 'mediaAsset']);
         });
+
+        $this->catalog->forgetCachedOptions();
+
+        return $saved;
     }
 
     private function depthFor(int $categoryId): int

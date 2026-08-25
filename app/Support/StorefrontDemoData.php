@@ -87,7 +87,7 @@ final class StorefrontDemoData
     public static function brands(): array
     {
         return collect(self::products())->pluck('brand')->unique()->map(fn (string $name) => [
-            'id' => str($name)->slug(), 'name' => $name,
+            'id' => str($name)->slug(), 'name' => $name, 'slug' => str($name)->slug(),
         ])->values()->all();
     }
 

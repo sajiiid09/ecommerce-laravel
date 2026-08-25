@@ -18,6 +18,11 @@ class Index extends Component
 
     public string $placementFilter = '';
 
+    public function mount(): void
+    {
+        $this->placementFilter = (string) request()->query('placementFilter', '');
+    }
+
     public function deleteBanner(int $id): void
     {
         $banner = Banner::findOrFail($id);

@@ -1,12 +1,37 @@
 @php
     $related = $related ?? collect();
-    $highlights = $product['highlights'] ?? ['Premium quality and carefully selected', 'Reliable everyday performance', 'Packed securely for delivery'];
     $options = $product['options'] ?? [];
-    $gallery = $product['gallery'] ?? [$product['image'], $product['image']];
+    $gallery = $product['gallery'] ?? [$product['image']];
     $imageUrl = fn (string $image): string => str($image)->startsWith(['http://', 'https://', '/']) ? $image : asset(ltrim($image, '/'));
 @endphp
-<main x-data="{ quantity: 1, wished: false, selectedOption: @js($options[0]['value'] ?? null), selectedImage: @js($gallery[0]) }" class="bg-white py-6 sm:py-8">
-    <x-store.ui.container><x-store.ui.breadcrumb :items="[['label' => 'All Products', 'url' => route('store.category')], ['label' => $product['name']]]" />
+
+<main
+    x-data="{
+        quantity: 1,
+        wished: false,
+        selectedImage: @js($gallery[0]),
+        variants: @js($product['variants'] ?? []),
+        selectedVariantId: @js($product['variantId'] ?? null),
+        selectedOptions: Object.fromEntries(@js($options).map((option) => [option.name, option.values[0]?.value ?? null])),
+        get variant() {
+            const selected = this.variants.find((variant) => variant.id === this.selectedVariantId);
+            const matching = this.variants.find((variant) => variant.optionValues.every((optionValue) => this.selectedOptions[optionValue.option] === optionValue.value));
+            return matching || selected || this.variants[0] || { id: null, price: @js($product['price']), compareAtPrice: @js($product['oldPrice']), available: @js($product['inStock']), gallery: [] };
+        },
+        selectOption(name, value) {
+            this.selectedOptions[name] = value;
+            this.selectedVariantId = this.variant.id;
+            if (this.variant.gallery?.length) this.selectedImage = this.variant.gallery[0];
+        },
+        formatMoney(value) {
+            return '৳' + new Intl.NumberFormat().format(Math.round((value || 0) / 100));
+        }
+    }"
+    class="bg-white py-6 sm:py-8"
+>
+    <x-store.ui.container>
+        <x-store.ui.breadcrumb :items="[['label' => 'All Products', 'url' => route('store.category')], ['label' => $product['name']]]" />
+
         <div class="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <section class="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)]">
                 <div class="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col">
@@ -14,158 +39,118 @@
                         <button type="button" class="size-20 shrink-0 rounded-control border bg-white p-2"
                             :class="selectedImage === @js($image) ? 'border-2 border-store-blue' : 'border-store-border'"
                             @click="selectedImage = @js($image)"
-                            :aria-label="'Show image ' + {{ $loop->iteration }} + ' of {{ count($gallery) }}'"><img
-                                src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}"
-                                class="size-full object-contain"></button>
+                            aria-label="Show image {{ $loop->iteration }} of {{ count($gallery) }}">
+                            <img src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}" class="size-full object-contain">
+                        </button>
                     @endforeach
                 </div>
-                <div
-                    class="order-1 flex aspect-square items-center justify-center rounded-card border border-store-border bg-white p-8 sm:order-2">
-                    <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}"
-                        class="size-full object-contain"></div>
+                <div class="order-1 flex aspect-square items-center justify-center rounded-card border border-store-border bg-white p-8 sm:order-2">
+                    <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}" class="size-full object-contain">
+                </div>
             </section>
+
             <section>
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-sm font-semibold text-store-blue">{{ $product['brand'] }}</p>
-                        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">
-                            {{ $product['name'] }}</h1>
-                    </div><button type="button"
-                        class="grid size-11 shrink-0 place-items-center rounded-full border border-store-border text-store-muted hover:border-store-red hover:text-store-red"
-                        @click="wished = !wished"
-                        :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'"><x-ui.icon name="heart"
-                            class="size-5 !text-current" /></button>
+                        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">{{ $product['name'] }}</h1>
+                    </div>
+                    <button type="button" class="grid size-11 shrink-0 place-items-center rounded-full border border-store-border text-store-muted hover:border-store-red hover:text-store-red" @click="wished = !wished" :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'">
+                        <x-ui.icon name="heart" class="size-5 !text-current" />
+                    </button>
                 </div>
-                <div class="mt-3 flex flex-wrap items-center gap-3"><x-store.ui.rating :rating="$product['rating']"
-                        :reviews="$product['reviews']" /><span class="text-store-border">|</span><span
-                        class="text-sm text-store-muted">10K+ Sold</span></div>
-                <div class="mt-5 flex flex-wrap items-center gap-3"><x-store.ui.price :price="$product['price']"
-                        :old-price="$product['oldPrice']" size="lg" /><x-store.ui.discount-badge :discount="$product['discount']"
-                        class="text-xs" /></div>
-                <p class="mt-2 flex items-center gap-1 text-sm font-semibold text-store-success"><x-ui.icon
-                        name="check-circle" variant="solid" class="size-4 !text-current" /> Save
-                    ৳{{ number_format(($product['oldPrice'] ?? $product['price']) - $product['price']) }} on this
-                    product</p>
+
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <x-store.ui.rating :rating="$product['rating']" :reviews="$product['reviews']" />
+                    <span class="text-store-border">|</span>
+                    <span class="text-sm text-store-muted">SKU: {{ $product['sku'] ?? '—' }}</span>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                    <span class="text-2xl font-black text-store-red" x-text="formatMoney(variant.price)">{{ '৳'.number_format($product['price'] / 100, 2) }}</span>
+                    <span x-show="variant.compareAtPrice" x-text="formatMoney(variant.compareAtPrice)" class="text-sm text-store-muted line-through">{{ $product['oldPrice'] ? '৳'.number_format($product['oldPrice'] / 100, 2) : '' }}</span>
+                </div>
+
+                <p x-show="variant.compareAtPrice > variant.price" class="mt-2 flex items-center gap-1 text-sm font-semibold text-store-success">
+                    <x-ui.icon name="check-circle" variant="solid" class="size-4 !text-current" />
+                    Save <span x-text="formatMoney(variant.compareAtPrice - variant.price)"></span> on this product
+                </p>
+
                 <div class="my-5 border-t border-store-border"></div>
-                <p class="text-sm font-semibold text-store-ink">Availability: <span
-                        class="ml-2 inline-flex items-center gap-1 font-medium text-store-success"><span
-                            class="size-2 rounded-full bg-store-success"></span>In Stock</span></p>
-                <ul class="mt-4 list-disc space-y-1 pl-5 text-sm leading-6 text-store-text">
-                    @foreach ($highlights as $highlight)
-                        <li>{{ $highlight }}</li>
-                    @endforeach
-                </ul>
-                @if ($product['slug'] === 'premium-basmati-rice')
-                <div class="mt-5">
-                    <p class="text-sm font-semibold text-store-ink">Size / Weight: <span
-                            class="ml-2 font-normal text-store-muted" x-text="selectedSize"></span></p>
-                    <div class="mt-2 flex flex-wrap gap-2"><button type="button"
-                            class="rounded-full border px-4 py-2 text-sm"
-                            :class="selectedSize === '1kg' ?
-                                'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'"
-                            @click="selectedSize = '1kg'">1kg ৳210</button><button type="button"
-                            class="rounded-full border px-4 py-2 text-sm"
-                            :class="selectedSize === '5kg' ?
-                                'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'"
-                            @click="selectedSize = '5kg'">5kg ৳950</button><button type="button"
-                            class="rounded-full border px-4 py-2 text-sm"
-                            :class="selectedSize === '10kg' ?
-                                'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'"
-                            @click="selectedSize = '10kg'">10kg ৳1,780</button></div>
-                </div>
+
+                <p class="text-sm font-semibold text-store-ink">Availability:
+                    <span class="ml-2 inline-flex items-center gap-1 font-medium" :class="variant.available ? 'text-store-success' : 'text-store-error'">
+                        <span class="size-2 rounded-full" :class="variant.available ? 'bg-store-success' : 'bg-store-error'"></span>
+                        <span x-text="variant.available ? 'In Stock' : 'Out of Stock'">In Stock</span>
+                    </span>
+                </p>
+
+                @if ($product['shortDescription'] ?? null)
+                    <p class="mt-4 text-sm leading-6 text-store-text">{{ $product['shortDescription'] }}</p>
                 @endif
-                @if ($product['slug'] !== 'premium-basmati-rice' && count($options))
+
+                @foreach ($options as $option)
                     <div class="mt-5">
-                        <p class="text-sm font-semibold text-store-ink">Storage: <span class="ml-2 font-normal text-store-muted" x-text="selectedOption"></span></p>
+                        <p class="text-sm font-semibold text-store-ink">{{ $option['label'] }}:
+                            <span class="ml-2 font-normal text-store-muted" x-text="selectedOptions['{{ $option['name'] }}']"></span>
+                        </p>
                         <div class="mt-2 flex flex-wrap gap-2">
-                            @foreach ($options as $option)
-                                <button type="button" class="rounded-full border px-4 py-2 text-sm" :class="selectedOption === @js($option['value']) ? 'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'" @click="selectedOption = @js($option['value'])">{{ $option['label'] }} ৳{{ number_format($option['price']) }}</button>
+                            @foreach ($option['values'] as $value)
+                                <button type="button" class="rounded-full border px-4 py-2 text-sm"
+                                    :class="selectedOptions['{{ $option['name'] }}'] === @js($value['value']) ? 'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'"
+                                    @click="selectOption(@js($option['name']), @js($value['value']))">
+                                    {{ $value['label'] }}
+                                </button>
                             @endforeach
                         </div>
                     </div>
-                @endif
-                <div class="mt-5 flex flex-wrap items-center gap-3"><span
-                        class="text-sm font-semibold text-store-ink">Quantity:</span><x-store.ui.quantity-stepper
-                        model="quantity" /></div>
-                <div class="mt-5 grid gap-3 sm:grid-cols-2"><button type="button"
-                        class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white"
-                        @click="addToCart(@js($product), quantity)"><x-ui.icon
-                            name="shopping-cart" class="size-5 !text-white" />Add to Cart</button><button type="button"
-                        class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white"><x-ui.icon
-                            name="bolt" variant="solid" class="size-5 !text-white" />Buy Now</button></div><button
-                    type="button"
-                    class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-store-muted hover:text-store-red"
-                    @click="wished = !wished"><x-ui.icon name="heart" class="size-4 !text-current" /><span
-                        x-text="wished ? 'Saved to Wishlist' : 'Add to Wishlist'"></span></button>
+                @endforeach
+
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                    <span class="text-sm font-semibold text-store-ink">Quantity:</span>
+                    <x-store.ui.quantity-stepper model="quantity" />
+                </div>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available" @click="addToCart({...@js($product), variantId: variant.id, price: variant.price, image: selectedImage}, quantity)">
+                        <x-ui.icon name="shopping-cart" class="size-5 !text-white" />Add to Cart
+                    </button>
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available">
+                        <x-ui.icon name="bolt" variant="solid" class="size-5 !text-white" />Buy Now
+                    </button>
+                </div>
             </section>
         </div>
-        <section class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="flex items-center gap-3 rounded-card border border-store-border p-4"><x-ui.icon name="banknotes"
-                    class="size-7 !text-store-success" />
-                <div>
-                    <p class="text-sm font-bold text-store-ink">Cash on Delivery</p>
-                    <p class="text-xs text-store-muted">Pay when you receive</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3 rounded-card border border-store-border p-4"><x-ui.icon
-                    name="device-phone-mobile" class="size-7 !text-store-red" />
-                <div>
-                    <p class="text-sm font-bold text-store-ink">Pay with bKash / Nagad</p>
-                    <p class="text-xs text-store-muted">100% secure payment</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3 rounded-card border border-store-border p-4"><x-ui.icon name="truck"
-                    class="size-7 !text-store-blue" />
-                <div>
-                    <p class="text-sm font-bold text-store-ink">Fast Delivery</p>
-                    <p class="text-xs text-store-muted">24–48 hrs in Dhaka</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3 rounded-card border border-store-border p-4"><x-ui.icon
-                    name="arrow-path" class="size-7 !text-store-blue" />
-                <div>
-                    <p class="text-sm font-bold text-store-ink">Easy Returns</p>
-                    <p class="text-xs text-store-muted">7 days return policy</p>
-                </div>
-            </div>
-        </section>
+
         <section class="mt-8 rounded-card border border-store-border bg-white">
-            <div class="flex gap-6 overflow-x-auto border-b border-store-border px-5"><button type="button"
-                    class="border-b-2 border-store-blue py-4 text-sm font-bold text-store-blue">Description</button><button
-                    type="button" class="py-4 text-sm font-semibold text-store-muted">Specifications</button><button
-                    type="button" class="py-4 text-sm font-semibold text-store-muted">Reviews
-                    ({{ number_format($product['reviews']) }})</button><button type="button"
-                    class="py-4 text-sm font-semibold text-store-muted">Shipping & Returns</button></div>
+            <div class="border-b border-store-border px-5">
+                <h2 class="py-4 text-sm font-bold text-store-blue">Description & Specifications</h2>
+            </div>
             <div class="grid gap-6 p-5 text-sm leading-7 text-store-text lg:grid-cols-[1.3fr_1fr]">
                 <div>
-                    @if(! empty($product['descriptionHtml']))
+                    @if (! empty($product['descriptionHtml']))
                         <div class="prose prose-sm max-w-none">{!! $product['descriptionHtml'] !!}</div>
+                    @elseif ($product['shortDescription'] ?? null)
+                        <p>{{ $product['shortDescription'] }}</p>
                     @else
-                        <p>{{ $product['name'] }} is carefully selected from trusted suppliers to bring you dependable quality and excellent value. It is packed for freshness and everyday convenience.</p>
-                        <ul class="mt-4 list-disc space-y-1 pl-5"><li>Premium quality and carefully packed</li><li>Perfect for everyday meals</li><li>Store in a cool, dry place away from sunlight</li></ul>
+                        <p>{{ $product['name'] }} is carefully selected from trusted suppliers to bring you dependable quality and excellent value.</p>
                     @endif
                 </div>
                 <dl class="divide-y divide-store-border rounded-control border border-store-border">
-                    <div class="flex justify-between gap-4 px-3 py-2">
-                        <dt class="font-semibold">Brand</dt>
-                        <dd>{{ $product['brand'] }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-4 px-3 py-2">
-                        <dt class="font-semibold">Availability</dt>
-                        <dd>In Stock</dd>
-                    </div>
-                    <div class="flex justify-between gap-4 px-3 py-2">
-                        <dt class="font-semibold">SKU</dt>
-                        <dd>STOREZ-{{ $product['id'] }}</dd>
-                    </div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">Brand</dt><dd>{{ $product['brand'] }}</dd></div>
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">Categories</dt><dd>{{ implode(', ', $product['categories'] ?? []) ?: '—' }}</dd></div>
+                    @foreach ($product['attributes'] ?? [] as $attribute)
+                        <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">{{ $attribute['name'] }}</dt><dd>{{ $attribute['value'] }}{{ $attribute['unit'] ? ' '.$attribute['unit'] : '' }}</dd></div>
+                    @endforeach
+                    <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">SKU</dt><dd>{{ $product['sku'] ?? '—' }}</dd></div>
                 </dl>
             </div>
         </section>
+
         <section class="mt-8">
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-xl font-extrabold tracking-tight text-store-ink">You May Also Like</h2><a
-                    href="{{ route('store.category') }}" wire:navigate
-                    class="text-sm font-semibold text-store-blue">View All →</a>
+                <h2 class="text-xl font-extrabold tracking-tight text-store-ink">You May Also Like</h2>
+                <a href="{{ route('store.category') }}" wire:navigate class="text-sm font-semibold text-store-blue">View All →</a>
             </div>
             <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
                 @foreach ($related as $item)
