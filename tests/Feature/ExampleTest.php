@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use Illuminate\Support\Facades\Blade;
+use PHPUnit\Framework\Attributes\DataProvider;
 // use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,6 +13,12 @@ class ExampleTest extends TestCase
     public function test_storefront_pages_render(string $url): void
     {
         $response = $this->get($url);
+
+        if (in_array($url, ['/account', '/orders', '/account/orders/SZ-100248/track'], true)) {
+            $response->assertRedirect(route('login'));
+
+            return;
+        }
 
         $response->assertOk();
     }

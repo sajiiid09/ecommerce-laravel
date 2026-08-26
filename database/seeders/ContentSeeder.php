@@ -42,6 +42,7 @@ class ContentSeeder extends Seeder
                 'description' => 'Your trusted online shopping destination in Bangladesh.',
                 'copyright' => '© '.now()->year.' StoreZ. All rights reserved.',
                 'support_email' => 'support@storez.local',
+                'whatsapp_number' => null,
                 'logo_media_id' => null,
                 'shop_menu_key' => 'footer-shop',
                 'help_menu_key' => 'footer-help',

@@ -2,11 +2,19 @@
 
 use App\Livewire\Pages\Admin\Catalog\Attributes\Index as AttributesIndex;
 use App\Livewire\Pages\Admin\Catalog\Brands\Index as BrandsIndex;
+use App\Livewire\Pages\Admin\Catalog\Categories\Index as CategoriesIndex;
+use App\Livewire\Pages\Admin\Catalog\Inventory\Index as InventoryIndex;
+use App\Livewire\Pages\Admin\Catalog\Products\Index as ProductsIndex;
+use App\Livewire\Pages\Admin\Catalog\Products\Variants as ProductVariantsIndex;
+use App\Livewire\Pages\Admin\Catalog\Tags\Index as TagsIndex;
+use App\Livewire\Pages\Admin\Catalog\Variants\Index as VariantsIndex;
 use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\MediaAsset;
 use App\Models\MediaUsage;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\CatalogQueryService;
@@ -217,9 +225,117 @@ it('renders Sheaf selection controls and a readable page-size selector on the br
     Brand::create(['name' => 'SoundMax', 'slug' => 'soundmax', 'is_active' => true]);
 
     Livewire::test(BrandsIndex::class)
-        ->assertSee('data-slot="checkbox-wrapper"', false)
-        ->assertSee('aria-label="Select all brands on this page"', false)
+        ->assertSee('wire:model="selectedIds"', false)
+        ->assertSee('aria-label="Select all visible rows"', false)
         ->assertSee('aria-label="Rows per page"', false)
         ->assertSee('<option value="15">15</option>', false)
         ->assertDontSee('153050', false);
+});
+
+it('renders every requested catalog list through the Sheaf table', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Table Test Product',
+        'slug' => 'table-test-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+
+    foreach ([
+        BrandsIndex::class,
+        CategoriesIndex::class,
+        TagsIndex::class,
+        AttributesIndex::class,
+        ProductsIndex::class,
+        InventoryIndex::class,
+        VariantsIndex::class,
+    ] as $component) {
+        Livewire::test($component)
+            ->assertSee('<table', false)
+            ->assertSee('wire:loading', false)
+            ->assertDontSee('102550', false);
+    }
+
+    Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->assertSee('<table', false)
+        ->assertSee('Generated variants', false)
+        ->assertDontSee('<table class="min-w-full text-left text-sm">', false);
+});
+
+it('filters products by name, slug, and variant SKU through the catalog table state', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $matching = Product::create([
+        'name' => 'Searchable Product',
+        'slug' => 'searchable-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $matching->variants()->create([
+        'sku' => 'SKU-SEARCH-42',
+        'regular_price_minor' => 1000,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+    Product::create([
+        'name' => 'Other Product',
+        'slug' => 'other-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+
+    Livewire::test(ProductsIndex::class)
+        ->set('searchQuery', 'SKU-SEARCH-42')
+        ->assertSee('Searchable Product', false)
+        ->assertDontSee('Other Product', false);
+});
+
+it('renders related products in a five-card carousel without dots', function () {
+    Cache::flush();
+    $category = Category::create(['name' => 'Related Products', 'slug' => 'related-products', 'is_active' => true]);
+
+    $createProduct = function (string $name, int $index) use ($category): Product {
+        $product = Product::create([
+            'name' => $name,
+            'slug' => str()->slug($name),
+            'product_type' => 'simple',
+            'primary_category_id' => $category->id,
+            'short_description' => 'Related product description.',
+            'status' => 'published',
+            'visibility' => 'visible',
+            'is_featured' => false,
+            'taxable' => false,
+            'is_indexable' => true,
+            'published_at' => now(),
+        ]);
+        $product->categories()->attach($category);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => "RELATED-{$index}",
+            'name' => 'Default',
+            'combination_key' => 'default',
+            'regular_price_minor' => 1000 + $index,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+
+        return $product;
+    };
+
+    $product = $createProduct('Main Related Product', 0);
+    foreach (range(1, 6) as $index) {
+        $createProduct("Related Product {$index}", $index);
+    }
+
+    $response = $this->get(route('store.product', ['slug' => $product->slug]))->assertSuccessful();
+    $content = $response->getContent();
+
+    expect(substr_count($content, 'aria-roledescription="carousel"'))->toBe(1)
+        ->and($content)->toContain('aria-label="Related products"')
+        ->and($content)->toContain('xl:basis-[calc((100%-3rem)/5)]')
+        ->and($content)->toContain('Related Product 1')
+        ->and($content)->toContain('View All')
+        ->and($content)->not->toContain('role="tablist"');
 });

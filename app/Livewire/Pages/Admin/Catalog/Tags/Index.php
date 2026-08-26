@@ -19,9 +19,9 @@ class Index extends ResourceIndex
 
     public function bulk(string $action): void
     {
-        $this->validate(['selected' => ['array']]);
+        $this->validate(['selectedIds' => ['array']]);
 
-        foreach (Tag::whereKey($this->selected)->get() as $tag) {
+        foreach (Tag::whereKey($this->selectedIds)->get() as $tag) {
             $this->authorize($action === 'delete' ? 'delete' : 'update', $tag);
 
             if ($action === 'delete') {

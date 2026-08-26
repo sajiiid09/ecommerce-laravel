@@ -21,6 +21,22 @@ class CatalogCache
         return 'cms:homepage';
     }
 
+    public function product(string|int $product): string
+    {
+        return 'catalog:product:'.$product;
+    }
+
+    public function reviewSummary(string|int $product): string
+    {
+        return 'catalog:product:'.$product.':review-summary';
+    }
+
+    public function forgetProduct(string|int $product): void
+    {
+        Cache::forget($this->product($product));
+        Cache::forget($this->reviewSummary($product));
+    }
+
     public function forgetAll(): void
     {
         Cache::forget($this->categoryOptions());

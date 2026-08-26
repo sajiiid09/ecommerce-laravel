@@ -13,8 +13,25 @@
             </div>
         </x-ui.modal>
         <x-admin.cms.panel title="Attribute definitions" description="Type, filter, and product assignment status for catalog specifications.">
-            <div class="mb-4"><input wire:model.live.debounce.300ms="search" placeholder="Search attributes..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"></div>
-            <div class="overflow-x-auto"><table class="min-w-full text-left text-sm"><thead class="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-400"><tr><th class="px-3 py-3">Attribute</th><th class="px-3 py-3">Type</th><th class="px-3 py-3">Values</th><th class="px-3 py-3">Products</th><th class="px-3 py-3">Status</th><th class="px-3 py-3 text-right">Actions</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse($rows as $row)<tr wire:key="attribute-{{ $row->id }}" class="hover:bg-slate-50"><td class="px-3 py-4"><p class="font-bold text-slate-800">{{ $row->name }}</p><p class="text-xs text-slate-500">{{ $row->slug }}{{ $row->unit ? ' · '.$row->unit : '' }}</p></td><td class="px-3 py-4"><x-admin.cms.badge tone="info">{{ str_replace('_', ' ', ucfirst($row->type)) }}</x-admin.cms.badge></td><td class="px-3 py-4 text-slate-600">{{ $row->values_count }}</td><td class="px-3 py-4 text-slate-600">{{ $row->products_count }}</td><td class="px-3 py-4"><x-admin.cms.badge :tone="$row->is_active ? 'success' : 'neutral'">{{ $row->is_active ? 'Active' : 'Inactive' }}</x-admin.cms.badge></td><td class="px-3 py-4 text-right"><button wire:click="openEdit({{ $row->id }})" class="font-bold text-blue-600">Edit</button><button wire:click="toggleActive({{ $row->id }})" class="ml-3 font-bold text-slate-600">{{ $row->is_active ? 'Deactivate' : 'Activate' }}</button><button wire:click="deleteAttribute({{ $row->id }})" wire:confirm="Delete this attribute?" class="ml-3 font-bold text-red-600">Delete</button></td></tr>@empty<tr><td colspan="6" class="px-3 py-14 text-center text-sm text-slate-500">No attributes found.</td></tr>@endforelse</tbody></table></div><div class="mt-4">{{ $rows->links() }}</div>
+            <x-ui.table.container>
+                <div class="mb-4 flex items-center gap-3">
+                    <x-ui.input wire:model.live.debounce.300ms="searchQuery" placeholder="Search attributes..." leftIcon="magnifying-glass" class="flex-1" />
+                    <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="15">15</option><option value="30">30</option><option value="50">50</option></select>
+                </div>
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting">
+                    <x-ui.table.header><x-ui.table.columns withCheckAll>
+                        <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Attribute</x-ui.table.head>
+                        <x-ui.table.head>Type</x-ui.table.head><x-ui.table.head>Values</x-ui.table.head><x-ui.table.head>Products</x-ui.table.head><x-ui.table.head>Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                    </x-ui.table.columns></x-ui.table.header>
+                    <x-ui.table.rows>
+                        @forelse($rows as $row)
+                            <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="hover:bg-slate-50"><x-ui.table.cell><p class="font-bold text-slate-800">{{ $row->name }}</p><p class="text-xs text-slate-500">{{ $row->slug }}{{ $row->unit ? ' · '.$row->unit : '' }}</p></x-ui.table.cell><x-ui.table.cell><x-admin.cms.badge tone="info">{{ str_replace('_', ' ', ucfirst($row->type)) }}</x-admin.cms.badge></x-ui.table.cell><x-ui.table.cell>{{ $row->values_count }}</x-ui.table.cell><x-ui.table.cell>{{ $row->products_count }}</x-ui.table.cell><x-ui.table.cell><x-admin.cms.badge :tone="$row->is_active ? 'success' : 'neutral'">{{ $row->is_active ? 'Active' : 'Inactive' }}</x-admin.cms.badge></x-ui.table.cell><x-ui.table.cell><button wire:click="openEdit({{ $row->id }})" class="font-bold text-blue-600">Edit</button><button wire:click="toggleActive({{ $row->id }})" class="ml-3 font-bold text-slate-600">{{ $row->is_active ? 'Deactivate' : 'Activate' }}</button><button wire:click="deleteAttribute({{ $row->id }})" wire:confirm="Delete this attribute?" class="ml-3 font-bold text-red-600">Delete</button></x-ui.table.cell></x-ui.table.row>
+                        @empty
+                            <x-ui.table.empty><div class="space-y-1 py-6 text-center"><h3 class="text-sm font-semibold">{{ filled($searchQuery) ? 'No attributes match your search.' : 'No attributes found.' }}</h3><p class="text-sm text-slate-500">{{ filled($searchQuery) ? 'Try a different search term.' : 'Create an attribute to get started.' }}</p></div></x-ui.table.empty>
+                        @endforelse
+                    </x-ui.table.rows>
+                </x-ui.table>
+            </x-ui.table.container>
         </x-admin.cms.panel>
     </div>
 </div>

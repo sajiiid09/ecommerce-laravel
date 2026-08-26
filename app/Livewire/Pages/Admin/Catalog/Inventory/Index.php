@@ -2,23 +2,19 @@
 
 namespace App\Livewire\Pages\Admin\Catalog\Inventory;
 
+use App\Livewire\Concerns\WithCatalogTable;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
-
-    public string $search = '';
+    use WithCatalogTable;
 
     public string $status = 'all';
-
-    public int $perPage = 20;
 
     public ?int $adjustingItemId = null;
 
@@ -35,9 +31,15 @@ class Index extends Component
         $this->inventory = $inventory;
     }
 
-    public function updatedSearch(): void
+    public function mount(): void
+    {
+        $this->perPage = 20;
+    }
+
+    public function updatedSearchQuery(): void
     {
         $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedStatus(): void
@@ -87,8 +89,15 @@ class Index extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'status']);
+        $this->reset(['searchQuery', 'status']);
+        $this->clearSelection();
         $this->resetPage();
+    }
+
+    /** @return array<int, string> */
+    protected function sortableColumns(): array
+    {
+        return ['quantity_on_hand', 'quantity_reserved', 'updated_at'];
     }
 
     public function render()
@@ -96,7 +105,10 @@ class Index extends Component
         $base = InventoryItem::query()->with('variant.product');
         $this->applyFilters($base);
 
-        $rows = (clone $base)->latest('inventory_items.updated_at')->paginate($this->perPage);
+        $rows = clone $base;
+        $rows = $this->sortBy !== '' ? $this->applyCatalogSorting($rows) : $rows->latest('inventory_items.updated_at');
+        $rows = $rows->paginate($this->perPage);
+        $this->syncVisibleIds($rows);
         $all = InventoryItem::query();
 
         $stats = [
@@ -129,8 +141,8 @@ class Index extends Component
 
     private function applyFilters($query): void
     {
-        $query->when($this->search, function ($query): void {
-            $term = '%'.$this->search.'%';
+        $query->when($this->searchQuery, function ($query): void {
+            $term = '%'.$this->searchQuery.'%';
             $query->whereHas('variant', function ($variant) use ($term): void {
                 $variant->where('sku', 'like', $term)
                     ->orWhereHas('product', fn ($product) => $product->where('name', 'like', $term));

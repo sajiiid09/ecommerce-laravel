@@ -54,14 +54,16 @@ class Index extends ResourceIndex
         return Category::query()
             ->with('parent')
             ->withCount('products')
-            ->when($this->search, fn ($query) => $query->where(fn ($query) => $query
-                ->where('name', 'like', '%'.$this->search.'%')
-                ->orWhere('slug', 'like', '%'.$this->search.'%')))
+            ->when($this->searchQuery, fn ($query) => $query->where(fn ($query) => $query
+                ->where('name', 'like', '%'.$this->searchQuery.'%')
+                ->orWhere('slug', 'like', '%'.$this->searchQuery.'%')))
             ->when($this->status !== '', fn ($query) => $query->where('is_active', $this->status === 'active'))
             ->when($this->parentFilter, fn ($query) => $query->where('parent_id', $this->parentFilter))
-            ->orderByRaw('COALESCE(parent_id, 0) asc')
-            ->orderBy('sort_order')
-            ->orderBy('name');
+            ->when($this->sortBy !== '', fn ($query) => $this->applyCatalogSorting($query))
+            ->when($this->sortBy === '', fn ($query) => $query
+                ->orderByRaw('COALESCE(parent_id, 0) asc')
+                ->orderBy('sort_order')
+                ->orderBy('name'));
     }
 
     public function openCreate(): void
@@ -134,9 +136,9 @@ class Index extends ResourceIndex
 
     public function bulk(string $action): void
     {
-        $this->validate(['selected' => ['array']]);
+        $this->validate(['selectedIds' => ['array']]);
 
-        foreach (Category::whereKey($this->selected)->get() as $category) {
+        foreach (Category::whereKey($this->selectedIds)->get() as $category) {
             $this->authorize($action === 'delete' ? 'delete' : 'update', $category);
 
             if ($action === 'delete') {
@@ -173,18 +175,31 @@ class Index extends ResourceIndex
         }
 
         $category->delete();
-        $this->selected = array_values(array_diff($this->selected, [$id]));
+        $this->selectedIds = array_values(array_diff($this->selectedIds, [$id, (string) $id]));
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'status', 'parentFilter']);
+        $this->reset(['searchQuery', 'status', 'parentFilter']);
+        $this->clearSelection();
         $this->resetPage();
     }
 
     public function updatedPerPage(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedStatus(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
+    }
+
+    public function updatedParentFilter(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
     }
 
     private function resetEditor(): void
@@ -214,7 +229,7 @@ class Index extends ResourceIndex
         }
 
         return view('livewire.pages.admin.catalog.categories.index', [
-            'rows' => $rows,
+            'rows' => tap($rows, fn ($paginator) => $this->syncVisibleIds($paginator)),
             'parents' => Category::orderBy('name')->get(),
             'mediaAssets' => MediaAsset::latest()->limit(18)->get(),
             'selectedMedia' => $this->media_asset_id ? MediaAsset::find($this->media_asset_id) : null,

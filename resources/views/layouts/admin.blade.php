@@ -20,6 +20,7 @@
             request()->is('admin/catalog/inventory/*/history') => 'Inventory History',
             request()->is('admin/catalog/inventory') => 'Inventory',
             request()->is('admin/media') => 'Media Library',
+            request()->is('admin/settings/payments') => 'Payment Settings',
             default => 'Admin Dashboard',
         };
         $breadcrumbs = $breadcrumbs ?? [];
@@ -52,19 +53,24 @@
             @php
                 $navItems = [
                     ['label' => 'Dashboard', 'href' => '/admin', 'icon' => 'home', 'match' => 'admin'],
-                    ['label' => 'Orders', 'href' => '#', 'icon' => 'shopping-bag', 'match' => 'admin/orders', 'badge' => '12'],
-                    ['label' => 'Customers', 'href' => '#', 'icon' => 'users', 'match' => 'admin/customers*'],
-                    ['label' => 'Promotions', 'href' => '#', 'icon' => 'tag', 'match' => 'admin/promotions*'],
-                    ['label' => 'Payments', 'href' => '#', 'icon' => 'credit-card', 'match' => 'admin/payments*'],
-                    ['label' => 'Reviews', 'href' => '#', 'icon' => 'chat-bubble-left-right', 'match' => 'admin/reviews*', 'badge' => '18'],
-                    ['label' => 'Reports', 'href' => '#', 'icon' => 'chart-bar', 'match' => 'admin/reports*'],
-                    ['label' => 'Settings', 'href' => '#', 'icon' => 'cog-6-tooth', 'match' => 'admin/settings*'],
                 ];
+                if (Route::has('admin.orders')) {
+                    $navItems[] = ['label' => 'Orders', 'href' => route('admin.orders'), 'icon' => 'shopping-bag', 'match' => 'admin/orders*'];
+                }
+                if (Route::has('admin.customers')) {
+                    $navItems[] = ['label' => 'Customers', 'href' => route('admin.customers'), 'icon' => 'users', 'match' => 'admin/customers*'];
+                }
+                if (config('features.reviews') && Route::has('admin.reviews')) {
+                    $navItems[] = ['label' => 'Reviews', 'href' => route('admin.reviews'), 'icon' => 'chat-bubble-left-right', 'match' => 'admin/reviews*'];
+                }
+                if (Route::has('admin.settings.payments')) {
+                    $navItems[] = ['label' => 'Payments', 'href' => route('admin.settings.payments'), 'icon' => 'credit-card', 'match' => 'admin/settings/payments*'];
+                }
             @endphp
             @foreach($navItems as $item)
                 @php
                     $isActive = request()->is($item['match']);
-                    $href = $item['href'] === '#' ? '#' : url($item['href']);
+                    $href = str_starts_with($item['href'], 'http') ? $item['href'] : url($item['href']);
                 @endphp
                 <a href="{{ $href }}" class="admin-nav-link {{ $isActive ? 'is-active bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex items-center gap-3 rounded-lg px-3 py-2.5">
                     <span class="grid size-5 place-items-center">
@@ -147,7 +153,7 @@
         <div class="admin-help m-3 rounded-xl bg-[#1e293b] p-4">
             <p class="text-xs font-bold text-white">Need Help?</p>
             <p class="mt-1 text-[11px] leading-4 text-[#94a3b8]">We're here to help you manage your store easily.</p>
-            <a href="#" class="mt-3 inline-block rounded-lg border border-[#334155] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#334155]">Contact Support</a>
+            <a href="mailto:support@storez.local" class="mt-3 inline-block rounded-lg border border-[#334155] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#334155]">Contact Support</a>
         </div>
         <div class="admin-footer border-t border-white/10 p-3">
             <form method="POST" action="{{ route('logout') }}">
@@ -166,41 +172,8 @@
                 <button x-on:click="sidebarOpen = true" class="text-xl text-[#374151] lg:hidden" aria-label="Open menu">
                     <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </button>
-                <div class="hidden items-center gap-2 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 md:flex">
-                    <svg class="size-4 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-                    <span class="text-xs text-[#9ca3af]">Search anything...</span>
-                    <kbd class="ml-4 rounded border border-[#e5e7eb] bg-white px-1.5 py-0.5 text-[10px] text-[#9ca3af]">Ctrl K</kbd>
-                </div>
             </div>
             <div class="flex items-center gap-3">
-                <button aria-label="Notifications" class="relative grid size-9 place-items-center rounded-lg border border-[#e5e7eb] text-[#6b7280] hover:bg-[#f9fafb]">
-                    <svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
-                    <span class="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#ef4444] text-[9px] font-bold text-white">5</span>
-                </button>
-                <button class="relative grid size-9 place-items-center rounded-lg border border-[#e5e7eb] text-[#6b7280] hover:bg-[#f9fafb]">
-                    <svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
-                </button>
-                <div x-data="{ open: false }" class="relative">
-                    <button x-on:click="open = !open" class="flex items-center gap-2 rounded-lg bg-[#2563eb] px-3.5 py-2 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">
-                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                        <span>Quick Add</span>
-                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-                    </button>
-                    <div x-cloak x-show="open" x-on:click.away="open = false" x-transition class="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-[#e5e7eb] bg-white py-1 shadow-lg">
-                        <a href="{{ url('/admin/catalog/products/create') }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f9fafb]">
-                            <svg class="size-4 text-[#6b7280]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                            Add Product
-                        </a>
-                        <a href="{{ url('/admin/catalog/products/import') }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f9fafb]">
-                            <svg class="size-4 text-[#6b7280]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                            Import CSV
-                        </a>
-                        <a href="{{ url('/admin/catalog/products/export') }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f9fafb]">
-                            <svg class="size-4 text-[#6b7280]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                            Export CSV
-                        </a>
-                    </div>
-                </div>
                 <div class="flex items-center gap-2.5 border-l border-[#e5e7eb] pl-3">
                     <div class="grid size-9 place-items-center rounded-full bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
                         {{ strtoupper(substr(auth()->user()->name ?? 'A',0,1)) }}

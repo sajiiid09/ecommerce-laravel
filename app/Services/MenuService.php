@@ -129,9 +129,15 @@ class MenuService
             };
         }
 
-        return $item->type === 'route' && $item->route_name
-            ? route($item->route_name)
-            : ($item->url ?: '#');
+        if ($item->type === 'route' && $item->route_name) {
+            return route($item->route_name);
+        }
+
+        if (filled($item->url) && str_starts_with($item->url, '/')) {
+            return url($item->url);
+        }
+
+        return $item->url ?: '#';
     }
 
     private function targetClass(string $type): ?string

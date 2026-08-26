@@ -64,12 +64,14 @@ class CatalogQueryService
             return collect(StorefrontDemoData::products())->firstWhere('slug', $slug);
         }
 
-        $product = $this->publicProductsQuery()
-            ->where('slug', $slug)
-            ->with(['categories', 'attributeValues.attribute', 'attributeValues.attributeValue'])
-            ->first();
+        return Cache::remember($this->cache->product($slug), 900, function () use ($slug): ?array {
+            $product = $this->publicProductsQuery()
+                ->where('slug', $slug)
+                ->with(['categories', 'attributeValues.attribute', 'attributeValues.attributeValue'])
+                ->first();
 
-        return $product ? $this->toDetail($product) : null;
+            return $product ? $this->toDetail($product) : null;
+        });
     }
 
     public function categoryOptions(): array

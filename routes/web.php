@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\StripeCheckoutController;
 use App\Livewire\Pages\Account\Dashboard;
+use App\Livewire\Pages\Account\OrderDetail;
 use App\Livewire\Pages\Account\Orders;
 use App\Livewire\Pages\Account\Tracking;
 use App\Livewire\Pages\Admin\Catalog\Inventory\History;
@@ -11,6 +13,10 @@ use App\Livewire\Pages\Admin\Catalog\Products\Variants;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
 use App\Livewire\Pages\Admin\Content\Navigation\Manager;
 use App\Livewire\Pages\Admin\Media\Index;
+use App\Livewire\Pages\Admin\Orders\Index as AdminOrdersIndex;
+use App\Livewire\Pages\Admin\Orders\Show as AdminOrderShow;
+use App\Livewire\Pages\Admin\Reviews\Index as AdminReviewsIndex;
+use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
 use App\Livewire\Pages\Auth\Login;
 use App\Livewire\Pages\Auth\Register;
 use App\Livewire\Pages\Store\Brand;
@@ -51,17 +57,27 @@ Route::livewire('/brands/{slug}', new Brand)->name('store.brand');
 Route::livewire('/cart', new Cart)->name('store.cart');
 Route::livewire('/checkout', new Checkout)->name('store.checkout');
 Route::livewire('/checkout/success', new OrderSuccess)->name('store.order-success');
+Route::get('/checkout/stripe/success', [StripeCheckoutController::class, 'success'])->name('stripe.checkout.success');
+Route::get('/checkout/stripe/cancel', [StripeCheckoutController::class, 'cancel'])->name('stripe.checkout.cancel');
+Route::post('/stripe/webhook', [StripeCheckoutController::class, 'webhook'])->name('stripe.webhook');
 Route::get('/order-success', fn () => redirect()->route('store.order-success', [], 301));
 Route::livewire('/wishlist', new Wishlist)->name('store.wishlist');
-Route::livewire('/login', new Login)->name('login');
-Route::livewire('/register', new Register)->name('register');
-Route::livewire('/account', new Dashboard)->name('account.dashboard');
-Route::livewire('/orders', new Orders)->name('account.orders');
-Route::livewire('/account/orders/{order?}/track', new Tracking)->name('account.tracking');
+Route::livewire('/login', new Login)->middleware('guest')->name('login');
+Route::livewire('/register', new Register)->middleware('guest')->name('register');
+Route::livewire('/account', new Dashboard)->middleware('auth')->name('account.dashboard');
+Route::livewire('/orders', new Orders)->middleware('auth')->name('account.orders');
+Route::livewire('/account/orders/{order}', new OrderDetail)->middleware('auth')->name('account.order');
+Route::livewire('/account/orders/{order?}/track', new Tracking)->middleware('auth')->name('account.tracking');
 Route::get('/orders/SZ-100248/tracking', fn () => redirect()->route('account.tracking', ['order' => 'SZ-100248'], 301));
 
 Route::livewire('/admin', new App\Livewire\Pages\Admin\Dashboard)->middleware(['auth', 'admin'])->name('admin.dashboard');
 Route::livewire('/admin/media', new Index)->middleware(['auth', 'admin'])->name('admin.media');
+Route::prefix('admin/orders')->middleware(['auth', 'admin'])->group(function (): void {
+    Route::livewire('/', new AdminOrdersIndex)->name('admin.orders');
+    Route::livewire('/{order}', new AdminOrderShow)->name('admin.order');
+});
+Route::livewire('/admin/reviews', new AdminReviewsIndex)->middleware(['auth', 'admin'])->name('admin.reviews');
+Route::livewire('/admin/settings/payments', new AdminPaymentSettings)->middleware(['auth', 'admin'])->name('admin.settings.payments');
 
 Route::prefix('admin/catalog')->middleware(['auth', 'admin'])->group(function (): void {
     Route::livewire('/products', new App\Livewire\Pages\Admin\Catalog\Products\Index)->name('admin.catalog.products');

@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Catalog;
 
-use App\Livewire\Concerns\WithAdminTable;
+use App\Livewire\Concerns\WithCatalogTable;
 use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
@@ -17,9 +17,7 @@ use Livewire\Component;
 #[Layout('layouts.admin')]
 abstract class ResourceIndex extends Component
 {
-    use WithAdminTable;
-
-    public string $search = '';
+    use WithCatalogTable;
 
     public string $name = '';
 
@@ -43,9 +41,21 @@ abstract class ResourceIndex extends Component
 
     abstract protected function title(): string;
 
-    public function updatedSearch(): void
+    /** @return array<int, string> */
+    protected function sortableColumns(): array
     {
-        $this->resetTablePage();
+        return ['name', 'slug', 'created_at', 'updated_at'];
+    }
+
+    public function updatedSearchQuery(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
     }
 
     public function createRecord(): void
@@ -136,15 +146,15 @@ abstract class ResourceIndex extends Component
         $record = $this->model()::findOrFail($id);
         Gate::authorize('delete', $record);
         $record->delete();
-        $this->selected = array_values(array_diff($this->selected, [$id]));
+        $this->selectedIds = array_values(array_diff($this->selectedIds, [$id, (string) $id]));
         $this->forgetCatalogCache();
     }
 
     public function deleteSelected(): void
     {
-        $this->validate(['selected' => ['array']]);
+        $this->validate(['selectedIds' => ['array']]);
 
-        foreach ($this->model()::whereKey($this->selected)->get() as $record) {
+        foreach ($this->model()::whereKey($this->selectedIds)->get() as $record) {
             Gate::authorize('delete', $record);
             $record->delete();
         }
@@ -157,16 +167,19 @@ abstract class ResourceIndex extends Component
     {
         $model = $this->model();
         $query = $model::query()
-            ->when($this->search, fn ($query) => $query->where(fn ($search) => $search
-                ->where('name', 'like', '%'.$this->search.'%')
-                ->orWhere('slug', 'like', '%'.$this->search.'%')))
-            ->orderBy($this->sortField, $this->sortDirection);
+            ->when($this->searchQuery, fn ($query) => $query->where(fn ($search) => $search
+                ->where('name', 'like', '%'.$this->searchQuery.'%')
+                ->orWhere('slug', 'like', '%'.$this->searchQuery.'%')));
 
         if (method_exists($model, 'products')) {
             $query->withCount('products');
         }
 
-        return $query;
+        if ($this->sortBy !== '') {
+            return $this->applyCatalogSorting($query);
+        }
+
+        return $query->latest();
     }
 
     protected function forgetCatalogCache(): void
@@ -217,7 +230,7 @@ abstract class ResourceIndex extends Component
         }
 
         return view('livewire.pages.admin.catalog.resource-index', [
-            'rows' => $this->rows()->paginate($this->perPage),
+            'rows' => tap($this->rows()->paginate($this->perPage), fn ($rows) => $this->syncVisibleIds($rows)),
             'title' => $this->title(),
             'mostUsed' => method_exists($model, 'products')
                 ? $model::query()->withCount('products')->orderByDesc('products_count')->limit(4)->get()

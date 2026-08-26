@@ -25,8 +25,9 @@
                 }));
             },
             addToCart(product, quantityToAdd = 1) {
-                const item = this.cart.find((cartItem) => cartItem.id === product.id);
-                item ? item.quantity += quantityToAdd : this.cart.push({ ...product, quantity: quantityToAdd });
+                if (product.variantId && window.Livewire) {
+                    window.Livewire.dispatch('add-to-cart', { variantId: product.variantId, quantity: quantityToAdd });
+                }
                 this.cartOpen = true;
                 this.notify(`${product.name} added to cart`);
             },
@@ -47,6 +48,8 @@
         }"
         x-effect="document.body.classList.toggle('overflow-hidden', cartOpen)"
         @keydown.escape.window="cartOpen = false; mobileMenuOpen = false"
+        @open-cart.window="cartOpen = true"
+        @cart-updated.window="cart = $event.detail.items || cart"
         @scroll.window="showScrollTop = window.scrollY > 400"
     >
         @foreach($announcements as $announcement)<x-store.layout.announcement :announcement="$announcement" />@endforeach
@@ -58,23 +61,10 @@
 
         <x-store.layout.trust-strip :items="$trustItems" />
         <x-store.layout.footer :categories="$categories" />
-        <x-store.checkout.cart-drawer />
+        <livewire:components.store.cart-drawer />
         <x-ui.toast position="top-center" />
 
-        <div class="fixed bottom-5 right-5 z-40 size-12">
-            <a href="https://wa.me/8801700000000?text=Hello%20StoreZ" target="_blank" rel="noopener noreferrer"
-                class="absolute bottom-0 left-0 grid size-12 place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition duration-300 ease-out hover:scale-105 hover:bg-[#1ebe5d]"
-                :class="showScrollTop ? '-translate-y-15' : 'translate-y-0'"
-                aria-label="Chat with StoreZ on WhatsApp">
-                <x-ui.icon name="phone" class="size-6 !text-white" />
-            </a>
-            <button type="button" x-cloak x-show="showScrollTop" x-transition
-                @click="window.scrollTo({ top: 0, behavior: 'smooth' })"
-                class="absolute bottom-0 left-0 grid size-12 place-items-center rounded-full bg-store-blue text-white shadow-lg transition hover:scale-105 hover:bg-store-blue-dark"
-                aria-label="Scroll to top">
-                <x-ui.icon name="arrow-up" class="size-6 !text-white" />
-            </button>
-        </div>
+        <x-store.layout.floating-actions :whatsapp-number="$whatsappNumber" />
 
         @livewireScriptConfig
     </body>

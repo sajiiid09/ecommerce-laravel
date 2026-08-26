@@ -80,6 +80,11 @@ class Product extends Model
         return $this->hasMany(ProductMedia::class);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
     public function scopePublished(Builder $q): Builder
     {
         return $q->where('status', ProductStatus::Published->value);

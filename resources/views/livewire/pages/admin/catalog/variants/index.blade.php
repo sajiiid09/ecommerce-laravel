@@ -7,13 +7,9 @@
         </div>
 
         <div class="mb-5 flex flex-wrap items-center gap-2">
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                Export Variants
-            </button>
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
+            <button type="button" wire:click="toggleFilters" class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
-                Filters
+                {{ $filtersOpen ? 'Hide Filters' : 'Filters' }}
             </button>
         </div>
 
@@ -29,7 +25,7 @@
                         <div>
                             <p class="text-xs font-semibold text-[#6b7280]">{{ $label }}</p>
                             <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ $value }}</p>
-                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all →</a>
+                            <a href="{{ url('/admin/catalog/products') }}" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View products ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
                         </div>
                         <span style="background: {{ $color }}15; color: {{ $color }}" class="grid size-11 place-items-center rounded-full">
                             <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
@@ -39,55 +35,45 @@
             @endforeach
         </div>
 
+        @if($filtersOpen)
+            <div class="mb-4 flex items-end gap-3 rounded-xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
+                <label class="text-xs font-semibold text-[#374151]">Status<select wire:model.live="status" class="mt-1 block h-10 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="all">All variants</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="low_stock">Low stock</option><option value="out_of_stock">Out of stock</option></select></label>
+                <button type="button" wire:click="resetFilters" class="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm font-semibold text-[#374151]">Reset filters</button>
+            </div>
+        @endif
+
         <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-[#e5e7eb]">
-            @foreach(['All','Active','Inactive','Low Stock','Out of Stock'] as $tab)
-                <button class="border-b-2 {{ $loop->first ? 'border-[#2563eb] text-[#2563eb]' : 'border-transparent text-[#9ca3af] hover:text-[#374151]' }} px-3 pb-3 text-sm font-semibold">{{ $tab }}</button>
+            @foreach(['all' => 'All', 'active' => 'Active', 'inactive' => 'Inactive', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock'] as $value => $tab)
+                <button type="button" wire:click="$set('status', '{{ $value }}')" class="border-b-2 {{ $status === $value ? 'border-[#2563eb] text-[#2563eb]' : 'border-transparent text-[#9ca3af] hover:text-[#374151]' }} px-3 pb-3 text-sm font-semibold">{{ $tab }}</button>
             @endforeach
         </div>
 
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div>
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
-                    <div class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2">
-                        <svg class="size-4 shrink-0 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-                        <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search product or SKU..." class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9ca3af]">
-                    </div>
-                    <x.ui.select wire:model.live="perPage" placeholder="10" class="h-10 w-24"><x.ui.select.option value="10">10</x.ui.select.option><x.ui.select.option value="25">25</x.ui.select.option></x.ui.select>
+                    <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search product or SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
+                    <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="20">20</option><option value="50">50</option></select>
                 </div>
 
-                <div class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left text-sm">
-                            <thead class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">
-                                <tr>
-                                    <th class="w-12 px-5 py-3"><input type="checkbox" class="rounded border-[#d1d5db] text-[#2563eb]"></th>
-                                    <th class="px-4 py-3">Variant</th>
-                                    <th class="px-4 py-3">Parent Product</th>
-                                    <th class="px-4 py-3">SKU</th>
-                                    <th class="px-4 py-3">Options</th>
-                                    <th class="px-4 py-3">Price</th>
-                                    <th class="px-4 py-3">Stock</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3">Default</th>
-                                    <th class="px-5 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-[#f3f4f6]">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
+                            <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
+                                <x-ui.table.head column="created_at" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Variant</x-ui.table.head><x-ui.table.head>Parent Product</x-ui.table.head><x-ui.table.head column="sku" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">SKU</x-ui.table.head><x-ui.table.head>Options</x-ui.table.head><x-ui.table.head>Price</x-ui.table.head><x-ui.table.head>Stock</x-ui.table.head><x-ui.table.head column="is_active" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Status</x-ui.table.head><x-ui.table.head>Default</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                            </x-ui.table.columns></x-ui.table.header>
+                            <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
-                                    <tr class="text-[#374151] hover:bg-[#f9fafb]">
-                                        <td class="px-5 py-4"><input type="checkbox" class="rounded border-[#d1d5db] text-[#2563eb]"></td>
+                                    <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
                                         <td class="px-4 py-4">
                                             <div class="flex items-center gap-3">
                                                 <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
                                                     <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                                                 </div>
-                                                <span class="font-bold text-[#111827]">{{ $row->product?->name ?? '—' }}</span>
+                                                <span class="font-bold text-[#111827]">{{ $row->product?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</span>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? '—' }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
                                         <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->sku }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues ?? '—' }}</td>
-                                        <td class="px-4 py-4 font-semibold text-[#111827]">৳{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues->pluck('value')->join(' / ') ?: 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
+                                        <td class="px-4 py-4 font-semibold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
                                         <td class="px-4 py-4"><span class="font-semibold {{ $row->availableQuantity() < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->availableQuantity() }}</span></td>
                                         <td class="px-4 py-4">
                                             @php $isActive = $row->is_active ?? true; @endphp
@@ -103,15 +89,12 @@
                                                 <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                             </div>
                                         </td>
-                                    </tr>
+                                    </x-ui.table.row>
                                 @empty
-                                    <tr><td colspan="10" class="px-5 py-12 text-center text-sm text-[#9ca3af]">No variants found.</td></tr>
+                                    <x-ui.table.empty>{{ filled($searchQuery) || $status !== 'all' ? 'No variants match the selected search or filter.' : 'No variants found.' }}</x-ui.table.empty>
                                 @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="border-t border-[#f3f4f6] px-5 py-4">{{ $rows->links() }}</div>
-                </div>
+                            </x-ui.table.rows>
+                </x-ui.table>
             </div>
 
             <div class="space-y-5">
@@ -136,7 +119,7 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">Low Stock Variants</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View all</a>
+                        <a href="{{ url('/admin/catalog/products') }}" class="text-xs font-bold text-[#2563eb]">View products</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @foreach(['Beige / Small'=>5,'128 GB / Blue'=>14,'256 GB / Green'=>7] as $variant=>$count)

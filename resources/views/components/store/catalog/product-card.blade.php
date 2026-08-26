@@ -1,6 +1,6 @@
 @props(['product', 'compact' => false])
 
-<article class="group relative flex min-h-full flex-col overflow-hidden rounded-card border border-store-border bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-store-soft">
+<article {{ $attributes->class('group relative flex min-h-full flex-col overflow-hidden rounded-card border border-store-border bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-store-soft') }}>
     <div class="relative {{ $compact ? 'p-2 sm:p-3' : 'p-4' }}">
         <x-store.ui.discount-badge :discount="$product['discount']" class="absolute left-2 top-2 z-10" />
         <button type="button" class="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/90 text-store-muted transition hover:text-store-red" @click="toggleWishlist({{ $product['id'] }})" :aria-label="wishlist.includes({{ $product['id'] }}) ? 'Remove from wishlist' : 'Add to wishlist'" :class="wishlist.includes({{ $product['id'] }}) && 'text-store-red'"><x-ui.icon name="heart" class="size-5 !text-current" /><span class="sr-only" x-text="wishlist.includes({{ $product['id'] }}) ? 'Saved' : 'Save'" /></button>

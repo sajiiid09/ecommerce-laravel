@@ -3,6 +3,7 @@
 namespace App\View\Composers;
 
 use App\Services\AnnouncementService;
+use App\Services\CartService;
 use App\Services\CatalogQueryService;
 use App\Services\SiteSettingsService;
 use App\Support\StorefrontDemoData;
@@ -20,8 +21,11 @@ class StorefrontLayoutComposer
     public function compose(View $view): void
     {
         $view->with([
-            'cartItems' => StorefrontDemoData::cartItems(),
+            'cartItems' => Schema::hasTable('carts') ? app(CartService::class)->present() : StorefrontDemoData::cartItems(),
             'categories' => $this->catalog->categoryOptions(),
+            'whatsappNumber' => Schema::hasTable('site_settings')
+                ? $this->settings->get('footer', 'whatsapp_number')
+                : null,
             'trustItems' => [
                 ['title' => 'Secure payments', 'description' => 'Protected checkout options.'],
                 ['title' => 'Fast delivery', 'description' => 'Reliable delivery across Bangladesh.'],

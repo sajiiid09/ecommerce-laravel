@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Admin\Catalog\Products;
 
 use App\Enums\ProductStatus;
 use App\Livewire\Pages\Admin\Catalog\ResourceIndex;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\Product;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\Gate;
 class Index extends ResourceIndex
 {
     public string $status = '';
+
+    public ?int $categoryFilter = null;
+
+    public ?int $brandFilter = null;
 
     protected function model(): string
     {
@@ -28,16 +33,19 @@ class Index extends ResourceIndex
     {
         return Product::query()
             ->with(['brand', 'primaryCategory', 'defaultVariant.inventory'])
-            ->when($this->search, fn ($query) => $query->search($this->search))
+            ->when($this->searchQuery, fn ($query) => $query->search($this->searchQuery))
             ->when($this->status, fn ($query) => $query->where('status', $this->status))
-            ->orderBy($this->sortField, $this->sortDirection);
+            ->when($this->categoryFilter, fn ($query) => $query->where('primary_category_id', $this->categoryFilter))
+            ->when($this->brandFilter, fn ($query) => $query->where('brand_id', $this->brandFilter))
+            ->when($this->sortBy !== '', fn ($query) => $this->applyCatalogSorting($query))
+            ->when($this->sortBy === '', fn ($query) => $query->latest());
     }
 
     public function bulk(string $action): void
     {
-        $this->validate(['selected' => ['array']]);
+        $this->validate(['selectedIds' => ['array']]);
 
-        $products = Product::query()->whereKey($this->selected)->get();
+        $products = Product::query()->whereKey($this->selectedIds)->get();
 
         foreach ($products as $product) {
             $ability = $action === 'delete' ? 'delete' : 'update';
@@ -58,10 +66,45 @@ class Index extends ResourceIndex
         $this->forgetCatalogCache();
     }
 
+    public function resetFilters(): void
+    {
+        $this->reset(['searchQuery', 'status', 'categoryFilter', 'brandFilter']);
+        $this->clearSelection();
+        $this->resetPage();
+    }
+
+    public function updatedStatus(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
+    }
+
+    public function updatedCategoryFilter(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
+    }
+
+    public function updatedBrandFilter(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
+    }
+
+    /** @return array<int, string> */
+    protected function sortableColumns(): array
+    {
+        return ['name', 'status', 'created_at'];
+    }
+
     public function render()
     {
+        $rows = $this->rows()->paginate($this->perPage);
+
+        $this->syncVisibleIds($rows);
+
         return view('livewire.pages.admin.catalog.products.index', [
-            'rows' => $this->rows()->paginate($this->perPage),
+            'rows' => $rows,
             'title' => $this->title(),
             'stats' => [
                 'total' => Product::count(),
@@ -71,6 +114,8 @@ class Index extends ResourceIndex
             ],
             'topCategories' => Category::query()->withCount('products')->orderByDesc('products_count')->limit(5)->get(),
             'totalCategories' => Category::count(),
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
             'inventoryAlerts' => [
                 'Out of Stock' => InventoryItem::query()->whereRaw('(quantity_on_hand - quantity_reserved) <= 0')->count(),
                 'Low Stock' => InventoryItem::query()->where('track_quantity', true)->whereRaw('(quantity_on_hand - quantity_reserved) > 0')->whereRaw('(quantity_on_hand - quantity_reserved) <= low_stock_threshold')->count(),

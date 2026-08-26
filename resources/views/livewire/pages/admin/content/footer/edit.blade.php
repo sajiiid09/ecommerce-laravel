@@ -16,6 +16,7 @@
                     <div class="space-y-4">
                         <label class="block text-sm font-semibold text-slate-700">Description<textarea wire:model.live="description" rows="4" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="Tell customers about your store"></textarea></label>
                         <label class="block text-sm font-semibold text-slate-700">Support email<input type="email" wire:model.live="support_email" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"></label>
+                        <label class="block text-sm font-semibold text-slate-700">WhatsApp number<input type="tel" wire:model.live="whatsapp_number" autocomplete="tel" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="8801XXXXXXXXX"><span class="mt-1 block text-xs font-normal text-slate-500">Use the international number with country code. Leave empty to hide the floating WhatsApp button.</span>@error('whatsapp_number')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label>
                         <label class="block text-sm font-semibold text-slate-700">Copyright<input wire:model.live="copyright" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"></label>
                     </div>
                 </x-admin.cms.panel>

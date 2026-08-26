@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Catalog\Attributes;
 
-use App\Livewire\Concerns\WithAdminTable;
+use App\Livewire\Concerns\WithCatalogTable;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +15,7 @@ use Livewire\Component;
 #[Layout('layouts.admin')]
 class Index extends Component
 {
-    use WithAdminTable;
-
-    public string $search = '';
+    use WithCatalogTable;
 
     public string $name = '';
 
@@ -44,9 +42,16 @@ class Index extends Component
         $this->authorize('viewAny', Attribute::class);
     }
 
-    public function updatedSearch(): void
+    public function updatedSearchQuery(): void
     {
         $this->resetPage();
+        $this->clearSelection();
+    }
+
+    /** @return array<int, string> */
+    protected function sortableColumns(): array
+    {
+        return ['name', 'slug', 'created_at', 'updated_at'];
     }
 
     public function openCreate(): void
@@ -148,11 +153,12 @@ class Index extends Component
     {
         $rows = Attribute::query()
             ->withCount(['values', 'products'])
-            ->when($this->search, fn ($query) => $query->where(fn ($search) => $search
-                ->where('name', 'like', '%'.$this->search.'%')
-                ->orWhere('slug', 'like', '%'.$this->search.'%')))
-            ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
+            ->when($this->searchQuery, fn ($query) => $query->where(fn ($search) => $search
+                ->where('name', 'like', '%'.$this->searchQuery.'%')
+                ->orWhere('slug', 'like', '%'.$this->searchQuery.'%')));
+
+        $rows = ($this->sortBy !== '' ? $this->applyCatalogSorting($rows) : $rows->latest())->paginate($this->perPage);
+        $this->syncVisibleIds($rows);
 
         return view('livewire.pages.admin.catalog.attributes.index', [
             'rows' => $rows,

@@ -8,6 +8,7 @@
 
         <div class="mb-5 flex flex-wrap items-center gap-2">
             <a href="{{ url('/admin/catalog/products/create') }}" class="rounded-lg bg-[#2563eb] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">+ Add New Product</a>
+            @if(config('features.catalog_import_export'))
             <a href="{{ url('/admin/catalog/products/import') }}" class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
                 Import
@@ -16,9 +17,10 @@
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                 Export
             </a>
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
+            @endif
+            <button type="button" wire:click="toggleFilters" class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
-                Filters
+                {{ $filtersOpen ? 'Hide Filters' : 'Filters' }}
             </button>
         </div>
 
@@ -40,7 +42,7 @@
                         </span>
                     </div>
                     <div class="mt-4 flex items-center gap-2 text-xs">
-                        <span class="font-bold text-[#10b981]">+0.0% ↑</span>
+                        <span class="font-bold text-[#10b981]">+0.0% ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Ëœ</span>
                         <span class="text-[#9ca3af]">vs last 7 days</span>
                         <span class="ml-auto">
                             <svg class="h-6 w-16" viewBox="0 0 64 24" fill="none"><polyline points="0,20 8,16 16,18 24,10 32,12 40,6 48,8 56,2 64,4" stroke="{{ $color }}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -56,45 +58,37 @@
             @endforeach
         </div>
 
+        @if($filtersOpen)
+            <div class="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
+                <label class="text-xs font-semibold text-[#374151]">Category<select wire:model.live="categoryFilter" class="mt-1 block h-10 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach</select></label>
+                <label class="text-xs font-semibold text-[#374151]">Brand<select wire:model.live="brandFilter" class="mt-1 block h-10 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="">All brands</option>@foreach($brands as $brand)<option value="{{ $brand->id }}">{{ $brand->name }}</option>@endforeach</select></label>
+                <button type="button" wire:click="resetFilters" class="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm font-semibold text-[#374151]">Reset filters</button>
+            </div>
+        @endif
+
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div>
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
-                    <div class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2">
-                        <svg class="size-4 shrink-0 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-                        <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search products by name, SKU..." class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9ca3af]">
-                    </div>
-                    <x.ui.select wire:model.live="perPage" placeholder="10" class="h-10 w-24"><x.ui.select.option value="10">10</x.ui.select.option><x.ui.select.option value="25">25</x.ui.select.option><x.ui.select.option value="50">50</x.ui.select.option></x.ui.select>
+                    <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search products by name, SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
+                    <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="15">15</option><option value="30">30</option><option value="50">50</option></select>
                 </div>
 
-                @if(count($selected))
+                @if(count($selectedIds))
                     <div class="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-sm text-[#2563eb]">
-                        <span class="mr-2 font-semibold">{{ count($selected) }} selected</span>
+                        <span class="mr-2 font-semibold">{{ count($selectedIds) }} selected</span>
                         @foreach(['publish'=>'Publish','draft'=>'Draft','archive'=>'Archive','delete'=>'Delete'] as $action=>$label)
                             <button wire:click="bulk('{{ $action }}')" class="rounded-md border border-[#bfdbfe] bg-white px-3 py-1.5 font-semibold hover:bg-[#dbeafe]">{{ $label }}</button>
                         @endforeach
                     </div>
                 @endif
 
-                <div class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left text-sm">
-                            <thead class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">
-                                <tr>
-                                    <th class="w-12 px-5 py-3"><input type="checkbox" wire:click="togglePageSelection" class="rounded border-[#d1d5db] text-[#2563eb]"></th>
-                                    <th class="px-4 py-3">Product</th>
-                                    <th class="px-4 py-3">SKU</th>
-                                    <th class="px-4 py-3">Category</th>
-                                    <th class="px-4 py-3">Brand</th>
-                                    <th class="px-4 py-3">Price</th>
-                                    <th class="px-4 py-3">Stock</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-5 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-[#f3f4f6]">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
+                            <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
+                                <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Product</x-ui.table.head><x-ui.table.head>SKU</x-ui.table.head><x-ui.table.head>Category</x-ui.table.head><x-ui.table.head>Brand</x-ui.table.head><x-ui.table.head>Price</x-ui.table.head><x-ui.table.head>Stock</x-ui.table.head><x-ui.table.head column="status" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                            </x-ui.table.columns></x-ui.table.header>
+                            <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
-                                    <tr class="text-[#374151] hover:bg-[#f9fafb]">
-                                        <td class="px-5 py-4"><input type="checkbox" wire:model="selected" value="{{ $row->id }}" class="rounded border-[#d1d5db] text-[#2563eb]"></td>
+                                    <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
                                         <td class="px-4 py-4">
                                             <div class="flex items-center gap-3">
                                                 <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
@@ -102,14 +96,14 @@
                                                 </div>
                                                 <div>
                                                     <p class="font-bold text-[#111827]">{{ $row->name }}</p>
-                                                    <p class="mt-0.5 text-xs text-[#9ca3af]">{{ $row->brand?->name ?? '—' }}</p>
+                                                    <p class="mt-0.5 text-xs text-[#9ca3af]">{{ $row->brand?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->defaultVariant?->sku ?? '—' }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->primaryCategory?->name ?? '—' }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->brand?->name ?? '—' }}</td>
-                                        <td class="px-4 py-4 font-semibold text-[#111827]">৳{{ number_format(($row->defaultVariant?->currentPriceMinor() ?? 0)/100,2) }}</td>
+                                        <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->defaultVariant?->sku ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->primaryCategory?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->brand?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
+                                        <td class="px-4 py-4 font-semibold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³{{ number_format(($row->defaultVariant?->currentPriceMinor() ?? 0)/100,2) }}</td>
                                         <td class="px-4 py-4"><span class="font-semibold {{ ($row->defaultVariant?->availableQuantity() ?? 0) < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->defaultVariant?->availableQuantity() ?? 0 }}</span></td>
                                         <td class="px-4 py-4">
                                             @php $st = $row->status?->value ?? $row->status; @endphp
@@ -121,15 +115,12 @@
                                                 <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                             </div>
                                         </td>
-                                    </tr>
+                                    </x-ui.table.row>
                                 @empty
-                                    <tr><td colspan="9" class="px-5 py-12 text-center text-sm text-[#9ca3af]">No products found.</td></tr>
+                                    <x-ui.table.empty>{{ filled($searchQuery) || filled($status) || $categoryFilter || $brandFilter ? 'No products match the selected search or filters.' : 'No products found.' }}</x-ui.table.empty>
                                 @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="border-t border-[#f3f4f6] px-5 py-4">{{ $rows->links() }}</div>
-                </div>
+                            </x-ui.table.rows>
+                </x-ui.table>
             </div>
 
             <div class="space-y-5">
@@ -173,7 +164,7 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">Recently Added Products</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View All</a>
+                        <a href="{{ url('/admin/catalog/categories') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @foreach($rows->take(5) as $row)
@@ -195,7 +186,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-[#6b7280]">Total Product Value</p>
-                            <p class="text-lg font-extrabold text-[#111827]">৳3,24,85,600</p>
+                            <p class="text-lg font-extrabold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³3,24,85,600</p>
                         </div>
                     </div>
                 </div>

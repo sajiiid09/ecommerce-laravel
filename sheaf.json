@@ -48,6 +48,15 @@
         },
         "textarea": {
             "installationTime": 1787586197
+        },
+        "table": {
+            "installationTime": 1787736722
+        },
+        "pagination": {
+            "installationTime": 1787736724
+        },
+        "dropdown": {
+            "installationTime": 1787736726
         }
     }
 }

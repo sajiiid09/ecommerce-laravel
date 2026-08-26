@@ -1,14 +1,18 @@
 <?php
 
+use App\Livewire\Pages\Admin\Content\Footer\Edit as FooterEdit;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
 use App\Models\Announcement;
 use App\Models\Banner;
+use App\Models\Category;
 use App\Models\HomepageSection;
 use App\Models\MediaAsset;
 use App\Models\MediaUsage;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Redirect;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -159,11 +163,188 @@ it('renders persisted navigation, settings, banners, and announcements on the st
 
     $this->get('/')->assertSuccessful()
         ->assertSee('Shipping')
+        ->assertSee('href="'.url('/shipping').'"', false)
         ->assertSee('Summer savings')
         ->assertSee('Free delivery this week')
         ->assertSee('Persisted footer content');
 
-    expect(app(MenuService::class)->navigation('header-primary')[0]['url'])->toBe('/shipping');
+    expect(app(MenuService::class)->navigation('header-primary')[0]['url'])->toBe(url('/shipping'));
+});
+
+it('manages the optional WhatsApp floating action from footer settings', function () {
+    Cache::flush();
+
+    $this->get('/admin/content/footer')->assertRedirect(route('login'));
+
+    $this->actingAs(User::factory()->create(['is_admin' => false]))
+        ->get('/admin/content/footer')
+        ->assertForbidden();
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    SiteSetting::create(['group' => 'footer', 'key' => 'description', 'value' => 'Existing footer content', 'is_public' => true]);
+
+    $this->get('/')->assertSuccessful()->assertDontSee('https://wa.me/', false);
+
+    Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('whatsapp_number', '+880 1700-000-000')
+        ->call('saveFooter')
+        ->assertHasNoErrors();
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'whatsapp_number'])->firstOrFail()->value)
+        ->toBe('8801700000000')
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'description'])->firstOrFail()->value)
+        ->toBe('Existing footer content');
+
+    $this->get('/')->assertSuccessful()
+        ->assertSee('https://wa.me/8801700000000?text=Hello%20StoreZ', false)
+        ->assertSee('viewBox="0 0 48 48"', false)
+        ->assertSee('aria-label="Scroll to top"', false);
+
+    Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('whatsapp_number', '01700000000')
+        ->call('saveFooter')
+        ->assertHasErrors(['whatsapp_number']);
+
+    Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('whatsapp_number', '')
+        ->call('saveFooter')
+        ->assertHasNoErrors();
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'whatsapp_number'])->firstOrFail()->value)
+        ->toBeNull();
+
+    $this->get('/')->assertSuccessful()
+        ->assertDontSee('https://wa.me/', false)
+        ->assertSee('aria-label="Scroll to top"', false);
+});
+
+it('keeps homepage hero slides at full width to prevent carousel clipping', function () {
+    HomepageSection::create([
+        'section_key' => 'hero',
+        'type' => 'hero',
+        'title' => 'Hero',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+    Banner::create([
+        'name' => 'Hero one',
+        'placement' => 'hero',
+        'title' => 'First hero',
+        'status' => 'published',
+        'sort_order' => 0,
+    ]);
+    Banner::create([
+        'name' => 'Hero two',
+        'placement' => 'hero',
+        'title' => 'Second hero',
+        'status' => 'published',
+        'sort_order' => 1,
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('basis-full shrink-0 overflow-hidden rounded-card', false)
+        ->assertSee('First hero')
+        ->assertSee('Second hero');
+});
+
+it('renders homepage categories in a five-item carousel on large screens', function () {
+    HomepageSection::create([
+        'section_key' => 'categories',
+        'type' => 'categories',
+        'title' => 'Shop by Category',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+
+    foreach (['Electronics', "Men's Fashion", 'Phones', 'Audio', 'Fashion', "Women's Fashion"] as $name) {
+        Category::create([
+            'name' => $name,
+            'slug' => str()->slug($name),
+            'is_active' => true,
+        ]);
+    }
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('lg:basis-[calc((100%-3rem)/5)]', false)
+        ->assertSee('Shop by Category')
+        ->assertSee("Women's Fashion");
+});
+
+it('renders the homepage newsletter input with a visible field treatment', function () {
+    HomepageSection::create([
+        'section_key' => 'newsletter',
+        'type' => 'newsletter',
+        'title' => 'Stay in the loop',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('overflow-hidden rounded-control', false)
+        ->assertSee('bg-white px-3 py-2.5 text-sm text-store-ink', false)
+        ->assertSee('placeholder:text-store-muted', false)
+        ->assertSee('Email address');
+});
+
+it('renders homepage product sections as five-card carousels without dots', function () {
+    Cache::flush();
+
+    foreach (['flash_deals', 'bestsellers', 'featured_products', 'new_arrivals'] as $index => $type) {
+        HomepageSection::create([
+            'section_key' => $type,
+            'type' => $type,
+            'title' => str($type)->replace('_', ' ')->title().' Products',
+            'enabled' => true,
+            'sort_order' => $index,
+            'settings' => ['limit' => 6],
+        ]);
+    }
+
+    foreach (range(1, 6) as $index) {
+        $product = Product::create([
+            'name' => "Showcase Product {$index}",
+            'slug' => "showcase-product-{$index}",
+            'product_type' => 'simple',
+            'short_description' => 'Homepage showcase product.',
+            'description_json' => [],
+            'description_html' => '<p>Homepage showcase product.</p>',
+            'status' => 'published',
+            'visibility' => 'visible',
+            'is_featured' => true,
+            'taxable' => false,
+            'is_indexable' => true,
+            'published_at' => now(),
+        ]);
+
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => "SHOWCASE-{$index}",
+            'name' => 'Default',
+            'combination_key' => 'default',
+            'regular_price_minor' => 1000 + $index,
+            'sale_price_minor' => $index <= 3 ? 900 + $index : null,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+    }
+
+    $response = $this->get('/')->assertSuccessful();
+    $content = $response->getContent();
+
+    expect(substr_count($content, 'aria-roledescription="carousel"'))->toBe(4)
+        ->and($content)->toContain('xl:basis-[calc((100%-3rem)/5)]')
+        ->and($content)->toContain('Showcase Product 1')
+        ->and($content)->toContain('Add to Cart')
+        ->and($content)->not->toContain('role="tablist"');
 });
 
 it('archives expired scheduled content during the CMS sync command', function () {
@@ -225,7 +406,7 @@ it('seeds idempotent demo CMS content without overwriting settings', function ()
     expect(SiteSetting::where('group', 'header')->pluck('key')->all())
         ->toEqualCanonicalizing(['logo_url', 'logo_media_id', 'support_text', 'show_search', 'sticky', 'desktop_menu_key', 'mobile_menu_key', 'show_announcement'])
         ->and(SiteSetting::where('group', 'footer')->pluck('key')->all())
-        ->toEqualCanonicalizing(['description', 'copyright', 'support_email', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'social_links', 'show_newsletter', 'show_payment_methods', 'show_footer'])
+        ->toEqualCanonicalizing(['description', 'copyright', 'support_email', 'whatsapp_number', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'social_links', 'show_newsletter', 'show_payment_methods', 'show_footer'])
         ->and(Menu::whereIn('key', ['header-primary', 'mobile', 'footer-shop', 'footer-help', 'footer-company', 'footer-legal'])->count())->toBe(6)
         ->and($sectionCount)->toBe(12)
         ->and(Banner::where('placement', 'hero')->count())->toBe(3)

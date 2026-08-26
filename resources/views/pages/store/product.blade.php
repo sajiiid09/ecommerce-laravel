@@ -112,7 +112,7 @@
                 </div>
 
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available" @click="addToCart({...@js($product), variantId: variant.id, price: variant.price, image: selectedImage}, quantity)">
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available" x-on:click="$wire.addToCart(variant.id, quantity)">
                         <x-ui.icon name="shopping-cart" class="size-5 !text-white" />Add to Cart
                     </button>
                     <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available">
@@ -147,16 +147,28 @@
             </div>
         </section>
 
+        @if(config('features.reviews'))
+            <section class="mt-8 rounded-card border border-store-border bg-white p-5">
+                <div class="flex flex-wrap items-end justify-between gap-3"><div><h2 class="text-xl font-extrabold tracking-tight text-store-ink">Customer reviews</h2><p class="mt-1 text-sm text-store-muted">{{ $reviewSummary['count'] }} reviews · {{ number_format($reviewSummary['average'], 1) }}/5 average rating</p></div></div>
+                @if(session('review_status')) <p class="mt-4 rounded-control bg-green-50 p-3 text-sm text-green-700">{{ session('review_status') }}</p> @endif
+                <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"><div class="space-y-4">@forelse($reviews as $review)<article class="border-b border-store-border pb-4 last:border-0"><div class="flex items-center justify-between gap-3"><p class="font-bold text-store-ink">{{ $review->name }}</p><span class="text-sm text-store-warning">{{ str_repeat('★', $review->rating) }}</span></div>@if($review->title)<h3 class="mt-2 text-sm font-bold text-store-ink">{{ $review->title }}</h3>@endif<p class="mt-1 text-sm leading-6 text-store-text">{{ $review->review }}</p>@if($review->is_verified_purchase)<span class="mt-2 inline-block text-xs font-bold text-store-success">Verified purchase</span>@endif</article>@empty<p class="text-sm text-store-muted">No approved reviews yet.</p>@endforelse</div><form wire:submit="submitReview" class="rounded-control bg-store-soft p-4"><h3 class="font-bold text-store-ink">Write a review</h3>@guest<p class="mt-2 text-sm text-store-muted">Please <a href="{{ route('login') }}" wire:navigate class="font-semibold text-store-blue">sign in</a> to review this product.</p>@else<label class="mt-4 block text-sm font-semibold text-store-ink">Rating<select wire:model="reviewRating" class="mt-2 h-10 w-full rounded-control border border-store-border px-3"><option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option></select></label><label class="mt-3 block text-sm font-semibold text-store-ink">Title<input wire:model="reviewTitle" class="mt-2 h-10 w-full rounded-control border border-store-border px-3"></label><label class="mt-3 block text-sm font-semibold text-store-ink">Review<textarea wire:model="reviewBody" rows="4" class="mt-2 w-full rounded-control border border-store-border px-3 py-2"></textarea>@error('reviewBody')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label><button type="submit" class="mt-4 h-10 w-full rounded-control bg-store-blue text-sm font-bold text-white">Submit Review</button>@endguest</form></div>
+            </section>
+        @endif
+
         <section class="mt-8">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-xl font-extrabold tracking-tight text-store-ink">You May Also Like</h2>
                 <a href="{{ route('store.category') }}" wire:navigate class="text-sm font-semibold text-store-blue">View All →</a>
             </div>
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-                @foreach ($related as $item)
-                    <x-store.catalog.product-card :product="$item" compact />
-                @endforeach
-            </div>
+            @if ($related->isNotEmpty())
+                <x-store.ui.carousel loop :show-dots="false" label="Related products">
+                    @foreach ($related as $item)
+                        <x-store.catalog.product-card wire:key="related-product-{{ $item['id'] }}" :product="$item" compact class="min-w-0 basis-full shrink-0 sm:basis-[calc((100%-0.75rem)/2)] md:basis-[calc((100%-1.5rem)/3)] xl:basis-[calc((100%-3rem)/5)]" />
+                    @endforeach
+                </x-store.ui.carousel>
+            @else
+                <p class="rounded-card border border-store-border bg-white p-6 text-sm text-store-muted">No related products available.</p>
+            @endif
         </section>
     </x-store.ui.container>
 </main>

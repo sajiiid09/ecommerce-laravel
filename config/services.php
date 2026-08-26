@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'api_url' => env('STRIPE_API_URL', 'https://api.stripe.com'),
+    ],
+
 ];

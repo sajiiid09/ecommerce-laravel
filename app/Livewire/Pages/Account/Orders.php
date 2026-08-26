@@ -10,6 +10,6 @@ class Orders extends Component
 {
     public function render()
     {
-        return view('pages.account.orders-content');
+        return view('pages.account.orders-content', ['orders' => auth()->user()->orders()->with('items')->latest('placed_at')->paginate(10)]);
     }
 }

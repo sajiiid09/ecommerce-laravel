@@ -8,9 +8,9 @@
                 <div class="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h1 class="text-2xl font-extrabold text-store-ink sm:text-3xl">Track Order
-                            #{{ $orderData['id'] }}</h1>
-                        <p class="mt-1 text-sm text-store-muted">Your order is on the way.</p>
-                    </div><x-store.ui.status-badge :status="$orderData['status']" />
+                            #{{ $orderData->order_number }}</h1>
+                        <p class="mt-1 text-sm text-store-muted">{{ $orderData->status === 'completed' ? 'Your order is complete.' : 'We are keeping you updated on your order.' }}</p>
+                    </div><x-store.ui.status-badge :status="$orderData->status" />
                 </div>
                 <section class="mt-6 rounded-card border border-store-border bg-white p-5 sm:p-8">
                     <div class="relative ml-2 border-l-2 border-store-blue pl-7 sm:ml-5 sm:pl-10">
@@ -26,10 +26,10 @@
                                 </span>
                                 <h2 class="text-sm font-bold text-store-ink">{{ $event['label'] }}</h2>
                                 <p class="mt-1 text-xs text-store-muted">
-                                    {{ $event['active'] ?? false ? 'Today, 9:00 AM' : ($event['completed'] ?? false ? 'Order update confirmed' : 'Awaiting delivery update') }}
+                                    {{ $event['date'] ?? 'Awaiting update' }}
                                 </p>
                                 <p class="mt-2 text-sm text-store-text">
-                                    {{ $event['active'] ?? false ? 'The delivery partner is heading to you.' : ($event['completed'] ?? false ? 'Your order has progressed to this stage.' : 'We will notify you when this step is complete.') }}
+                                    {{ $event['active'] ?? false ? 'Your order is currently at this stage.' : ($event['completed'] ?? false ? 'This stage has been completed.' : 'We will update you when this stage is reached.') }}
                                 </p>
                             </div>
                         @endforeach

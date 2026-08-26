@@ -10,7 +10,7 @@
                 @forelse($heroBanners as $heroBanner)
                     @php($heroImage = $heroBanner['image'] ?: $heroBanner['mobileImage'])
                     @php($heroTheme = ['blue' => 'bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d]', 'red' => 'bg-gradient-to-br from-red-700 via-red-600 to-red-950', 'green' => 'bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-950', 'amber' => 'bg-gradient-to-br from-amber-600 via-orange-500 to-orange-900'][$heroBanner['theme'] ?? 'blue'] ?? 'bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d]')
-                    <article class="relative min-h-[300px] w-full shrink-0 overflow-hidden {{ $heroTheme }} p-8 sm:min-h-[360px] sm:p-12">
+                    <article class="relative min-h-[300px] min-w-0 basis-full shrink-0 overflow-hidden rounded-card {{ $heroTheme }} p-8 sm:min-h-[360px] sm:p-12">
                         @if($heroImage)<picture>@if($heroBanner['mobileImage'])<source media="(max-width: 639px)" srcset="{{ $heroBanner['mobileImage'] }}">@endif<img src="{{ $heroImage }}" alt="{{ $heroBanner['title'] ?: 'StoreZ promotion' }}" class="absolute inset-0 size-full object-cover opacity-45"></picture>@endif
                         <div class="absolute inset-0 bg-gradient-to-r from-black/35 via-black/10 to-transparent"></div>
                         <div class="relative z-10 max-w-2xl">
@@ -21,7 +21,7 @@
                         </div>
                     </article>
                 @empty
-                    <article class="relative min-h-[300px] w-full shrink-0 overflow-hidden bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d] p-8 sm:min-h-[360px] sm:p-12">
+                    <article class="relative min-h-[300px] min-w-0 basis-full shrink-0 overflow-hidden rounded-card bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d] p-8 sm:min-h-[360px] sm:p-12">
                         @if(!empty($settings['desktopImage']))<img src="{{ $settings['desktopImage'] }}" alt="{{ $section['title'] ?? 'StoreZ promotion' }}" class="absolute inset-0 size-full object-cover opacity-45">@endif
                         <div class="relative z-10 max-w-2xl">
                             <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-200">{{ $section['eyebrow'] ?? 'StoreZ everyday value' }}</p>
@@ -34,7 +34,20 @@
             </x-store.ui.carousel>
         </section>
     @elseif(($section['type'] ?? '') === 'categories')
-        <section class="mt-8"><h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Shop by Category' }}</h2><div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">@foreach($settings['categories'] ?? [] as $category)<a href="{{ route('store.category', ['slug' => $category['slug'] ?? '']) }}" class="rounded-card border border-store-border p-4 text-center text-sm font-bold text-store-blue hover:shadow-store-soft">{{ $category['name'] }}</a>@endforeach</div></section>
+        <section class="mt-8">
+            <h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Shop by Category' }}</h2>
+            <x-store.ui.carousel loop label="Shop by Category">
+                @forelse($settings['categories'] ?? [] as $category)
+                    <article wire:key="homepage-category-{{ $category['slug'] ?? $loop->index }}" class="min-w-0 basis-full shrink-0 sm:basis-[calc((100%-0.75rem)/2)] md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]">
+                        <a href="{{ route('store.category', ['slug' => $category['slug'] ?? '']) }}" class="block h-full rounded-card border border-store-border p-4 text-center text-sm font-bold text-store-blue hover:shadow-store-soft">
+                            {{ $category['name'] }}
+                        </a>
+                    </article>
+                @empty
+                    <p class="rounded-card border border-store-border p-4 text-sm text-store-muted">No categories available.</p>
+                @endforelse
+            </x-store.ui.carousel>
+        </section>
     @elseif(($section['type'] ?? '') === 'brands')
         <section class="mt-8"><h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Top Brands' }}</h2><div class="flex flex-wrap gap-3">@foreach($settings['brands'] ?? [] as $brand)<a href="{{ route('store.brand', ['slug' => $brand['slug'] ?? ($brand['id'] ?? '')]) }}" class="rounded-card border border-store-border bg-white px-5 py-3 text-sm font-bold text-store-blue hover:border-store-blue">{{ $brand['name'] }}</a>@endforeach</div></section>
     @elseif(($section['type'] ?? '') === 'banners')
@@ -42,9 +55,20 @@
     @elseif(($section['type'] ?? '') === 'trust')
         <section class="mt-8 grid gap-3 rounded-card bg-store-soft p-5 sm:grid-cols-3">@foreach($trustItems as $item)<div class="text-center"><p class="font-bold text-store-ink">{{ $item['title'] }}</p><p class="mt-1 text-xs text-store-muted">{{ $item['description'] }}</p></div>@endforeach</section>
     @elseif(($section['type'] ?? '') === 'newsletter')
-        <section class="mt-8 rounded-card bg-store-blue p-6 text-white"><h2 class="text-xl font-black">{{ $section['title'] ?? 'Stay in the loop' }}</h2><p class="mt-2 text-sm text-blue-100">{{ $section['subtitle'] ?? 'Get offers and product updates in your inbox.' }}</p><form action="#newsletter" class="mt-4 flex max-w-md"><input type="email" placeholder="Your email" class="min-w-0 flex-1 rounded-l-control border-0 px-3 py-2 text-sm text-store-ink"><button class="rounded-r-control bg-store-red px-4 text-sm font-bold text-white">Subscribe</button></form></section>
+        <section class="mt-8 rounded-card bg-store-blue p-6 text-white"><h2 class="text-xl font-black">{{ $section['title'] ?? 'Stay in the loop' }}</h2><p class="mt-2 text-sm text-blue-100">{{ $section['subtitle'] ?? 'Get offers and product updates in your inbox.' }}</p><form action="#newsletter" class="mt-4 flex w-full max-w-md overflow-hidden rounded-control bg-white/10 ring-1 ring-white/20"><label for="newsletter-email" class="sr-only">Email address</label><input id="newsletter-email" type="email" placeholder="Your email" class="min-w-0 flex-1 border-0 bg-white px-3 py-2.5 text-sm text-store-ink placeholder:text-store-muted outline-none focus:ring-2 focus:ring-inset focus:ring-store-blue"><button type="submit" class="shrink-0 bg-store-red px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700">Subscribe</button></form></section>
     @elseif(in_array(($section['type'] ?? ''), ['featured_products', 'bestsellers', 'new_arrivals', 'flash_deals'], true))
-        <section class="mt-8"><h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Featured Products' }}</h2><div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">@foreach($settings['products'] ?? [] as $product)<x-store.catalog.product-card :product="$product" compact />@endforeach</div></section>
+        <section class="mt-8">
+            <h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Featured Products' }}</h2>
+            @if (count($settings['products'] ?? []))
+                <x-store.ui.carousel loop :show-dots="false" label="{{ $section['title'] ?? 'Featured Products' }} products">
+                    @foreach($settings['products'] as $product)
+                        <x-store.catalog.product-card wire:key="homepage-product-{{ $section['section_key'] ?? $section['type'] }}-{{ $product['id'] }}" :product="$product" compact class="min-w-0 basis-full shrink-0 sm:basis-[calc((100%-0.75rem)/2)] md:basis-[calc((100%-1.5rem)/3)] xl:basis-[calc((100%-3rem)/5)]" />
+                    @endforeach
+                </x-store.ui.carousel>
+            @else
+                <p class="rounded-card border border-store-border bg-white p-6 text-sm text-store-muted">No products available.</p>
+            @endif
+        </section>
     @elseif(in_array(($section['type'] ?? ''), ['shop_by_need', 'testimonials'], true))
         @if(($section['type'] ?? '') === 'testimonials' && !empty($settings['testimonials']))
             <section class="mt-8">

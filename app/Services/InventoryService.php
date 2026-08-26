@@ -114,6 +114,62 @@ class InventoryService
         });
     }
 
+    public function sell(ProductVariant $variant, int $quantity, ?string $referenceType = null, ?int $referenceId = null): InventoryItem
+    {
+        $this->ensurePositiveQuantity($quantity);
+
+        return DB::transaction(function () use ($variant, $quantity, $referenceType, $referenceId): InventoryItem {
+            $item = InventoryItem::firstOrCreate(['product_variant_id' => $variant->id]);
+            $item = InventoryItem::query()->lockForUpdate()->findOrFail($item->id);
+            $before = (int) $item->quantity_on_hand;
+
+            if ($item->track_quantity && $item->availableQuantity() < $quantity && ! $item->allow_backorders) {
+                throw new InvalidArgumentException('Insufficient stock.');
+            }
+
+            $item->quantity_on_hand = $before - ($item->track_quantity ? $quantity : 0);
+            $item->save();
+            $this->movement($item, $variant, $item->quantity_on_hand - $before, $before, $item->quantity_on_hand, InventoryMovementType::Sale);
+
+            if ($referenceType !== null && $referenceId !== null) {
+                $item->movements()->latest('id')->first()?->update([
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                ]);
+            }
+
+            return $item->fresh();
+        });
+    }
+
+    public function restore(ProductVariant $variant, int $quantity, ?string $referenceType = null, ?int $referenceId = null): InventoryItem
+    {
+        $this->ensurePositiveQuantity($quantity);
+
+        return DB::transaction(function () use ($variant, $quantity, $referenceType, $referenceId): InventoryItem {
+            $item = InventoryItem::firstOrCreate(['product_variant_id' => $variant->id]);
+            $item = InventoryItem::query()->lockForUpdate()->findOrFail($item->id);
+
+            if ($referenceType !== null && $referenceId !== null && $item->movements()->where('type', InventoryMovementType::Return->value)->where('reference_type', $referenceType)->where('reference_id', $referenceId)->exists()) {
+                return $item->fresh();
+            }
+
+            $before = (int) $item->quantity_on_hand;
+            $item->quantity_on_hand = $before + ($item->track_quantity ? $quantity : 0);
+            $item->save();
+            $this->movement($item, $variant, $item->quantity_on_hand - $before, $before, $item->quantity_on_hand, InventoryMovementType::Return);
+
+            if ($referenceType !== null && $referenceId !== null) {
+                $item->movements()->latest('id')->first()?->update([
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                ]);
+            }
+
+            return $item->fresh();
+        });
+    }
+
     private function record(
         InventoryItem $item,
         ProductVariant $variant,

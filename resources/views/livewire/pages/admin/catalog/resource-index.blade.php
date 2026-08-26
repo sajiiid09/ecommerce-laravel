@@ -8,18 +8,6 @@
 
         <div class="mb-5 flex flex-wrap items-center gap-2">
             <button wire:click="openCreate" class="rounded-lg bg-[#2563eb] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">+ Add {{ rtrim($title, 's') }}</button>
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-                Import
-            </button>
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-                Export
-            </button>
-            <button class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb]">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
-                Filters
-            </button>
         </div>
 
         <x-ui.modal id="resource-create" width="md" heading="Add {{ rtrim($title, 's') }}" description="Create a reusable catalog value.">
@@ -106,7 +94,7 @@
             @foreach([
                 ['Total '.$plural, $total, '#2563eb', 'M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z'],
                 ['Active '.$plural, $active, '#10b981', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
-                ['Selected', count($selected), '#8b5cf6', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
+                ['Selected', count($selectedIds), '#8b5cf6', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
                 ['Last Updated', 'Now', '#f97316', 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
             ] as [$label, $value, $color, $path])
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
@@ -114,7 +102,7 @@
                         <div>
                             <p class="text-xs font-semibold text-[#6b7280]">{{ $label }}</p>
                             <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ $value }}</p>
-                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all →</a>
+                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
                         </div>
                         <span style="background: {{ $color }}15; color: {{ $color }}" class="grid size-11 place-items-center rounded-full">
                             <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
@@ -127,10 +115,7 @@
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div>
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
-                    <div class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2">
-                        <svg class="size-4 shrink-0 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-                        <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search {{ strtolower($title) }}..." class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9ca3af]">
-                    </div>
+                    <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search {{ strtolower($title) }}..." leftIcon="magnifying-glass" class="min-w-0 flex-1" controlClass="bg-[#f9fafb]" />
                     <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm text-[#374151]">
                         <option value="15">15</option>
                         <option value="30">30</option>
@@ -138,9 +123,9 @@
                     </select>
                 </div>
 
-                @if(count($selected))
+                @if(count($selectedIds))
                     <div class="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-sm text-[#2563eb]">
-                        <span class="mr-2 font-semibold">{{ count($selected) }} selected</span>
+                        <span class="mr-2 font-semibold">{{ count($selectedIds) }} selected</span>
                         @if(method_exists($this, 'bulk'))
                             <button wire:click="bulk('activate')" class="rounded-md border border-[#bfdbfe] bg-white px-3 py-1.5 font-semibold hover:bg-[#dbeafe]">Activate</button>
                             <button wire:click="bulk('deactivate')" class="rounded-md border border-[#bfdbfe] bg-white px-3 py-1.5 font-semibold hover:bg-[#dbeafe]">Deactivate</button>
@@ -151,32 +136,18 @@
                     </div>
                 @endif
 
-                <div class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left text-sm">
-                            <thead class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">
-                                <tr>
-                                    <th class="w-12 px-5 py-3">
-                                        <span x-data="{ _state: undefined }" class="inline-flex" title="Select all on this page">
-                                            <x-ui.checkbox wire:model.live="selectPage" size="sm" aria-label="Select all brands on this page" />
-                                        </span>
-                                    </th>
-                                    <th class="px-4 py-3">{{ rtrim($title, 's') }}</th>
-                                    <th class="px-4 py-3">Slug</th>
-                                    <th class="px-4 py-3">Products</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3">Updated</th>
-                                    <th class="px-5 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-[#f3f4f6]">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="text-left">
+                            <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
+                                    <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">{{ rtrim($title, 's') }}</x-ui.table.head>
+                                    <x-ui.table.head column="slug" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">Slug</x-ui.table.head>
+                                    <x-ui.table.head class="px-4 py-3">Products</x-ui.table.head>
+                                    <x-ui.table.head class="px-4 py-3">Status</x-ui.table.head>
+                                    <x-ui.table.head column="updated_at" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">Updated</x-ui.table.head>
+                                    <x-ui.table.head class="px-5 py-3">Actions</x-ui.table.head>
+                            </x-ui.table.columns></x-ui.table.header>
+                            <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
-                                    <tr class="text-[#374151] hover:bg-[#f9fafb]">
-                                        <td class="px-5 py-4">
-                                            <x-ui.checkbox.group wire:model.live="selected" class="contents">
-                                                <x-ui.checkbox :value="$row->id" size="sm" aria-label="Select {{ $row->name }}" />
-                                            </x-ui.checkbox.group>
-                                        </td>
+                                    <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
                                         <td class="px-4 py-4">
                                             <div class="flex items-center gap-3">
                                                 <div class="grid size-10 place-items-center rounded-lg bg-[#f3f4f6]">
@@ -203,18 +174,12 @@
                                                 <button wire:click="delete({{ $row->id }})" class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                             </div>
                                         </td>
-                                    </tr>
+                                    </x-ui.table.row>
                                 @empty
-                                    <tr><td colspan="7" class="px-5 py-12 text-center text-sm text-[#9ca3af]">No {{ strtolower($title) }} found.</td></tr>
+                                    <x-ui.table.empty>{{ filled($searchQuery) ? 'No '.strtolower($title).' match your search.' : 'No '.strtolower($title).' found.' }}</x-ui.table.empty>
                                 @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="border-t border-[#f3f4f6] px-5 py-4 flex items-center justify-between">
-                        <p class="text-xs text-[#9ca3af]">Showing {{ $rows->firstItem() ?? 0 }} to {{ $rows->lastItem() ?? 0 }} of {{ $rows->total() }} results</p>
-                        {{ $rows->links() }}
-                    </div>
-                </div>
+                            </x-ui.table.rows>
+                </x-ui.table>
             </div>
 
             <div class="space-y-5">
@@ -251,7 +216,7 @@
                             </div>
                         @endforeach
                     </div>
-                    <a href="#" class="mt-4 block text-center text-xs font-bold text-[#2563eb]">View Full Report →</a>
+                    <a href="#" class="mt-4 block text-center text-xs font-bold text-[#2563eb]">View Full Report ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
                 </div>
             </div>
         </div>

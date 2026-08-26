@@ -125,6 +125,7 @@ class ProductService
         });
 
         $this->catalogCache->forgetAll();
+        $this->catalogCache->forgetProduct($saved->slug);
 
         return $saved;
     }
