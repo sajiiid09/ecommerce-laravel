@@ -1,6 +1,5 @@
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 
@@ -24,7 +23,7 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
     init() {
         this.editor = new Editor({
             element: this.$refs.editor,
-            extensions: [StarterKit, Link.configure({ openOnClick: false }), MediaImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder })],
+            extensions: [StarterKit.configure({ link: { openOnClick: false } }), MediaImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder })],
             content: initial || '<p></p>',
             onUpdate: ({ editor }) => {
                 this.queueSync(editor);

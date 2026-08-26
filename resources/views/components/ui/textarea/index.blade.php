@@ -61,14 +61,14 @@
     }"
     x-init="
         $nextTick(() => {
-            this.resize();
+            resize();
         });
 
         const observer = new ResizeObserver(() => {
-            this.resize();
+            resize();
         });
 
-        observer.observe(this.$el);
+        observer.observe($el);
     "
     {{ $attributes->class(Arr::toCssClasses($classes)) }}
     @disabled($disabled)

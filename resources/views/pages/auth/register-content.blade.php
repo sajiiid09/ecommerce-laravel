@@ -17,12 +17,12 @@
                 </label>
                 <label class="block text-sm font-semibold text-store-ink">
                     Password
-                    <x-ui.input type="password" required wire:model="password" autocomplete="new-password" class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />
+                    <x-ui.input type="password" required wire:model="password" autocomplete="new-password" revealable class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />
                     @error('password') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
                 </label>
                 <label class="block text-sm font-semibold text-store-ink">
                     Confirm password
-                    <x-ui.input type="password" required wire:model="password_confirmation" autocomplete="new-password" class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />
+                    <x-ui.input type="password" required wire:model="password_confirmation" autocomplete="new-password" revealable class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />
                 </label>
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="register" class="h-11 w-full !rounded-control !bg-store-blue !text-sm !font-bold !text-white hover:!bg-store-blue-dark">
                     Create Account

@@ -77,14 +77,16 @@ it('authenticates customers, throttles invalid logins, and supports logout', fun
     $this->assertGuest();
 });
 
-it('renders login and registration forms with Sheaf UI inputs and buttons', function () {
+it('renders login and registration forms with Sheaf UI inputs, revealable passwords, and buttons', function () {
     $login = $this->get(route('login'))->assertSuccessful()->getContent();
     $register = $this->get(route('register'))->assertSuccessful()->getContent();
 
     expect(substr_count($login, 'data-slot="control"'))->toBe(2)
         ->and(substr_count($login, 'data-slot="button"'))->toBe(1)
+        ->and(substr_count($login, 'x-bind:aria-label="revealed'))->toBe(1)
         ->and(substr_count($register, 'data-slot="control"'))->toBe(4)
-        ->and(substr_count($register, 'data-slot="button"'))->toBe(1);
+        ->and(substr_count($register, 'data-slot="button"'))->toBe(1)
+        ->and(substr_count($register, 'x-bind:aria-label="revealed'))->toBe(2);
 });
 
 it('persists a guest cart, places an idempotent COD order, and restores cancelled stock', function () {
@@ -228,6 +230,11 @@ it('hides disabled showcase controls while preserving working catalog pages', fu
         ->assertSuccessful()
         ->assertDontSee('Import', false)
         ->assertDontSee('Export', false)
+        ->assertDontSee('Top Categories', false)
+        ->assertDontSee('Inventory Alerts', false)
+        ->assertDontSee('Recently Added Products', false)
+        ->assertDontSee('Total Product Value', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_280px]', false)
         ->assertSee('Products');
 
     config(['features.catalog_import_export' => true]);

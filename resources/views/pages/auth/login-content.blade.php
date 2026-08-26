@@ -9,7 +9,7 @@
                     class="block text-sm font-semibold text-store-ink">Email address<x-ui.input type="email" required
                         wire:model="email" autocomplete="email" class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />@error('email')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label><label
                     class="block text-sm font-semibold text-store-ink">Password<x-ui.input type="password" required
-                        wire:model="password" autocomplete="current-password" class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />@error('password')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label>
+                        wire:model="password" autocomplete="current-password" revealable class="mt-2" controlClass="!h-11 !rounded-control !border-store-border !px-3 focus:!border-store-blue focus:!ring-store-blue/10" />@error('password')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label>
                 <div class="flex items-center justify-between text-sm"><label
                         class="flex items-center gap-2 text-store-muted"><input type="checkbox"
                             wire:model="remember" class="size-4 rounded border-store-border text-store-blue">Remember me</label><a
