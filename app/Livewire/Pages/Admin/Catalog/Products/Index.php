@@ -8,7 +8,6 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\Product;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class Index extends ResourceIndex
@@ -112,19 +111,8 @@ class Index extends ResourceIndex
                 'low_stock' => InventoryItem::query()->where('track_quantity', true)->whereRaw('(quantity_on_hand - quantity_reserved) > 0')->whereRaw('(quantity_on_hand - quantity_reserved) <= low_stock_threshold')->count(),
                 'draft' => Product::query()->where('status', ProductStatus::Draft->value)->count(),
             ],
-            'topCategories' => Category::query()->withCount('products')->orderByDesc('products_count')->limit(5)->get(),
-            'totalCategories' => Category::count(),
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
-            'inventoryAlerts' => [
-                'Out of Stock' => InventoryItem::query()->whereRaw('(quantity_on_hand - quantity_reserved) <= 0')->count(),
-                'Low Stock' => InventoryItem::query()->where('track_quantity', true)->whereRaw('(quantity_on_hand - quantity_reserved) > 0')->whereRaw('(quantity_on_hand - quantity_reserved) <= low_stock_threshold')->count(),
-                'Expiring Soon' => 0,
-            ],
-            'totalProductValue' => (int) Product::query()
-                ->join('product_variants', 'product_variants.product_id', '=', 'products.id')
-                ->where('product_variants.is_default', true)
-                ->sum(DB::raw('COALESCE(product_variants.regular_price_minor, 0)')),
         ]);
     }
 }

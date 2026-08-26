@@ -20,6 +20,7 @@
             request()->is('admin/catalog/inventory/*/history') => 'Inventory History',
             request()->is('admin/catalog/inventory') => 'Inventory',
             request()->is('admin/media') => 'Media Library',
+            request()->is('admin/settings/general') => 'General Settings',
             request()->is('admin/settings/payments') => 'Payment Settings',
             default => 'Admin Dashboard',
         };
@@ -41,13 +42,21 @@
     </style>
 </head>
 <body class="min-h-screen bg-[#f5f7fa] text-[#1a1f36] antialiased">
-<div x-data="{ sidebarOpen: false }" class="flex min-h-screen">
-    <aside x-bind:style="sidebarOpen ? 'transform: translateX(0)' : ''" class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-[252px] -translate-x-full flex-col bg-[#0f172a] transition-transform duration-200 lg:translate-x-0">
-        <div class="admin-brand flex h-[64px] items-center gap-2 border-b border-white/10 px-5">
-            <a href="{{ url('/admin') }}" class="flex items-center gap-1">
-                <span class="admin-brand-name text-[22px] font-extrabold italic tracking-tight text-white">Store<span class="text-[#ef4444]">Z</span></span>
+<div x-data="{
+    sidebarOpen: false,
+    sidebarCollapsed: localStorage.getItem('admin-sidebar-collapsed') === 'true',
+    toggleSidebar() {
+        this.sidebarCollapsed = !this.sidebarCollapsed;
+        localStorage.setItem('admin-sidebar-collapsed', this.sidebarCollapsed);
+    },
+}" class="flex min-h-screen">
+    <aside x-bind:style="sidebarOpen ? 'transform: translateX(0)' : ''" x-bind:class="sidebarCollapsed ? 'lg:w-[76px]' : 'lg:w-[252px]'" class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-[252px] -translate-x-full flex-col bg-[#0f172a] transition-[transform,width] duration-200 lg:translate-x-0">
+        <div class="admin-brand flex h-[64px] items-center justify-between gap-2 border-b border-white/10 px-5">
+            <a href="{{ url('/admin') }}" class="flex min-w-0 items-center gap-1" title="StoreZ Admin">
+                <span x-cloak x-show="!sidebarCollapsed" class="admin-brand-name text-[22px] font-extrabold italic tracking-tight text-white">Store<span class="text-[#ef4444]">Z</span></span>
+                <span x-cloak x-show="sidebarCollapsed" class="admin-brand-name text-[22px] font-extrabold italic tracking-tight text-white">S</span>
             </a>
-            <span class="rounded bg-[#1e40af]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#60a5fa]">Admin</span>
+            <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''" class="rounded bg-[#1e40af]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#60a5fa]">Admin</span>
         </div>
         <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-4 text-[13px] font-medium">
             @php
@@ -63,6 +72,9 @@
                 if (config('features.reviews') && Route::has('admin.reviews')) {
                     $navItems[] = ['label' => 'Reviews', 'href' => route('admin.reviews'), 'icon' => 'chat-bubble-left-right', 'match' => 'admin/reviews*'];
                 }
+                if (Route::has('admin.settings.general')) {
+                    $navItems[] = ['label' => 'General', 'href' => route('admin.settings.general'), 'icon' => 'cog-6-tooth', 'match' => 'admin/settings/general*'];
+                }
                 if (Route::has('admin.settings.payments')) {
                     $navItems[] = ['label' => 'Payments', 'href' => route('admin.settings.payments'), 'icon' => 'credit-card', 'match' => 'admin/settings/payments*'];
                 }
@@ -72,7 +84,7 @@
                     $isActive = request()->is($item['match']);
                     $href = str_starts_with($item['href'], 'http') ? $item['href'] : url($item['href']);
                 @endphp
-                <a href="{{ $href }}" class="admin-nav-link {{ $isActive ? 'is-active bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <a href="{{ $href }}" title="{{ $item['label'] }}" x-bind:class="sidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-2' : ''" class="admin-nav-link {{ $isActive ? 'is-active bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex items-center gap-3 rounded-lg px-3 py-2.5">
                     <span class="grid size-5 place-items-center">
                         @if($item['icon'] === 'home')
                             <svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
@@ -98,20 +110,20 @@
                             <svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
                         @endif
                     </span>
-                    <span>{{ $item['label'] }}</span>
+                    <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''">{{ $item['label'] }}</span>
                     @if(isset($item['badge']))
-                        <span class="ml-auto grid size-5 place-items-center rounded-full bg-[#ef4444] text-[10px] font-bold text-white">{{ $item['badge'] }}</span>
+                        <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''" class="ml-auto grid size-5 place-items-center rounded-full bg-[#ef4444] text-[10px] font-bold text-white">{{ $item['badge'] }}</span>
                     @endif
                 </a>
                 @if($loop->first)
                     @php $catalogActive = request()->is('admin/catalog*'); @endphp
                     <div x-data="{ open: {{ $catalogActive ? 'true' : 'false' }} }" class="rounded-lg">
-                        <button type="button" x-on:click="open = !open" class="admin-nav-link {{ $catalogActive ? 'bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex w-full items-center gap-3 rounded-lg px-3 py-2.5">
+                        <button type="button" x-on:click="open = !open" title="Catalog" x-bind:class="sidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-2' : ''" class="admin-nav-link {{ $catalogActive ? 'bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex w-full items-center gap-3 rounded-lg px-3 py-2.5">
                             <span class="grid size-5 place-items-center"><svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg></span>
-                            <span>Catalog</span>
-                            <svg class="ml-auto size-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+                            <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''">Catalog</span>
+                            <svg x-bind:class="[open ? 'rotate-180' : '', sidebarCollapsed ? 'lg:hidden' : '']" class="ml-auto size-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
                         </button>
-                        <div x-cloak x-show="open" x-transition class="mt-0.5 space-y-0.5 pl-4">
+                        <div x-cloak x-show="open" x-transition x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''" class="mt-0.5 space-y-0.5 pl-4">
                             @foreach([
                                 ['label' => 'Products', 'href' => '/admin/catalog/products', 'match' => 'admin/catalog/products*'],
                                 ['label' => 'Categories', 'href' => '/admin/catalog/categories', 'match' => 'admin/catalog/categories*'],
@@ -127,11 +139,11 @@
                     </div>
                     @php $contentActive = request()->is('admin/content*'); @endphp
                     <div x-data="{ open: {{ $contentActive ? 'true' : 'false' }} }" class="mt-1 rounded-lg">
-                        <button type="button" x-on:click="open = !open" class="admin-nav-link {{ $contentActive ? 'bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex w-full items-center gap-3 rounded-lg px-3 py-2.5">
+                        <button type="button" x-on:click="open = !open" title="Content" x-bind:class="sidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-2' : ''" class="admin-nav-link {{ $contentActive ? 'bg-[#1e40af] text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }} flex w-full items-center gap-3 rounded-lg px-3 py-2.5">
                             <span class="grid size-5 place-items-center"><svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3.75h7.5L18.75 8.25v12A2.25 2.25 0 0 1 16.5 22.5h-9A2.25 2.25 0 0 1 5.25 20.25v-15A1.5 1.5 0 0 1 6.75 3.75Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 3.75v4.5h4.5M8.25 12h7.5m-7.5 3h7.5m-7.5 3h4.5"/></svg></span>
-                            <span>Content</span><svg class="ml-auto size-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+                            <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''">Content</span><svg x-bind:class="[open ? 'rotate-180' : '', sidebarCollapsed ? 'lg:hidden' : '']" class="ml-auto size-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
                         </button>
-                        <div x-cloak x-show="open" x-transition class="mt-0.5 space-y-0.5 pl-4">
+                        <div x-cloak x-show="open" x-transition x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''" class="mt-0.5 space-y-0.5 pl-4">
                             @foreach([
                                 ['label'=>'Pages','href'=>'/admin/content/pages','match'=>'admin/content/pages*'],
                                 ['label'=>'Homepage Builder','href'=>'/admin/content/homepage','match'=>'admin/content/homepage*'],
@@ -150,25 +162,23 @@
                 @endif
             @endforeach
         </nav>
-        <div class="admin-help m-3 rounded-xl bg-[#1e293b] p-4">
-            <p class="text-xs font-bold text-white">Need Help?</p>
-            <p class="mt-1 text-[11px] leading-4 text-[#94a3b8]">We're here to help you manage your store easily.</p>
-            <a href="mailto:support@storez.local" class="mt-3 inline-block rounded-lg border border-[#334155] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#334155]">Contact Support</a>
-        </div>
         <div class="admin-footer border-t border-white/10 p-3">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-[#94a3b8] hover:bg-white/5 hover:text-white">
+                <button title="Sign out" x-bind:class="sidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-2' : ''" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-[#94a3b8] hover:bg-white/5 hover:text-white">
                     <svg class="size-[18px]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15"/></svg>
-                    <span>Sign out</span>
+                    <span x-bind:class="sidebarCollapsed ? 'lg:hidden' : ''">Sign out</span>
                 </button>
             </form>
         </div>
     </aside>
     <div x-cloak x-show="sidebarOpen" x-transition.opacity x-on:click="sidebarOpen = false" class="fixed inset-0 z-30 bg-black/50 lg:hidden"></div>
-    <main class="min-w-0 flex-1 lg:pl-[252px]">
+    <main x-bind:class="sidebarCollapsed ? 'lg:pl-[76px]' : 'lg:pl-[252px]'" class="min-w-0 flex-1">
         <header class="sticky top-0 z-20 flex h-[64px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5 sm:px-6">
             <div class="flex items-center gap-4">
+                <button type="button" x-on:click="toggleSidebar()" x-bind:aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" x-bind:title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" class="hidden size-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#f3f4f6] lg:inline-flex">
+                    <svg x-bind:class="sidebarCollapsed ? 'rotate-180' : ''" class="size-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/></svg>
+                </button>
                 <button x-on:click="sidebarOpen = true" class="text-xl text-[#374151] lg:hidden" aria-label="Open menu">
                     <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </button>

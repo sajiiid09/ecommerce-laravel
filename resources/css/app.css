@@ -34,6 +34,7 @@
 
     --radius-control: 0.5rem;
     --radius-card: 0.75rem;
+    --radius-box: 0.5rem;
     --shadow-store-soft: 0 8px 30px rgb(15 23 42 / 0.08);
     --container-8xl: 90rem;
 }

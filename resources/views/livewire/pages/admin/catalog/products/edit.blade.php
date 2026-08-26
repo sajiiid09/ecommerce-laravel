@@ -50,11 +50,11 @@
                         <span class="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-bold text-[#2563eb]">Simple products use one default variant</span>
                     </div>
                     <label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#111827]">Additional Categories
-                        <select wire:model.live="category_ids" multiple class="min-h-24 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-normal focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/10">
+                        <x-ui.select wire:model.live="category_ids" multiple searchable clearable placeholder="Select additional categories" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                             @foreach($categories as $category)
-                                <option wire:key="product-category-{{ $category->id }}" value="{{ $category->id }}">{{ $category->name }}</option>
+                                <x-ui.select.option wire:key="product-category-{{ $category->id }}" value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>
                             @endforeach
-                        </select>
+                        </x-ui.select>
                         <span class="block text-xs font-normal text-[#9ca3af]">Hold Ctrl/Cmd to select multiple categories. The primary category is included automatically.</span>
                     </label>
                     <div class="grid gap-4 md:grid-cols-3">
@@ -68,7 +68,7 @@
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Product Type <span class="text-[#ef4444]">*</span>
-                            <x-ui.select wire:model.live="product_type" placeholder="Select product type" class="!w-full">
+                            <x-ui.select wire:model.live="product_type" placeholder="Select product type" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="simple">Simple</x-ui.select.option>
                                 <x-ui.select.option value="variable">Variable</x-ui.select.option>
                             </x-ui.select>
@@ -77,7 +77,7 @@
                     <div class="mt-4 grid gap-4 md:grid-cols-2">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Brand
-                            <x-ui.select wire:model.live="brand_id" placeholder="Select brand" clearable class="!w-full">
+                            <x-ui.select wire:model.live="brand_id" placeholder="Select brand" clearable class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="">None</x-ui.select.option>
                                 @foreach($brands as $brand)
                                     <x-ui.select.option value="{{ $brand->id }}">{{ $brand->name }}</x-ui.select.option>
@@ -86,7 +86,7 @@
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Primary Category <span class="text-[#ef4444]">*</span>
-                            <x-ui.select wire:model.live="primary_category_id" placeholder="Select category" clearable class="!w-full">
+                            <x-ui.select wire:model.live="primary_category_id" placeholder="Select category" clearable class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="">None</x-ui.select.option>
                                 @foreach($categories as $category)
                                     <x-ui.select.option value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>
@@ -156,7 +156,9 @@
                     </div>
                     <div class="mt-4 flex items-center gap-4">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">Tax Class</label>
-                        <select class="rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm"><option>Standard Rate</option></select>
+                        <x-ui.select placeholder="Standard Rate" class="w-44" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            <x-ui.select.option value="standard">Standard Rate</x-ui.select.option>
+                        </x-ui.select>
                         <label class="flex items-center gap-2 text-sm font-semibold text-[#111827]">
                             <input type="checkbox" wire:model.live="track_quantity" class="rounded border-[#d1d5db] text-[#2563eb]"> Track stock quantity
                         </label>
@@ -188,7 +190,7 @@
                     <div class="mt-4 space-y-4">
                         <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Status
-                            <x-ui.select wire:model.live="status" placeholder="Select status" class="!w-full">
+                            <x-ui.select wire:model.live="status" placeholder="Select status" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="draft">Draft</x-ui.select.option>
                                 <x-ui.select.option value="published">Published</x-ui.select.option>
                                 <x-ui.select.option value="archived">Archived</x-ui.select.option>
@@ -196,7 +198,7 @@
                         </label>
                         <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Visibility
-                            <x-ui.select wire:model.live="visibility" placeholder="Select visibility" class="!w-full">
+                            <x-ui.select wire:model.live="visibility" placeholder="Select visibility" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="visible">Catalog & Search</x-ui.select.option>
                                 <x-ui.select.option value="hidden">Hidden</x-ui.select.option>
                             </x-ui.select>
@@ -233,7 +235,11 @@
                             <span class="text-xs text-[#9ca3af]">No tags selected.</span>
                         @endforelse
                     </div>
-                    <select wire:model.live="tag_ids" multiple class="mt-3 min-h-24 w-full rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm"><option disabled>Select tags</option>@foreach($tags as $tag)<option wire:key="product-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</option>@endforeach</select>
+                    <x-ui.select wire:model.live="tag_ids" multiple searchable clearable placeholder="Select tags" class="mt-3 w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-[#f9fafb]">
+                        @foreach($tags as $tag)
+                            <x-ui.select.option wire:key="product-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</x-ui.select.option>
+                        @endforeach
+                    </x-ui.select>
                 </section>
 
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
@@ -243,12 +249,11 @@
                             <label wire:key="product-attribute-{{ $attribute->id }}" class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 {{ $attribute->name }} @if($attribute->unit)<span class="text-xs font-normal text-[#9ca3af]">({{ $attribute->unit }})</span>@endif
                                 @if(in_array($attribute->type, ['select', 'multi_select'], true))
-                                    <select wire:model.live="attribute_values.{{ $attribute->id }}" @if($attribute->type === 'multi_select') multiple @endif class="min-h-10 w-full rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-normal">
-                                        @if($attribute->type !== 'multi_select')<option value="">Select {{ strtolower($attribute->name) }}</option>@endif
+                                    <x-ui.select wire:model.live="attribute_values.{{ $attribute->id }}" :multiple="$attribute->type === 'multi_select'" searchable clearable placeholder="Select {{ strtolower($attribute->name) }}" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white" :wire:key="'product-attribute-select-'.$attribute->id">
                                         @foreach($attribute->values as $value)
-                                            <option wire:key="product-attribute-value-{{ $value->id }}" value="{{ $value->id }}">{{ $value->value }}</option>
+                                            <x-ui.select.option wire:key="product-attribute-value-{{ $value->id }}" value="{{ $value->id }}">{{ $value->value }}</x-ui.select.option>
                                         @endforeach
-                                    </select>
+                                    </x-ui.select>
                                 @elseif($attribute->type === 'number')
                                     <x-ui.input type="number" wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                                 @elseif($attribute->type === 'boolean')

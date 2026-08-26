@@ -4,6 +4,7 @@ use App\Livewire\Pages\Admin\Catalog\Attributes\Index as AttributesIndex;
 use App\Livewire\Pages\Admin\Catalog\Brands\Index as BrandsIndex;
 use App\Livewire\Pages\Admin\Catalog\Categories\Index as CategoriesIndex;
 use App\Livewire\Pages\Admin\Catalog\Inventory\Index as InventoryIndex;
+use App\Livewire\Pages\Admin\Catalog\Products\Edit as ProductEdit;
 use App\Livewire\Pages\Admin\Catalog\Products\Index as ProductsIndex;
 use App\Livewire\Pages\Admin\Catalog\Products\Variants as ProductVariantsIndex;
 use App\Livewire\Pages\Admin\Catalog\Tags\Index as TagsIndex;
@@ -64,6 +65,33 @@ it('persists product taxonomy, SEO, attributes, and rich text', function () {
         ->and($product->categories()->pluck('categories.id')->all())->toEqualCanonicalizing([$category->id, $secondaryCategory->id])
         ->and($product->tags()->pluck('tags.id')->all())->toBe([$tag->id])
         ->and($product->attributeValues()->first()->attribute_value_id)->toBe($attributeValue->id);
+});
+
+it('renders the product edit choices with Sheaf selects', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $category = Category::create(['name' => 'Edit Category', 'slug' => 'edit-category', 'is_active' => true]);
+    $brand = Brand::create(['name' => 'Edit Brand', 'slug' => 'edit-brand', 'is_active' => true]);
+    $tag = Tag::create(['name' => 'Edit Tag', 'slug' => 'edit-tag', 'is_active' => true]);
+    $attribute = Attribute::create(['name' => 'Edit Color', 'slug' => 'edit-color', 'type' => 'select', 'is_active' => true]);
+    $attribute->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $product = app(ProductService::class)->save([
+        'name' => 'Editable Product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'brand_id' => $brand->id,
+        'primary_category_id' => $category->id,
+        'category_ids' => [$category->id],
+        'tag_ids' => [$tag->id],
+    ]);
+
+    Livewire::test(ProductEdit::class, ['product' => $product])
+        ->assertSee('data-slot="select-control"', false)
+        ->assertSee('Select additional categories', false)
+        ->assertSee('Select tags', false)
+        ->assertSee('rounded-lg', false)
+        ->assertDontSee('<select', false)
+        ->assertSee('data-slot="option"', false);
 });
 
 it('maps real variant options and variant media for the storefront', function () {
@@ -263,6 +291,36 @@ it('renders every requested catalog list through the Sheaf table', function () {
         ->assertDontSee('<table class="min-w-full text-left text-sm">', false);
 });
 
+it('renders the products table with compact responsive columns and full pagination', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+    foreach (range(1, 16) as $index) {
+        Product::create([
+            'name' => "Responsive Product {$index}",
+            'slug' => "responsive-product-{$index}",
+            'product_type' => 'simple',
+            'status' => 'published',
+            'visibility' => 'visible',
+        ]);
+    }
+
+    Livewire::test(ProductsIndex::class)
+        ->assertSee('Pagination Navigation', false)
+        ->assertSee('Items per page', false)
+        ->assertSee('md:table-cell', false)
+        ->assertSee('truncate', false)
+        ->assertSee('text-[11px] font-bold', false)
+        ->assertDontSee('uppercase', false)
+        ->assertSee('Product', false)
+        ->assertSee('SKU', false)
+        ->assertSee('Category', false)
+        ->assertSee('Brand', false)
+        ->assertSee('Price', false)
+        ->assertSee('Stock', false)
+        ->assertSee('Status', false)
+        ->assertSee('Actions', false);
+});
+
 it('filters products by name, slug, and variant SKU through the catalog table state', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
     $matching = Product::create([
@@ -290,6 +348,80 @@ it('filters products by name, slug, and variant SKU through the catalog table st
         ->set('searchQuery', 'SKU-SEARCH-42')
         ->assertSee('Searchable Product', false)
         ->assertDontSee('Other Product', false);
+});
+
+it('keeps product status, category, and brand filters functional and resettable', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $category = Category::create(['name' => 'Filtered Category', 'slug' => 'filtered-category', 'is_active' => true]);
+    $brand = Brand::create(['name' => 'Filtered Brand', 'slug' => 'filtered-brand', 'is_active' => true]);
+
+    Product::create([
+        'name' => 'Filtered Product',
+        'slug' => 'filtered-product',
+        'product_type' => 'simple',
+        'primary_category_id' => $category->id,
+        'brand_id' => $brand->id,
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    Product::create([
+        'name' => 'Unfiltered Product',
+        'slug' => 'unfiltered-product',
+        'product_type' => 'simple',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+
+    Livewire::test(ProductsIndex::class)
+        ->call('toggleFilters')
+        ->assertSet('filtersOpen', true)
+        ->set('status', 'published')
+        ->set('categoryFilter', $category->id)
+        ->set('brandFilter', $brand->id)
+        ->assertSee('Filtered Product', false)
+        ->assertDontSee('Unfiltered Product', false)
+        ->call('resetFilters')
+        ->assertSet('status', '')
+        ->assertSet('categoryFilter', null)
+        ->assertSet('brandFilter', null)
+        ->assertSee('Filtered Product', false)
+        ->assertSee('Unfiltered Product', false);
+});
+
+it('renders readable catalog controls and symbols without mojibake', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Readable Catalog Product',
+        'slug' => 'readable-catalog-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $product->variants()->create([
+        'sku' => 'READABLE-1',
+        'regular_price_minor' => 1250,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    foreach ([BrandsIndex::class, TagsIndex::class, ProductsIndex::class, InventoryIndex::class, VariantsIndex::class, ProductVariantsIndex::class] as $component) {
+        $test = $component === ProductVariantsIndex::class
+            ? Livewire::test($component, ['product' => $product])
+            : Livewire::test($component);
+
+        $test->assertDontSee('Ã', false)
+            ->assertDontSee('Â', false)
+            ->assertDontSee('â', false);
+    }
+
+    Livewire::test(ProductsIndex::class)
+        ->assertSee('&#2547;', false)
+        ->assertSee(html_entity_decode('&mdash;'), false)
+        ->assertSee('&rarr;', false)
+        ->assertDontSee('Ã', false)
+        ->assertDontSee('Â', false)
+        ->assertDontSee('â', false);
+
 });
 
 it('renders related products in a five-card carousel without dots', function () {

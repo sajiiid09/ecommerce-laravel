@@ -25,7 +25,7 @@
                         <div>
                             <p class="text-xs font-semibold text-[#6b7280]">{{ $label }}</p>
                             <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ $value }}</p>
-                            <a href="{{ url('/admin/catalog/products') }}" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View products ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
+                            <a href="{{ url('/admin/catalog/products') }}" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View products →</a>
                         </div>
                         <span style="background: {{ $color }}15; color: {{ $color }}" class="grid size-11 place-items-center rounded-full">
                             <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
@@ -67,13 +67,13 @@
                                                 <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
                                                     <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                                                 </div>
-                                                <span class="font-bold text-[#111827]">{{ $row->product?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</span>
+                                                <span class="font-bold text-[#111827]">{{ $row->product?->name ?? '—' }}</span>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? '—' }}</td>
                                         <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->sku }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues->pluck('value')->join(' / ') ?: 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
-                                        <td class="px-4 py-4 font-semibold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
+                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues->pluck('value')->join(' / ') ?: '—' }}</td>
+                                        <td class="px-4 py-4 font-semibold text-[#111827]">৳{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
                                         <td class="px-4 py-4"><span class="font-semibold {{ $row->availableQuantity() < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->availableQuantity() }}</span></td>
                                         <td class="px-4 py-4">
                                             @php $isActive = $row->is_active ?? true; @endphp

@@ -102,7 +102,7 @@
                         <div>
                             <p class="text-xs font-semibold text-[#6b7280]">{{ $label }}</p>
                             <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ $value }}</p>
-                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
+                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all →</a>
                         </div>
                         <span style="background: {{ $color }}15; color: {{ $color }}" class="grid size-11 place-items-center rounded-full">
                             <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
@@ -216,7 +216,7 @@
                             </div>
                         @endforeach
                     </div>
-                    <a href="#" class="mt-4 block text-center text-xs font-bold text-[#2563eb]">View Full Report ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</a>
+                    <a href="#" class="mt-4 block text-center text-xs font-bold text-[#2563eb]">View Full Report →</a>
                 </div>
             </div>
         </div>

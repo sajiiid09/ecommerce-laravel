@@ -23,7 +23,7 @@
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-slate-500">{{ $card['label'] }}</p>
                     <p class="mt-2 text-2xl font-extrabold text-slate-950">{{ $card['value'] }}</p>
-                    <button type="button" wire:click="$set('status', '{{ str($card['label'])->snake() }}')" class="mt-1 text-xs font-bold text-blue-600">View details â†’</button>
+                    <button type="button" wire:click="$set('status', '{{ str($card['label'])->snake() }}')" class="mt-1 text-xs font-bold text-blue-600">View details →</button>
                 </div>
             @endforeach
         </div>
@@ -53,8 +53,8 @@
                             @php($available = $row->availableQuantity())
                             @php($rowStatus = $available <= 0 ? 'Out of Stock' : ($row->isLowStock() ? 'Low Stock' : 'In Stock'))
                             <x-ui.table.row :key="$row->id" class="text-slate-700 hover:bg-slate-50">
-                                <td class="px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? 'â€”' }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></td>
-                                <td class="px-4 py-4 text-xs font-medium text-slate-500">{{ $row->variant?->sku ?? 'â€”' }}</td>
+                                <td class="px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? '—' }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></td>
+                                <td class="px-4 py-4 text-xs font-medium text-slate-500">{{ $row->variant?->sku ?? '—' }}</td>
                                 <td class="px-4 py-4 font-semibold text-slate-950">{{ $row->quantity_on_hand }}</td>
                                 <td class="px-4 py-4 text-slate-500">{{ $row->quantity_reserved }}</td>
                                 <td class="px-4 py-4 font-semibold text-slate-950">{{ $available }}</td>
@@ -79,7 +79,7 @@
     @if ($adjustingItemId)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true">
             <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-                <div class="flex items-start justify-between gap-4"><div><h2 class="text-lg font-bold text-slate-950">Adjust stock</h2><p class="mt-1 text-sm text-slate-500">Add or remove units from this inventory item.</p></div><button type="button" wire:click="closeAdjust" class="text-2xl leading-none text-slate-400">Ã—</button></div>
+                <div class="flex items-start justify-between gap-4"><div><h2 class="text-lg font-bold text-slate-950">Adjust stock</h2><p class="mt-1 text-sm text-slate-500">Add or remove units from this inventory item.</p></div><button type="button" wire:click="closeAdjust" class="text-2xl leading-none text-slate-400">×</button></div>
                 <div class="mt-5 space-y-4"><label class="block text-sm font-semibold text-slate-700">Adjustment<input type="number" wire:model="adjustment" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"></label><label class="block text-sm font-semibold text-slate-700">Movement type<select wire:model="movementType" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"><option value="restock">Restock</option><option value="adjustment">Adjustment</option><option value="damage">Damage</option><option value="return">Return</option><option value="correction">Correction</option></select></label><label class="block text-sm font-semibold text-slate-700">Note<textarea wire:model="note" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"></textarea></label></div>
                 <div class="mt-6 flex justify-end gap-2"><button type="button" wire:click="closeAdjust" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="button" wire:click="adjust" wire:loading.attr="disabled" wire:target="adjust" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><span wire:loading.remove wire:target="adjust">Save adjustment</span><span wire:loading wire:target="adjust">Saving...</span></button></div>
             </div>

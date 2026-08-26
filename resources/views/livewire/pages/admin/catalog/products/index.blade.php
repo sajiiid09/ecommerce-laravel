@@ -42,7 +42,7 @@
                         </span>
                     </div>
                     <div class="mt-4 flex items-center gap-2 text-xs">
-                        <span class="font-bold text-[#10b981]">+0.0% ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Ëœ</span>
+                        <span class="font-bold text-[#10b981]">+0.0% &rarr;</span>
                         <span class="text-[#9ca3af]">vs last 7 days</span>
                         <span class="ml-auto">
                             <svg class="h-6 w-16" viewBox="0 0 64 24" fill="none"><polyline points="0,20 8,16 16,18 24,10 32,12 40,6 48,8 56,2 64,4" stroke="{{ $color }}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -66,8 +66,7 @@
             </div>
         @endif
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
+        <x-ui.table.container border class="mb-4 bg-white shadow-sm">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search products by name, SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
                     <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="15">15</option><option value="30">30</option><option value="50">50</option></select>
@@ -82,115 +81,45 @@
                     </div>
                 @endif
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
-                            <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
-                                <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Product</x-ui.table.head><x-ui.table.head>SKU</x-ui.table.head><x-ui.table.head>Category</x-ui.table.head><x-ui.table.head>Brand</x-ui.table.head><x-ui.table.head>Price</x-ui.table.head><x-ui.table.head>Stock</x-ui.table.head><x-ui.table.head column="status" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                <x-ui.table :paginator="$rows" pagination:variant="full" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="table-fixed">
+                            <x-ui.table.header class="bg-[#f9fafb] text-[10px] font-semibold tracking-wide text-[#9ca3af] sm:text-[11px]"><x-ui.table.columns withCheckAll>
+                                <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="w-[42%] px-2 text-[10px] sm:px-3 sm:text-xs md:w-[28%]">Product</x-ui.table.head><x-ui.table.head class="hidden w-[10%] px-2 text-[10px] sm:text-xs md:table-cell">SKU</x-ui.table.head><x-ui.table.head class="hidden w-[11%] px-2 text-[10px] sm:text-xs md:table-cell">Category</x-ui.table.head><x-ui.table.head class="hidden w-[10%] px-2 text-[10px] sm:text-xs md:table-cell">Brand</x-ui.table.head><x-ui.table.head class="w-[16%] px-2 text-[10px] sm:text-xs md:w-[12%]">Price</x-ui.table.head><x-ui.table.head class="w-[11%] px-2 text-[10px] sm:text-xs md:w-[8%]">Stock</x-ui.table.head><x-ui.table.head column="status" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="w-[15%] px-2 text-[10px] sm:text-xs md:w-[10%]">Status</x-ui.table.head><x-ui.table.head class="w-[12%] px-2 text-[10px] sm:text-xs md:w-[8%]">Actions</x-ui.table.head>
                             </x-ui.table.columns></x-ui.table.header>
                             <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
                                     <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
-                                        <td class="px-4 py-4">
-                                            <div class="flex items-center gap-3">
-                                                <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
+                                        <x-ui.table.cell class="w-[42%] px-2 py-2 text-xs sm:px-3 sm:py-3 md:w-[28%]">
+                                            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+                                                <div class="grid size-8 shrink-0 rounded-lg bg-[#f3f4f6] sm:size-9 md:size-10">
                                                     <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                                                 </div>
-                                                <div>
-                                                    <p class="font-bold text-[#111827]">{{ $row->name }}</p>
-                                                    <p class="mt-0.5 text-xs text-[#9ca3af]">{{ $row->brand?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</p>
+                                                <div class="min-w-0">
+                                                    <p class="truncate text-[11px] font-bold text-[#111827] sm:text-xs">{{ $row->name }}</p>
+                                                    <p class="mt-0.5 truncate text-[10px] text-[#9ca3af] sm:text-[11px]">{{ $row->brand?->name ?? html_entity_decode('&mdash;') }}</p>
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->defaultVariant?->sku ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->primaryCategory?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
-                                        <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->brand?->name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â' }}</td>
-                                        <td class="px-4 py-4 font-semibold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³{{ number_format(($row->defaultVariant?->currentPriceMinor() ?? 0)/100,2) }}</td>
-                                        <td class="px-4 py-4"><span class="font-semibold {{ ($row->defaultVariant?->availableQuantity() ?? 0) < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->defaultVariant?->availableQuantity() ?? 0 }}</span></td>
-                                        <td class="px-4 py-4">
+                                        </x-ui.table.cell>
+                                        <x-ui.table.cell class="hidden w-[10%] px-2 py-3 text-[11px] font-medium text-[#6b7280] md:table-cell">{{ $row->defaultVariant?->sku ?? html_entity_decode('&mdash;') }}</x-ui.table.cell>
+                                        <x-ui.table.cell class="hidden w-[11%] px-2 py-3 text-xs text-[#374151] md:table-cell">{{ $row->primaryCategory?->name ?? html_entity_decode('&mdash;') }}</x-ui.table.cell>
+                                        <x-ui.table.cell class="hidden w-[10%] px-2 py-3 text-xs text-[#374151] md:table-cell">{{ $row->brand?->name ?? html_entity_decode('&mdash;') }}</x-ui.table.cell>
+                                        <x-ui.table.cell class="w-[16%] px-2 py-3 text-[11px] font-semibold text-[#111827] sm:text-xs md:w-[12%]">&#2547;{{ number_format(($row->defaultVariant?->currentPriceMinor() ?? 0)/100,2) }}</x-ui.table.cell>
+                                        <x-ui.table.cell class="w-[11%] px-2 py-3 text-[11px] sm:text-xs md:w-[8%]"><span class="font-semibold {{ ($row->defaultVariant?->availableQuantity() ?? 0) < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->defaultVariant?->availableQuantity() ?? 0 }}</span></x-ui.table.cell>
+                                        <x-ui.table.cell class="w-[15%] px-2 py-3 md:w-[10%]">
                                             @php $st = $row->status?->value ?? $row->status; @endphp
-                                            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $st === 'published' ? 'bg-[#dcfce7] text-[#16a34a]' : ($st === 'draft' ? 'bg-[#fef3c7] text-[#d97706]' : 'bg-[#f3f4f6] text-[#6b7280]') }}">{{ ucfirst($st) }}</span>
-                                        </td>
-                                        <td class="px-5 py-4">
-                                            <div class="flex items-center gap-1">
-                                                <a href="{{ url('/admin/catalog/products/'.$row->id.'/edit') }}" class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#2563eb]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg></a>
-                                                <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
+                                            <span class="inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold sm:px-2 sm:text-[11px] {{ $st === 'published' ? 'bg-[#dcfce7] text-[#16a34a]' : ($st === 'draft' ? 'bg-[#fef3c7] text-[#d97706]' : 'bg-[#f3f4f6] text-[#6b7280]') }}">{{ ucfirst($st) }}</span>
+                                        </x-ui.table.cell>
+                                        <x-ui.table.cell class="w-[12%] px-1 py-2 md:w-[8%]">
+                                            <div class="flex items-center justify-end gap-0.5 sm:gap-1">
+                                                <a href="{{ url('/admin/catalog/products/'.$row->id.'/edit') }}" class="grid size-7 place-items-center rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#2563eb] sm:size-8"><svg class="size-3.5 sm:size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg></a>
+                                                <button class="grid size-7 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444] sm:size-8"><svg class="size-3.5 sm:size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                             </div>
-                                        </td>
+                                        </x-ui.table.cell>
                                     </x-ui.table.row>
                                 @empty
                                     <x-ui.table.empty>{{ filled($searchQuery) || filled($status) || $categoryFilter || $brandFilter ? 'No products match the selected search or filters.' : 'No products found.' }}</x-ui.table.empty>
                                 @endforelse
                             </x-ui.table.rows>
                 </x-ui.table>
-            </div>
-
-            <div class="space-y-5">
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <h3 class="text-sm font-bold text-[#111827]">Top Categories</h3>
-                    <a href="{{ url('/admin/catalog/categories') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
-                    <div class="mt-4 space-y-3">
-                        @foreach($topCategories as $category)
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-[#374151]">{{ $category->name }}</span>
-                                <span class="font-bold text-[#111827]">{{ $category->products_count }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="mt-4 border-t border-[#f3f4f6] pt-3">
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-[#6b7280]">Total Categories</span>
-                            <span class="font-bold text-[#111827]">{{ $totalCategories }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-[#111827]">Inventory Alerts</h3>
-                        <a href="{{ url('/admin/catalog/inventory') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @foreach($inventoryAlerts as $label=>$count)
-                            <div class="flex items-center justify-between text-sm">
-                                <div class="flex items-center gap-2">
-                                    <span class="size-2 rounded-full {{ $label === 'Out of Stock' ? 'bg-[#ef4444]' : ($label === 'Low Stock' ? 'bg-[#f97316]' : 'bg-[#eab308]') }}"></span>
-                                    <span class="text-[#374151]">{{ $label }}</span>
-                                </div>
-                                <span class="font-bold text-[#111827]">{{ $count }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-[#111827]">Recently Added Products</h3>
-                        <a href="{{ url('/admin/catalog/categories') }}" class="text-xs font-bold text-[#2563eb]">View All</a>
-                    </div>
-                    <div class="mt-4 space-y-3">
-                        @foreach($rows->take(5) as $row)
-                            <div class="flex items-center gap-3">
-                                <div class="size-8 shrink-0 rounded bg-[#f3f4f6]"></div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="truncate text-xs font-bold text-[#111827]">{{ $row->name }}</p>
-                                    <p class="text-[10px] text-[#9ca3af]">Added {{ $row->created_at->diffForHumans() }}</p>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="grid size-10 place-items-center rounded-full bg-[#eff6ff]">
-                            <svg class="size-5 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-[#6b7280]">Total Product Value</p>
-                            <p class="text-lg font-extrabold text-[#111827]">ÃƒÂ Ã‚Â§Ã‚Â³3,24,85,600</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </x-ui.table.container>
     </div>
 </div>
