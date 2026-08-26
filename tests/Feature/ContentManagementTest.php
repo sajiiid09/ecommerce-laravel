@@ -403,7 +403,9 @@ it('seeds idempotent demo CMS content without overwriting settings', function ()
     $bannerCount = Banner::count();
     $announcementCount = Announcement::count();
 
-    expect(SiteSetting::where('group', 'header')->pluck('key')->all())
+    expect(SiteSetting::where('group', 'general')->pluck('key')->all())
+        ->toEqualCanonicalizing(['store_name', 'tagline', 'logo_media_id', 'favicon_media_id', 'support_email', 'support_phone', 'address', 'timezone'])
+        ->and(SiteSetting::where('group', 'header')->pluck('key')->all())
         ->toEqualCanonicalizing(['logo_url', 'logo_media_id', 'support_text', 'show_search', 'sticky', 'desktop_menu_key', 'mobile_menu_key', 'show_announcement'])
         ->and(SiteSetting::where('group', 'footer')->pluck('key')->all())
         ->toEqualCanonicalizing(['description', 'copyright', 'support_email', 'whatsapp_number', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'social_links', 'show_newsletter', 'show_payment_methods', 'show_footer'])

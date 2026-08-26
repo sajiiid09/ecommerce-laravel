@@ -28,6 +28,16 @@ class ContentSeeder extends Seeder
     private function seedSettings(): void
     {
         $settings = [
+            'general' => [
+                'store_name' => 'StoreZ',
+                'tagline' => 'Shop smarter every day.',
+                'logo_media_id' => null,
+                'favicon_media_id' => null,
+                'support_email' => 'support@storez.local',
+                'support_phone' => null,
+                'address' => 'Dhaka, 1205, Bangladesh',
+                'timezone' => 'Asia/Dhaka',
+            ],
             'header' => [
                 'logo_url' => '/images/brand/storez-logo.png',
                 'logo_media_id' => null,

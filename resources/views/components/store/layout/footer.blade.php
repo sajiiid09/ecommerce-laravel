@@ -1,13 +1,16 @@
-@props(['categories' => [], 'footerMenus' => [], 'footerLogo' => null, 'footerSupportEmail' => '', 'footerSocialLinks' => [], 'footerShowNewsletter' => true, 'footerShowPayments' => true, 'footerVisible' => true])
+@props(['categories' => [], 'footerMenus' => [], 'footerLogo' => null, 'footerStoreName' => 'StoreZ', 'footerStoreTagline' => '', 'footerSupportEmail' => '', 'footerSupportPhone' => '', 'footerAddress' => '', 'footerSocialLinks' => [], 'footerShowNewsletter' => true, 'footerShowPayments' => true, 'footerVisible' => true])
 
 @if($footerVisible)
     <footer class="bg-store-navy text-slate-200">
         <x-store.ui.container class="py-10">
             <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
                 <div>
-                    @if($footerLogo)<img src="{{ $footerLogo }}" alt="StoreZ" class="h-9 w-auto object-contain">@else<h2 class="text-base font-bold text-white">About StoreZ</h2>@endif
+                    @if($footerLogo)<img src="{{ $footerLogo }}" alt="{{ $footerStoreName }}" class="h-9 w-auto object-contain">@else<h2 class="text-base font-bold text-white">About {{ $footerStoreName }}</h2>@endif
+                    @if($footerStoreTagline)<p class="mt-2 text-xs font-semibold text-blue-100">{{ $footerStoreTagline }}</p>@endif
                     <p class="mt-3 text-sm leading-6 text-blue-100">{{ $footerDescription }}</p>
                     @if($footerSupportEmail)<a href="mailto:{{ $footerSupportEmail }}" class="mt-3 inline-block text-sm text-blue-100 hover:text-white">{{ $footerSupportEmail }}</a>@endif
+                    @if($footerSupportPhone)<a href="tel:{{ $footerSupportPhone }}" class="mt-1 block text-sm text-blue-100 hover:text-white">{{ $footerSupportPhone }}</a>@endif
+                    @if($footerAddress)<p class="mt-1 text-sm text-blue-100">{{ $footerAddress }}</p>@endif
                 </div>
 
                 @foreach(['shop' => 'Shop', 'help' => 'Customer Service', 'company' => 'Company', 'legal' => 'Legal'] as $menuKey => $menuTitle)

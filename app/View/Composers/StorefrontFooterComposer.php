@@ -17,29 +17,38 @@ class StorefrontFooterComposer
 
     public function compose(View $view): void
     {
+        $hasSettings = Schema::hasTable('site_settings');
+        $generalLogo = $hasSettings && ($logoId = $this->settings->get('general', 'logo_media_id'))
+            ? MediaAsset::find($logoId)?->url()
+            : null;
+
         $view->with([
-            'footerDescription' => Schema::hasTable('site_settings')
+            'footerStoreName' => $hasSettings ? (string) $this->settings->get('general', 'store_name', 'StoreZ') : 'StoreZ',
+            'footerStoreTagline' => $hasSettings ? (string) $this->settings->get('general', 'tagline', 'Shop smarter every day.') : 'Shop smarter every day.',
+            'footerSupportPhone' => $hasSettings ? (string) $this->settings->get('general', 'support_phone', '') : '',
+            'footerAddress' => $hasSettings ? (string) $this->settings->get('general', 'address', 'Dhaka, 1205, Bangladesh') : 'Dhaka, 1205, Bangladesh',
+            'footerDescription' => $hasSettings
                 ? $this->settings->get('footer', 'description', 'Your trusted online shopping destination in Bangladesh.')
                 : 'Your trusted online shopping destination in Bangladesh.',
-            'footerCopyright' => Schema::hasTable('site_settings')
+            'footerCopyright' => $hasSettings
                 ? $this->settings->get('footer', 'copyright', '© '.now()->year.' StoreZ. All rights reserved.')
                 : '© '.now()->year.' StoreZ. All rights reserved.',
-            'footerSupportEmail' => Schema::hasTable('site_settings')
-                ? $this->settings->get('footer', 'support_email', '')
-                : '',
-            'footerLogo' => Schema::hasTable('site_settings') && ($logoId = $this->settings->get('footer', 'logo_media_id'))
-                ? MediaAsset::find($logoId)?->url()
-                : null,
-            'footerSocialLinks' => Schema::hasTable('site_settings')
+            'footerSupportEmail' => $hasSettings
+                ? $this->settings->get('footer', 'support_email') ?: $this->settings->get('general', 'support_email', 'support@storez.local')
+                : 'support@storez.local',
+            'footerLogo' => $hasSettings && ($logoId = $this->settings->get('footer', 'logo_media_id'))
+                ? (MediaAsset::find($logoId)?->url() ?: $generalLogo)
+                : $generalLogo,
+            'footerSocialLinks' => $hasSettings
                 ? (array) $this->settings->get('footer', 'social_links', [])
                 : [],
-            'footerShowNewsletter' => Schema::hasTable('site_settings')
+            'footerShowNewsletter' => $hasSettings
                 ? (bool) $this->settings->get('footer', 'show_newsletter', true)
                 : true,
-            'footerShowPayments' => Schema::hasTable('site_settings')
+            'footerShowPayments' => $hasSettings
                 ? (bool) $this->settings->get('footer', 'show_payment_methods', true)
                 : true,
-            'footerVisible' => Schema::hasTable('site_settings')
+            'footerVisible' => $hasSettings
                 ? (bool) $this->settings->get('footer', 'show_footer', true)
                 : true,
             'footerMenus' => Schema::hasTable('menus') ? [

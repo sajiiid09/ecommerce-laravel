@@ -11,8 +11,8 @@
                 <span class="sr-only">Toggle navigation</span>
             </button>
 
-            <a href="{{ route('store.home') }}" wire:navigate class="shrink-0" aria-label="StoreZ home">
-                <img src="{{ $configuredLogo ?: asset('images/brand/storez-logo.png') }}" alt="StoreZ" class="h-auto w-25 sm:w-30">
+            <a href="{{ route('store.home') }}" wire:navigate class="shrink-0" aria-label="{{ $storeName }} home">
+                <img src="{{ $configuredLogo ?: asset('images/brand/storez-logo.png') }}" alt="{{ $storeName }}" class="h-auto w-25 sm:w-30">
             </a>
 
             <button type="button"

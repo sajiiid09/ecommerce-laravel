@@ -16,6 +16,7 @@ use App\Livewire\Pages\Admin\Media\Index;
 use App\Livewire\Pages\Admin\Orders\Index as AdminOrdersIndex;
 use App\Livewire\Pages\Admin\Orders\Show as AdminOrderShow;
 use App\Livewire\Pages\Admin\Reviews\Index as AdminReviewsIndex;
+use App\Livewire\Pages\Admin\Settings\General as AdminGeneralSettings;
 use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
 use App\Livewire\Pages\Auth\Login;
 use App\Livewire\Pages\Auth\Register;
@@ -77,6 +78,7 @@ Route::prefix('admin/orders')->middleware(['auth', 'admin'])->group(function ():
     Route::livewire('/{order}', new AdminOrderShow)->name('admin.order');
 });
 Route::livewire('/admin/reviews', new AdminReviewsIndex)->middleware(['auth', 'admin'])->name('admin.reviews');
+Route::livewire('/admin/settings/general', new AdminGeneralSettings)->middleware(['auth', 'admin'])->name('admin.settings.general');
 Route::livewire('/admin/settings/payments', new AdminPaymentSettings)->middleware(['auth', 'admin'])->name('admin.settings.payments');
 
 Route::prefix('admin/catalog')->middleware(['auth', 'admin'])->group(function (): void {

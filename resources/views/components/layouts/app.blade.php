@@ -1,4 +1,4 @@
-@props(['title' => 'StoreZ'])
+@props(['title' => null])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -6,8 +6,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <link rel="icon" type="image/png" href="{{ asset('images/brand/favicon.png') }}">
-        <title>{{ $title }}</title>
+        <link rel="icon" type="image/png" href="{{ $faviconUrl ?: asset('images/brand/favicon.png') }}">
+        <meta name="description" content="{{ $storeTagline ?? 'Shop smarter every day.' }}">
+        <title>{{ $title ? str_replace('StoreZ', $storeName ?? 'StoreZ', $title) : ($storeName ?? 'StoreZ') }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
