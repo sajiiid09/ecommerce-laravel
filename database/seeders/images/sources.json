@@ -1,0 +1,262 @@
+{
+  "notes": [
+    "Product URLs were chosen to match the seeded product as closely as possible.",
+    "Brand assets use site favicons for a compact demo-safe seed asset; replace with approved logos if you want full brand marks.",
+    "Category assets use Unsplash image URLs.",
+    "Third-party image rights remain with their respective owners; review terms before public/commercial use."
+  ],
+  "products": [
+    {
+      "path": "products/sony-wh-ch720n.png",
+      "name": "Sony WH-CH720N Wireless Noise Cancelling Headphones",
+      "source_url": "https://www.sony-asia.com/headphones/products/wh-ch720n",
+      "image_url": "https://store.sony.com.au/dw/image/v2/ABBC_PRD/on/demandware.static/-/Sites-sony-master-catalog/default/dw53ac9731/images/WHCH720NW/WHCH720NW.png"
+    },
+    {
+      "path": "products/wiz-a60-e27-smart-bulb.jpg",
+      "name": "WiZ A60 E27 Smart LED Bulb",
+      "source_url": "https://www.wizconnected.com/en-gb/p/filament-bulb-filament-clear-60-w-a60-e27/8720169076037",
+      "image_url": "https://m.media-amazon.com/images/I/71kEvxYhIEL._AC_SL1500_.jpg"
+    },
+    {
+      "path": "products/fresh-atta-2kg.jpg",
+      "name": "Fresh Atta 2kg",
+      "source_url": "https://www.shwapno.com/fresh-atta-2kg?lang=en",
+      "image_url": "https://i.chaldn.com/_mpimage/fresh-flour-atta-2-kg?m=1600&q=best&src=https%3A%2F%2Feggyolk.chaldal.com%2Fapi%2FPicture%2FRaw%3FpictureId%3D97220&v=1"
+    },
+    {
+      "path": "products/teer-nazirshail-rice-5kg.jpg",
+      "name": "Teer Nazirshail Rice 5kg",
+      "source_url": "https://www.shwapno.com/Teer-Nazirshail-Rice-5kg",
+      "image_url": "https://www.okaypia.com/uploads/2021/02/thumbnails/1613797699-1-550X550.jpg"
+    },
+    {
+      "path": "products/fresh-soyabean-oil-2l.webp",
+      "name": "Fresh Soyabean Oil 2L",
+      "source_url": "https://www.daraz.com.bd/products/fresh-soyabean-oil-2l-i257029830.html",
+      "image_url": "https://img.drz.lazcdn.com/static/bd/p/762755810691a3113edd05d7ef52a5d1.png_720x720q80.png_.webp"
+    },
+    {
+      "path": "products/orix-crystal-detergent-powder-2kg.png",
+      "name": "Orix Crystal Detergent Powder 2kg",
+      "source_url": "https://herlan.com/product/orix-crystal-wash-powder-detergent/",
+      "image_url": "https://herlan.com/product/orix-crystal-wash-powder-detergent/Powder-Detergent-1-1.png"
+    },
+    {
+      "path": "products/redmi-note-13.png",
+      "name": "Redmi Note 13",
+      "source_url": "https://www.mi.com/bd/product/redmi-note-13/",
+      "image_url": "https://i02.appmifile.com/994_operatorx_operatorx_opx/11/01/2024/72a71b312950178179eeb71425ef8def.png"
+    },
+    {
+      "path": "products/nivea-soft-300ml.png",
+      "name": "NIVEA Soft Light Moisturizer 300ml",
+      "source_url": "https://www.nivea.com/products/nivea-soft",
+      "image_url": "https://images-us.nivea.com/-/media/miscellaneous/media-center-items/a/1/8/95b25f97d21040ec9a10cf2586314df0-web_1010x1180_transparent_png.png?hash=492B7DFEA44EA22C3ADB6DCCBBD479AA&mw=960"
+    },
+    {
+      "path": "products/miyako-mjk-805-kettle.webp",
+      "name": "Miyako MJK-805 Electric Kettle 1.8L",
+      "source_url": "https://smartview.com.bd/",
+      "image_url": "https://smartview.com.bd/uploads/products/1728299871.webp"
+    },
+    {
+      "path": "products/aarong-blue-cotton-waistcoat.jpg",
+      "name": "Aarong Blue Cotton Waistcoat",
+      "source_url": "https://www.aarong.com/catalog/product/view/id/1882495/s/blue-cotton-waistcoat-31h232007001/category/371/",
+      "image_url": "https://mcprod.aarong.com/media/catalog/product/1/2/1200000020245.jpg"
+    },
+    {
+      "path": "products/samsung-galaxy-a15-5g.jpg",
+      "name": "Samsung Galaxy A15 5G",
+      "source_url": "https://www.samsung.com/us/smartphones/galaxy-a15-5g/",
+      "image_url": "https://m.media-amazon.com/images/I/71%2B0MKV37HL.jpg"
+    },
+    {
+      "path": "products/walton-wcw-comc70-cookware-set.jpg",
+      "name": "Walton WCW-COMC70 Cookware 7-in-1 Combo",
+      "source_url": "https://eplaza.waltonbd.com/index.php?product_id=6326&route=product%2Fproduct",
+      "image_url": "https://beemart.com.bd/images/products/1698143928.jpg"
+    },
+    {
+      "path": "products/apex-95910a47-casual-shoe.jpg",
+      "name": "Apex Men's Washable Casual Shoe 95910A47",
+      "source_url": "https://apex4u.com/product/apex-mens-washable-casual-shoe-95910a47",
+      "image_url": "https://storage.apex4u.com/dece570f-d82f-4df5-aa1c-b5f6ac6e9459.jpg"
+    },
+    {
+      "path": "products/mr-noodles-magic-masala-16-pack.jpg",
+      "name": "Mr Noodles Magic Masala 16 Pack",
+      "source_url": "https://www.arogga.com/product/88287/mr-noodles-magic-masala-16-pack",
+      "image_url": "https://cdn2.arogga.com/eyJidWNrZXQiOiJhcm9nZ2EiLCJrZXkiOiJQcm9kdWN0LXBfaW1hZ2VzXC84ODI4N1wvODgyODctQXJvZ2dhLUltYWdlLW9lN2psNC5qcGVnIiwiZWRpdHMiOnsicmVzaXplIjp7IndpZHRoIjoxMDAwLCJoZWlnaHQiOjEwMDAsImZpdCI6Im91dHNpZGUifSwib3ZlcmxheVdpdGgiOnsiYnVja2V0IjoiYXJvZ2dhIiwia2V5IjoibWlzY1wvd20ucG5nIiwiYWxwaGEiOjkwfX19"
+    },
+    {
+      "path": "products/ikea-taernaby-table-lamp.jpg",
+      "name": "IKEA TÄRNABY Table Lamp",
+      "source_url": "https://www.ikea.com/sg/en/p/taernaby-table-lamp-anthracite-60323894/",
+      "image_url": "https://www.ikea.com/sg/en/images/products/taernaby-table-lamp-dimmable-anthracite__1188962_pe899634_s5.jpg"
+    }
+  ],
+  "brands": [
+    {
+      "path": "brands/sony.png",
+      "name": "Sony",
+      "source_url": "https://sony.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=sony.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/wiz.png",
+      "name": "WIZ",
+      "source_url": "https://wizconnected.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=wizconnected.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/fresh.png",
+      "name": "Fresh",
+      "source_url": "https://mgi.org",
+      "image_url": "https://static-01.daraz.com.bd/other/shop/86c835f5e5e63d1476cf1217a21b65ff.jpeg",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/teer.png",
+      "name": "Teer",
+      "source_url": "https://citygroup.com.bd",
+      "image_url": "https://www.google.com/s2/favicons?domain=citygroup.com.bd&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/orix.png",
+      "name": "Orix",
+      "source_url": "https://herlan.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=herlan.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/xiaomi.png",
+      "name": "Xiaomi",
+      "source_url": "https://mi.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=mi.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/nivea.png",
+      "name": "Nivea",
+      "source_url": "https://nivea.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=nivea.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/miyako.png",
+      "name": "Miyako",
+      "source_url": "https://miyako.com.bd",
+      "image_url": "https://www.google.com/s2/favicons?domain=miyako.com.bd&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/aarong.png",
+      "name": "Aarong",
+      "source_url": "https://aarong.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=aarong.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/samsung.png",
+      "name": "Samsung",
+      "source_url": "https://samsung.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=samsung.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/walton.png",
+      "name": "Walton",
+      "source_url": "https://waltonbd.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=waltonbd.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/apex.png",
+      "name": "Apex",
+      "source_url": "https://apex4u.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=apex4u.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/pran.png",
+      "name": "PRAN",
+      "source_url": "https://pranfoods.net",
+      "image_url": "https://www.google.com/s2/favicons?domain=pranfoods.net&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    },
+    {
+      "path": "brands/ikea.png",
+      "name": "IKEA",
+      "source_url": "https://ikea.com",
+      "image_url": "https://www.google.com/s2/favicons?domain=ikea.com&sz=256",
+      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
+    }
+  ],
+  "categories": [
+    {
+      "path": "categories/electronics.jpg",
+      "name": "Electronics",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/fashion.jpg",
+      "name": "Fashion",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/groceries.jpg",
+      "name": "Groceries",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/home-living.jpg",
+      "name": "Home Living",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/beauty.jpg",
+      "name": "Beauty",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/baby-toys.jpg",
+      "name": "Baby Toys",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1599443015574-be5fe8a05783?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/phones.jpg",
+      "name": "Phones",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/audio.jpg",
+      "name": "Audio",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/mens-fashion.jpg",
+      "name": "Mens Fashion",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=80"
+    },
+    {
+      "path": "categories/womens-fashion.jpg",
+      "name": "Womens Fashion",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80"
+    }
+  ]
+}

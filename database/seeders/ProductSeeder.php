@@ -10,15 +10,19 @@ use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ProductAttributeValue;
+use App\Models\ProductMedia;
 use App\Models\ProductOption;
 use App\Models\ProductOptionValue;
 use App\Models\ProductVariant;
 use App\Models\Tag;
+use Database\Seeders\Concerns\SeedsDemoMedia;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class ProductSeeder extends Seeder
 {
+    use SeedsDemoMedia;
+
     private array $brandCache = [];
 
     private array $categoryCache = [];
@@ -37,28 +41,30 @@ class ProductSeeder extends Seeder
 
     private function loadCaches(): void
     {
-        foreach (Brand::all() as $b) {
-            $this->brandCache[$b->slug] = $b->id;
+        foreach (Brand::all() as $brand) {
+            $this->brandCache[$brand->slug] = $brand->id;
         }
-        foreach (Category::all() as $c) {
-            $this->categoryCache[$c->slug] = $c->id;
+
+        foreach (Category::all() as $category) {
+            $this->categoryCache[$category->slug] = $category->id;
         }
-        foreach (Tag::all() as $t) {
-            $this->tagCache[$t->slug] = $t->id;
+
+        foreach (Tag::all() as $tag) {
+            $this->tagCache[$tag->slug] = $tag->id;
         }
-        foreach (Attribute::all() as $a) {
-            $this->attributeCache[$a->slug] = $a->id;
+
+        foreach (Attribute::all() as $attribute) {
+            $this->attributeCache[$attribute->slug] = $attribute->id;
         }
-        foreach (AttributeValue::all() as $av) {
-            $this->attributeValueCache[$av->attribute_id][$av->slug] = $av->id;
+
+        foreach (AttributeValue::all() as $value) {
+            $this->attributeValueCache[$value->attribute_id][$value->slug] = $value->id;
         }
     }
 
     private function seedProducts(): void
     {
-        $products = $this->getProducts();
-
-        foreach ($products as $data) {
+        foreach ($this->getProducts() as $data) {
             $product = Product::updateOrCreate(
                 ['slug' => $data['slug']],
                 [
@@ -83,6 +89,8 @@ class ProductSeeder extends Seeder
             } else {
                 $this->createVariableProduct($product, $data);
             }
+
+            $this->syncProductImage($product, $data['image'] ?? null);
         }
     }
 
@@ -121,36 +129,38 @@ class ProductSeeder extends Seeder
         );
 
         $optionValueIds = [];
-        foreach ($data['options'] as $opt) {
-            $val = ProductOptionValue::updateOrCreate(
-                ['product_option_id' => $option->id, 'slug' => Str::slug($opt['value'])],
+
+        foreach ($data['options'] as $optionData) {
+            $value = ProductOptionValue::updateOrCreate(
+                ['product_option_id' => $option->id, 'slug' => Str::slug($optionData['value'])],
                 [
-                    'value' => $opt['label'],
-                    'slug' => Str::slug($opt['value']),
+                    'value' => $optionData['label'],
+                    'slug' => Str::slug($optionData['value']),
                     'sort_order' => 0,
                 ]
             );
-            $optionValueIds[$opt['value']] = $val->id;
+
+            $optionValueIds[$optionData['value']] = $value->id;
         }
 
-        foreach ($data['options'] as $opt) {
-            $priceMinor = $opt['price'] * 100;
-            $combinationKey = (string) $optionValueIds[$opt['value']];
+        foreach ($data['options'] as $index => $optionData) {
+            $priceMinor = $optionData['price'] * 100;
+            $combinationKey = (string) $optionValueIds[$optionData['value']];
 
             $variant = ProductVariant::updateOrCreate(
                 ['sku' => "STZ-{$product->id}-".strtoupper(substr(md5($combinationKey), 0, 6))],
                 [
                     'product_id' => $product->id,
-                    'name' => $opt['label'],
+                    'name' => $optionData['label'],
                     'combination_key' => $combinationKey,
                     'regular_price_minor' => $priceMinor,
                     'is_active' => true,
-                    'is_default' => false,
-                    'sort_order' => 0,
+                    'is_default' => $index === 0,
+                    'sort_order' => $index,
                 ]
             );
 
-            $variant->optionValues()->syncWithoutDetaching([$optionValueIds[$opt['value']]]);
+            $variant->optionValues()->sync([$optionValueIds[$optionData['value']]]);
             $this->createInventory($variant, rand(10, 150));
         }
     }
@@ -185,107 +195,145 @@ class ProductSeeder extends Seeder
 
     private function syncCategories(Product $product, array $slugs): void
     {
-        $ids = array_map(fn ($s) => $this->categoryCache[$s] ?? null, $slugs);
-        $ids = array_filter($ids);
+        $ids = array_filter(array_map(
+            fn ($slug) => $this->categoryCache[$slug] ?? null,
+            $slugs
+        ));
+
         $product->categories()->sync($ids);
     }
 
     private function syncTags(Product $product, array $slugs): void
     {
-        $ids = array_map(fn ($s) => $this->tagCache[$s] ?? null, $slugs);
-        $ids = array_filter($ids);
+        $ids = array_filter(array_map(
+            fn ($slug) => $this->tagCache[$slug] ?? null,
+            $slugs
+        ));
+
         $product->tags()->sync($ids);
     }
 
-    private function syncAttributes(Product $product, array $attrs): void
+    private function syncAttributes(Product $product, array $attributes): void
     {
-        foreach ($attrs as $attrSlug => $valueSlug) {
-            $attrId = $this->attributeCache[$attrSlug] ?? null;
-            $valId = $this->attributeValueCache[$attrId][$valueSlug] ?? null;
-            if ($attrId) {
-                ProductAttributeValue::updateOrCreate(
-                    ['product_id' => $product->id, 'attribute_id' => $attrId],
-                    ['attribute_value_id' => $valId]
-                );
+        foreach ($attributes as $attributeSlug => $valueSlug) {
+            $attributeId = $this->attributeCache[$attributeSlug] ?? null;
+            $valueId = $attributeId
+                ? ($this->attributeValueCache[$attributeId][$valueSlug] ?? null)
+                : null;
+
+            if (! $attributeId) {
+                continue;
             }
+
+            ProductAttributeValue::updateOrCreate(
+                ['product_id' => $product->id, 'attribute_id' => $attributeId],
+                ['attribute_value_id' => $valueId]
+            );
         }
+    }
+
+    private function syncProductImage(Product $product, ?string $relativePath): void
+    {
+        if (! $relativePath) {
+            return;
+        }
+
+        $media = $this->seedLocalImage($relativePath);
+
+        if (! $media) {
+            return;
+        }
+
+        ProductMedia::updateOrCreate(
+            [
+                'product_id' => $product->id,
+                'role' => 'primary',
+                'sort_order' => 0,
+            ],
+            [
+                'product_variant_id' => null,
+                'media_asset_id' => $media['id'],
+                'path' => $media['path'],
+                'alt_text' => $product->name,
+            ]
+        );
     }
 
     private function getProducts(): array
     {
         return [
             [
-                'slug' => 'wireless-noise-cancelling-headphones',
-                'name' => 'Wireless Noise Cancelling Headphones',
-                'brand' => 'soundmax',
+                'slug' => 'sony-wh-ch720n',
+                'name' => 'Sony WH-CH720N Wireless Noise Cancelling Headphones',
+                'brand' => 'sony',
                 'type' => 'simple',
-                'price' => 4290,
-                'old_price' => 4990,
+                'price' => 12990,
+                'old_price' => 14990,
                 'stock' => 85,
-                'is_featured' => false,
+                'is_featured' => true,
                 'categories' => ['electronics', 'audio'],
                 'tags' => ['best-seller'],
-                'attributes' => ['warranty' => '1-year'],
+                'attributes' => ['warranty' => '1-year', 'color' => 'black'],
+                'image' => 'products/sony-wh-ch720n.png',
             ],
             [
-                'slug' => 'smart-led-bulb-pack',
-                'name' => 'Smart LED Bulb, Pack of 2',
-                'brand' => 'brighthome',
+                'slug' => 'wiz-a60-e27-smart-bulb',
+                'name' => 'WiZ A60 E27 Smart LED Bulb',
+                'brand' => 'wiz',
                 'type' => 'simple',
-                'price' => 890,
-                'old_price' => 1090,
+                'price' => 1290,
+                'old_price' => 1490,
                 'stock' => 150,
                 'is_featured' => false,
                 'categories' => ['electronics', 'home-living'],
                 'tags' => ['on-sale'],
                 'attributes' => ['warranty' => '2-years'],
+                'image' => 'products/wiz-a60-e27-smart-bulb.jpg',
             ],
             [
-                'slug' => 'daily-essential-basket',
-                'name' => 'Daily Essential Grocery Basket',
-                'brand' => 'storez-fresh',
+                'slug' => 'fresh-atta-2kg',
+                'name' => 'Fresh Atta 2kg',
+                'brand' => 'fresh',
                 'type' => 'simple',
-                'price' => 1290,
+                'price' => 120,
+                'old_price' => 135,
                 'stock' => 200,
                 'is_featured' => true,
                 'categories' => ['groceries'],
                 'tags' => ['best-seller', 'budget-friendly'],
-                'attributes' => [],
+                'attributes' => ['weight' => '2kg'],
+                'image' => 'products/fresh-atta-2kg.jpg',
             ],
             [
-                'slug' => 'premium-basmati-rice',
-                'name' => 'Premium Basmati Rice',
+                'slug' => 'teer-nazirshail-rice-5kg',
+                'name' => 'Teer Nazirshail Rice 5kg',
                 'brand' => 'teer',
-                'type' => 'variable',
-                'price' => 950,
-                'old_price' => 1180,
-                'stock' => 0,
+                'type' => 'simple',
+                'price' => 650,
+                'old_price' => 690,
+                'stock' => 120,
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['premium'],
-                'attributes' => ['material' => 'plastic'],
-                'option_name' => 'Weight',
-                'options' => [
-                    ['label' => '1kg', 'value' => '1kg', 'price' => 210],
-                    ['label' => '5kg', 'value' => '5kg', 'price' => 950],
-                    ['label' => '10kg', 'value' => '10kg', 'price' => 1780],
-                ],
+                'attributes' => ['weight' => '5kg'],
+                'image' => 'products/teer-nazirshail-rice-5kg.jpg',
             ],
             [
-                'slug' => 'fresh-soyabean-oil',
+                'slug' => 'fresh-soyabean-oil-2l',
                 'name' => 'Fresh Soyabean Oil 2L',
                 'brand' => 'fresh',
                 'type' => 'simple',
-                'price' => 620,
-                'old_price' => 730,
+                'price' => 398,
+                'old_price' => 420,
                 'stock' => 180,
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['on-sale'],
                 'attributes' => [],
+                'image' => 'products/fresh-soyabean-oil-2l.webp',
             ],
             [
-                'slug' => 'orix-crystal-detergent',
+                'slug' => 'orix-crystal-detergent-powder-2kg',
                 'name' => 'Orix Crystal Detergent Powder 2kg',
                 'brand' => 'orix',
                 'type' => 'simple',
@@ -295,14 +343,15 @@ class ProductSeeder extends Seeder
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['on-sale', 'budget-friendly'],
-                'attributes' => ['material' => 'plastic'],
+                'attributes' => ['weight' => '2kg'],
+                'image' => 'products/orix-crystal-detergent-powder-2kg.png',
             ],
             [
                 'slug' => 'redmi-note-13',
                 'name' => 'Redmi Note 13',
                 'brand' => 'xiaomi',
                 'type' => 'variable',
-                'price' => 18999,
+                'price' => 20999,
                 'old_price' => 24999,
                 'stock' => 0,
                 'is_featured' => true,
@@ -311,13 +360,14 @@ class ProductSeeder extends Seeder
                 'attributes' => ['warranty' => '1-year'],
                 'option_name' => 'Storage',
                 'options' => [
-                    ['label' => '8/128GB', 'value' => '8-128gb', 'price' => 18999],
-                    ['label' => '8/256GB', 'value' => '8-256gb', 'price' => 21999],
+                    ['label' => '6/128GB', 'value' => '6-128gb', 'price' => 20999],
+                    ['label' => '8/256GB', 'value' => '8-256gb', 'price' => 22999],
                 ],
+                'image' => 'products/redmi-note-13.png',
             ],
             [
-                'slug' => 'nivea-soft-moisturizer',
-                'name' => 'Nivea Soft Light Moisturizer 300ml',
+                'slug' => 'nivea-soft-300ml',
+                'name' => 'NIVEA Soft Light Moisturizer 300ml',
                 'brand' => 'nivea',
                 'type' => 'simple',
                 'price' => 390,
@@ -327,10 +377,11 @@ class ProductSeeder extends Seeder
                 'categories' => ['beauty'],
                 'tags' => ['on-sale'],
                 'attributes' => [],
+                'image' => 'products/nivea-soft-300ml.png',
             ],
             [
-                'slug' => 'miyako-electric-kettle',
-                'name' => 'Miyako Electric Kettle 1.8L',
+                'slug' => 'miyako-mjk-805-kettle',
+                'name' => 'Miyako MJK-805 Electric Kettle 1.8L',
                 'brand' => 'miyako',
                 'type' => 'simple',
                 'price' => 850,
@@ -340,84 +391,91 @@ class ProductSeeder extends Seeder
                 'categories' => ['home-living'],
                 'tags' => ['on-sale'],
                 'attributes' => ['warranty' => '1-year', 'material' => 'steel'],
+                'image' => 'products/miyako-mjk-805-kettle.webp',
             ],
             [
-                'slug' => 'aarong-panjabi',
-                'name' => 'Classic Cotton Panjabi',
+                'slug' => 'aarong-blue-cotton-waistcoat',
+                'name' => 'Aarong Blue Cotton Waistcoat',
                 'brand' => 'aarong',
                 'type' => 'simple',
-                'price' => 1650,
-                'old_price' => 2100,
+                'price' => 2777,
+                'old_price' => 3100,
                 'stock' => 75,
                 'is_featured' => false,
                 'categories' => ['fashion', 'mens-fashion'],
                 'tags' => ['premium'],
-                'attributes' => ['material' => 'cotton'],
+                'attributes' => ['material' => 'cotton', 'color' => 'blue'],
+                'image' => 'products/aarong-blue-cotton-waistcoat.jpg',
             ],
             [
-                'slug' => 'samsung-galaxy-a15',
-                'name' => 'Samsung Galaxy A15',
+                'slug' => 'samsung-galaxy-a15-5g',
+                'name' => 'Samsung Galaxy A15 5G',
                 'brand' => 'samsung',
                 'type' => 'simple',
-                'price' => 17499,
-                'old_price' => 19999,
+                'price' => 23999,
+                'old_price' => 26999,
                 'stock' => 60,
-                'is_featured' => false,
+                'is_featured' => true,
                 'categories' => ['electronics', 'phones'],
                 'tags' => ['on-sale'],
                 'attributes' => ['warranty' => '1-year'],
+                'image' => 'products/samsung-galaxy-a15-5g.jpg',
             ],
             [
-                'slug' => 'walton-nonstick-cookware',
-                'name' => 'Walton Non-Stick Cookware Set',
+                'slug' => 'walton-wcw-comc70-cookware-set',
+                'name' => 'Walton WCW-COMC70 Cookware 7-in-1 Combo',
                 'brand' => 'walton',
                 'type' => 'simple',
-                'price' => 3450,
-                'old_price' => 4200,
+                'price' => 4530,
+                'old_price' => 5090,
                 'stock' => 45,
                 'is_featured' => false,
                 'categories' => ['home-living'],
                 'tags' => ['on-sale'],
-                'attributes' => ['material' => 'steel', 'warranty' => '2-years'],
+                'attributes' => [],
+                'image' => 'products/walton-wcw-comc70-cookware-set.jpg',
             ],
             [
-                'slug' => 'apex-casual-shoes',
-                'name' => 'Apex Casual Shoes',
+                'slug' => 'apex-95910a47-casual-shoe',
+                'name' => "Apex Men's Washable Casual Shoe 95910A47",
                 'brand' => 'apex',
                 'type' => 'simple',
-                'price' => 1799,
-                'old_price' => 2390,
+                'price' => 390,
+                'old_price' => 490,
                 'stock' => 100,
                 'is_featured' => false,
                 'categories' => ['fashion', 'mens-fashion'],
                 'tags' => ['on-sale'],
-                'attributes' => ['material' => 'polyester'],
+                'attributes' => [],
+                'image' => 'products/apex-95910a47-casual-shoe.jpg',
             ],
             [
-                'slug' => 'fresh-noodles',
-                'name' => 'Instant Noodles Family Pack',
-                'brand' => 'fresh',
+                'slug' => 'mr-noodles-magic-masala-16-pack',
+                'name' => 'Mr Noodles Magic Masala 16 Pack',
+                'brand' => 'pran',
                 'type' => 'simple',
-                'price' => 75,
-                'old_price' => 90,
+                'price' => 335,
+                'old_price' => 360,
                 'stock' => 200,
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['budget-friendly', 'best-seller'],
                 'attributes' => [],
+                'image' => 'products/mr-noodles-magic-masala-16-pack.jpg',
             ],
             [
-                'slug' => 'decorative-table-lamp',
-                'name' => 'Decorative Table Lamp',
-                'brand' => 'brighthome',
+                'slug' => 'ikea-taernaby-table-lamp',
+                'name' => 'IKEA TÄRNABY Table Lamp',
+                'brand' => 'ikea',
                 'type' => 'simple',
-                'price' => 890,
-                'old_price' => 1200,
+                'price' => 2990,
+                'old_price' => 3490,
                 'stock' => 65,
                 'is_featured' => false,
                 'categories' => ['home-living'],
                 'tags' => ['on-sale'],
-                'attributes' => ['material' => 'plastic'],
+                'attributes' => ['material' => 'steel'],
+                'image' => 'products/ikea-taernaby-table-lamp.jpg',
             ],
         ];
     }
