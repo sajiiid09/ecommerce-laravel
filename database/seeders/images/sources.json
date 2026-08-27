@@ -95,6 +95,96 @@
       "name": "IKEA TÄRNABY Table Lamp",
       "source_url": "https://www.ikea.com/sg/en/p/taernaby-table-lamp-anthracite-60323894/",
       "image_url": "https://www.ikea.com/sg/en/images/products/taernaby-table-lamp-dimmable-anthracite__1188962_pe899634_s5.jpg"
+    },
+    {
+      "path": "products/sony-wh-ch520.jpg",
+      "name": "Sony WH-CH520 Wireless Headphones",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/sony-srs-xb100.jpg",
+      "name": "Sony SRS-XB100 Portable Bluetooth Speaker",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/samsung-galaxy-a25-5g.jpg",
+      "name": "Samsung Galaxy A25 5G",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/redmi-buds-5.jpg",
+      "name": "Redmi Buds 5",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/redmi-note-14.jpg",
+      "name": "Redmi Note 14",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/wiz-smart-plug.jpg",
+      "name": "WiZ Smart Plug",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1558008258-3256797b43f3?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/nivea-men-deep-face-wash.jpg",
+      "name": "NIVEA Men Deep Face Wash 100g",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1556228578-8c89e6adf883?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/nivea-creme-150ml.jpg",
+      "name": "NIVEA Creme 150ml",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/miyako-blender-bl-152.jpg",
+      "name": "Miyako BL-152 Blender",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1570222094114-d054a817e56b?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/walton-rice-cooker-wrc-sgae28.jpg",
+      "name": "Walton WRC-SGAE28 Rice Cooker",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1585515320310-259814833e62?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/ikea-kallax-shelf-unit.jpg",
+      "name": "IKEA KALLAX Shelf Unit",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/aarong-navy-cotton-panjabi.jpg",
+      "name": "Aarong Navy Blue Cotton Panjabi",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/apex-mens-sports-shoe.jpg",
+      "name": "Apex Men's Sports Shoe",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/fresh-refined-sugar-1kg.jpg",
+      "name": "Fresh Refined Sugar 1kg",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/pran-chanachur-300g.jpg",
+      "name": "PRAN Chanachur 300g",
+      "source_url": "https://unsplash.com/",
+      "image_url": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85"
     }
   ],
   "brands": [
