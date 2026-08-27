@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\StripeCheckoutController;
+use App\Http\Controllers\WishlistController;
 use App\Livewire\Pages\Account\Dashboard;
 use App\Livewire\Pages\Account\OrderDetail;
 use App\Livewire\Pages\Account\Orders;
@@ -63,6 +64,10 @@ Route::get('/checkout/stripe/cancel', [StripeCheckoutController::class, 'cancel'
 Route::post('/stripe/webhook', [StripeCheckoutController::class, 'webhook'])->name('stripe.webhook');
 Route::get('/order-success', fn () => redirect()->route('store.order-success', [], 301));
 Route::livewire('/wishlist', new Wishlist)->name('store.wishlist');
+Route::post('/wishlist/sync', [WishlistController::class, 'sync'])->name('store.wishlist.sync');
+Route::delete('/wishlist/items', [WishlistController::class, 'clear'])->name('store.wishlist.clear');
+Route::post('/wishlist/items/{productId}', [WishlistController::class, 'add'])->name('store.wishlist.add');
+Route::delete('/wishlist/items/{productId}', [WishlistController::class, 'remove'])->name('store.wishlist.remove');
 Route::livewire('/login', new Login)->middleware('guest')->name('login');
 Route::livewire('/register', new Register)->middleware('guest')->name('register');
 Route::livewire('/account', new Dashboard)->middleware('auth')->name('account.dashboard');
@@ -135,7 +140,6 @@ Route::prefix('admin/content')->middleware(['auth', 'admin'])->group(function ()
 
         return response()->download(Storage::disk('local')->path($path), 'redirects.csv');
     })->name('admin.content.redirects.export');
-    Route::livewire('/announcements', new App\Livewire\Pages\Admin\Content\Announcements\Index)->name('admin.content.announcements');
 });
 
 Route::get('/{slug}', function (string $slug, ContentResolver $resolver) {

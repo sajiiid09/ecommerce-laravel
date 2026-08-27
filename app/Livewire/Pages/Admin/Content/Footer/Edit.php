@@ -5,15 +5,19 @@ namespace App\Livewire\Pages\Admin\Content\Footer;
 use App\Models\MediaAsset;
 use App\Models\Menu;
 use App\Models\SiteSetting;
+use App\Services\MediaService;
 use App\Services\SiteSettingsService;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.admin')]
 class Edit extends Component
 {
+    use WithFileUploads;
+
     public string $description = '';
 
     public string $copyright = '';
@@ -24,6 +28,8 @@ class Edit extends Component
 
     public ?int $logo_media_id = null;
 
+    public $footer_logo_file;
+
     public string $shop_menu_key = 'footer-shop';
 
     public string $help_menu_key = 'footer-help';
@@ -32,7 +38,10 @@ class Edit extends Component
 
     public string $legal_menu_key = 'footer-legal';
 
-    public string $social_links_json = '{}';
+    /**
+     * @var array<int, array{name: string, link: string}>
+     */
+    public array $social_links = [];
 
     public bool $show_newsletter = true;
 
@@ -42,9 +51,12 @@ class Edit extends Component
 
     protected SiteSettingsService $settings;
 
-    public function boot(SiteSettingsService $settings): void
+    protected MediaService $media;
+
+    public function boot(SiteSettingsService $settings, MediaService $media): void
     {
         $this->settings = $settings;
+        $this->media = $media;
     }
 
     public function mount(): void
@@ -59,7 +71,7 @@ class Edit extends Component
         $this->help_menu_key = (string) $this->settings->get('footer', 'help_menu_key', 'footer-help');
         $this->company_menu_key = (string) $this->settings->get('footer', 'company_menu_key', 'footer-company');
         $this->legal_menu_key = (string) $this->settings->get('footer', 'legal_menu_key', 'footer-legal');
-        $this->social_links_json = json_encode($this->settings->get('footer', 'social_links', []), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}';
+        $this->social_links = $this->normalizeSocialLinks($this->settings->get('footer', 'social_links', []));
         $this->show_newsletter = (bool) $this->settings->get('footer', 'show_newsletter', true);
         $this->show_payment_methods = (bool) $this->settings->get('footer', 'show_payment_methods', true);
         $this->show_footer = (bool) $this->settings->get('footer', 'show_footer', true);
@@ -75,6 +87,50 @@ class Edit extends Component
         $asset = MediaAsset::findOrFail($id);
         Gate::authorize('view', $asset);
         $this->logo_media_id = $asset->id;
+        $this->dispatch('notify', content: 'Footer logo selected. Save footer to apply it.', type: 'success');
+    }
+
+    public function uploadFooterLogo(): void
+    {
+        $this->authorize('create', MediaAsset::class);
+        $this->validate([
+            'footer_logo_file' => ['required', 'image', 'max:10240'],
+        ]);
+
+        $asset = $this->media->upload($this->footer_logo_file, 'footer');
+        $this->logo_media_id = $asset->id;
+        $this->reset('footer_logo_file');
+        $this->dispatch('notify', content: 'Footer logo uploaded and selected. Save footer to apply it.', type: 'success');
+    }
+
+    public function addSocialLink(): void
+    {
+        $this->social_links[] = ['name' => '', 'link' => ''];
+    }
+
+    public function removeSocialLink(int $index): void
+    {
+        if (! array_key_exists($index, $this->social_links)) {
+            return;
+        }
+
+        unset($this->social_links[$index]);
+        $this->social_links = array_values($this->social_links);
+    }
+
+    public function updatedShowFooter(bool $value): void
+    {
+        $this->persistVisibilitySetting('show_footer', $value);
+    }
+
+    public function updatedShowNewsletter(bool $value): void
+    {
+        $this->persistVisibilitySetting('show_newsletter', $value);
+    }
+
+    public function updatedShowPaymentMethods(bool $value): void
+    {
+        $this->persistVisibilitySetting('show_payment_methods', $value);
     }
 
     public function saveFooter(): void
@@ -90,7 +146,10 @@ class Edit extends Component
             'help_menu_key' => ['required', 'string', 'max:80'],
             'company_menu_key' => ['required', 'string', 'max:80'],
             'legal_menu_key' => ['required', 'string', 'max:80'],
-            'social_links_json' => ['nullable', 'json'],
+            'social_links' => ['array'],
+            'social_links.*' => ['array'],
+            'social_links.*.name' => ['required', 'string', 'max:50', 'distinct'],
+            'social_links.*.link' => ['required', 'url', 'max:2048'],
             'show_newsletter' => ['boolean'],
             'show_payment_methods' => ['boolean'],
             'show_footer' => ['boolean'],
@@ -100,11 +159,9 @@ class Edit extends Component
         if ($this->getErrorBag()->has('whatsapp_number')) {
             return;
         }
-        $socialLinks = json_decode($this->social_links_json ?: '{}', true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($socialLinks)) {
-            $this->addError('social_links_json', 'Social links must be a JSON object.');
-
-            return;
+        $socialLinks = [];
+        foreach ($this->social_links as $socialLink) {
+            $socialLinks[trim($socialLink['name'])] = trim($socialLink['link']);
         }
 
         foreach (['description', 'copyright', 'support_email', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'show_newsletter', 'show_payment_methods', 'show_footer'] as $key) {
@@ -142,5 +199,36 @@ class Edit extends Component
         }
 
         return $normalized;
+    }
+
+    /**
+     * @return array<int, array{name: string, link: string}>
+     */
+    private function normalizeSocialLinks(mixed $socialLinks): array
+    {
+        if (! is_array($socialLinks)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($socialLinks as $name => $link) {
+            if (! is_scalar($link)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'name' => (string) $name,
+                'link' => (string) $link,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function persistVisibilitySetting(string $key, bool $value): void
+    {
+        $this->authorize('update', SiteSetting::class);
+        $this->settings->set('footer', $key, $value);
+        $this->dispatch('notify', content: 'Footer setting updated.', type: 'success');
     }
 }

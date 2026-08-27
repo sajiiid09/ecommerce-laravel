@@ -26,10 +26,7 @@
                             <p class="font-bold text-slate-900">Accept Stripe payments</p>
                             <p class="mt-1 text-xs text-slate-500">Stripe will appear at checkout only after valid credentials are saved.</p>
                         </div>
-                        <label class="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
-                            <input type="checkbox" wire:model="enabled" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                            Enabled
-                        </label>
+                        <x-ui.checkbox wire:model="enabled" label="Enabled" description="Save the setting when you submit the payment form." size="sm" />
                     </div>
 
                     <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -65,14 +62,14 @@
                             Publishable key <span class="font-normal text-slate-400">(optional)</span>
                             <input type="password" wire:model="publishable_key" autocomplete="new-password" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="pk_test_...">
                             @if (isset($maskedCredentials['publishable_key']))<span class="mt-1 block text-xs text-slate-500">Saved: {{ $maskedCredentials['publishable_key'] }}</span>@endif
-                            <label class="mt-2 flex items-center gap-2 text-xs font-normal text-slate-500"><input type="checkbox" wire:model="clear_publishable_key" class="rounded border-slate-300 text-red-600"> Clear saved key</label>
+                            <x-ui.checkbox class="mt-2" wire:model="clear_publishable_key" label="Clear saved key" size="sm" />
                             @error('publishable_key')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                         </label>
                         <label class="text-sm font-semibold text-slate-700">
                             Secret key
                             <input type="password" wire:model="secret_key" autocomplete="new-password" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="sk_test_...">
                             @if (isset($maskedCredentials['secret_key']))<span class="mt-1 block text-xs text-slate-500">Saved: {{ $maskedCredentials['secret_key'] }}</span>@endif
-                            <label class="mt-2 flex items-center gap-2 text-xs font-normal text-slate-500"><input type="checkbox" wire:model="clear_secret_key" class="rounded border-slate-300 text-red-600"> Clear saved key</label>
+                            <x-ui.checkbox class="mt-2" wire:model="clear_secret_key" label="Clear saved key" size="sm" />
                             @error('secret_key')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                         </label>
                     </div>
@@ -81,7 +78,7 @@
                         Webhook signing secret
                         <input type="password" wire:model="webhook_secret" autocomplete="new-password" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" placeholder="whsec_...">
                         @if (isset($maskedCredentials['webhook_secret']))<span class="mt-1 block text-xs text-slate-500">Saved: {{ $maskedCredentials['webhook_secret'] }}</span>@endif
-                        <label class="mt-2 flex items-center gap-2 text-xs font-normal text-slate-500"><input type="checkbox" wire:model="clear_webhook_secret" class="rounded border-slate-300 text-red-600"> Clear saved secret</label>
+                        <x-ui.checkbox class="mt-2" wire:model="clear_webhook_secret" label="Clear saved secret" size="sm" />
                         @error('webhook_secret')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </label>
 

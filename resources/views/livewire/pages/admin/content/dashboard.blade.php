@@ -77,7 +77,7 @@
                 </x-admin.cms.panel>
 
                 <x-admin.cms.panel title="Quick links">
-                    <div class="grid gap-2 text-sm"><a href="{{ url('/admin/content/navigation') }}" class="rounded-lg bg-blue-50 px-3 py-2 font-bold text-blue-700">Navigation Manager →</a><a href="{{ url('/admin/content/redirects') }}" class="rounded-lg bg-slate-50 px-3 py-2 font-bold text-slate-700">Redirect Manager →</a><a href="{{ url('/admin/content/announcements') }}" class="rounded-lg bg-slate-50 px-3 py-2 font-bold text-slate-700">Announcements →</a></div>
+                    <div class="grid gap-2 text-sm"><a href="{{ url('/admin/content/navigation') }}" class="rounded-lg bg-blue-50 px-3 py-2 font-bold text-blue-700">Navigation Manager →</a><a href="{{ url('/admin/content/redirects') }}" class="rounded-lg bg-slate-50 px-3 py-2 font-bold text-slate-700">Redirect Manager →</a><a href="{{ url('/admin/content/header') }}" class="rounded-lg bg-slate-50 px-3 py-2 font-bold text-slate-700">Header & Announcements →</a></div>
                 </x-admin.cms.panel>
             </aside>
         </div>

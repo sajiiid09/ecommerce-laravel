@@ -53,8 +53,8 @@
                     <select wire:model.live="status" class="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="published">Published</option><option value="archived">Archived</option></select>
                     @if($status === 'scheduled')<input type="datetime-local" wire:model.live="scheduled_at" class="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2">@endif
                     <select wire:model.live="visibility" class="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2"><option value="public">Public</option><option value="private">Private</option></select>
-                    <label class="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" wire:model.live="show_in_navigation"> Show in navigation</label>
-                    <label class="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" wire:model.live="is_indexable"> Allow indexing</label>
+                    <x-ui.checkbox class="mt-4" wire:model.live="show_in_navigation" label="Show in navigation" size="sm" />
+                    <x-ui.checkbox class="mt-3" wire:model.live="is_indexable" label="Allow indexing" size="sm" />
                 </section>
 
                 <x-admin.media-picker :assets="$mediaAssets" :selected="$featured_media_id" title="Featured media" context="featured" />

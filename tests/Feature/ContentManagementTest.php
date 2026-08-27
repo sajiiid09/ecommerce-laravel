@@ -1,7 +1,10 @@
 <?php
 
 use App\Livewire\Pages\Admin\Content\Footer\Edit as FooterEdit;
+use App\Livewire\Pages\Admin\Content\Header\Edit as HeaderEdit;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
+use App\Livewire\Pages\Admin\Content\Navigation\Manager as NavigationManager;
+use App\Livewire\Pages\Admin\Content\Redirects\Index as RedirectsIndex;
 use App\Models\Announcement;
 use App\Models\Banner;
 use App\Models\Category;
@@ -12,6 +15,7 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Models\Redirect;
 use App\Models\SiteSetting;
@@ -25,6 +29,7 @@ use App\Services\RedirectService;
 use App\Services\SiteSettingsService;
 use App\Support\StorefrontCatalog;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -96,6 +101,35 @@ it('rejects redirect chains and cycles before persistence', function () {
     expect(fn () => $redirects->import($file))->toThrow(InvalidArgumentException::class);
 });
 
+it('opens redirect creation and editing in the Sheaf modal without showing CSV import', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $component = Livewire::actingAs($admin)->test(RedirectsIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('redirect-editor', false)
+        ->assertSee('wire:click="openCreate"', false)
+        ->assertSee('wire:submit="saveRedirect"', false)
+        ->assertDontSee('Import CSV', false)
+        ->assertDontSee('Import redirects', false)
+        ->call('openCreate')
+        ->assertDispatched('open-modal', id: 'redirect-editor')
+        ->set('from_path', '/legacy')
+        ->set('to_url', '/current')
+        ->set('status_code', 301)
+        ->set('enabled', true)
+        ->call('saveRedirect')
+        ->assertHasNoErrors()
+        ->assertDispatched('close-modal', id: 'redirect-editor');
+
+    $redirect = Redirect::query()->where('from_path', '/legacy')->firstOrFail();
+
+    $component
+        ->call('editRedirect', $redirect->id)
+        ->assertSet('editingId', $redirect->id)
+        ->assertSet('from_path', '/legacy')
+        ->assertDispatched('open-modal', id: 'redirect-editor');
+});
+
 it('only keeps authorized shared media in rich text and synchronizes usage', function () {
     Storage::fake('public');
     $admin = User::factory()->create(['is_admin' => true]);
@@ -165,10 +199,48 @@ it('renders persisted navigation, settings, banners, and announcements on the st
         ->assertSee('Shipping')
         ->assertSee('href="'.url('/shipping').'"', false)
         ->assertSee('Summer savings')
+        ->assertSee('group relative min-h-56 overflow-hidden rounded-card bg-store-navy text-white', false)
         ->assertSee('Free delivery this week')
         ->assertSee('Persisted footer content');
 
     expect(app(MenuService::class)->navigation('header-primary')[0]['url'])->toBe(url('/shipping'));
+});
+
+it('allows administrators to edit menu settings and add or edit menu items in the Sheaf modal', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(NavigationManager::class)
+        ->set('name', 'Store navigation')
+        ->set('key', 'header-primary')
+        ->call('saveMenu')
+        ->assertHasNoErrors()
+        ->call('openAddItem')
+        ->assertDispatched('open-modal', id: 'menu-item-editor')
+        ->set('label', 'Offers')
+        ->set('type', 'custom_url')
+        ->set('url', 'https://example.com/offers')
+        ->call('saveItem')
+        ->assertHasNoErrors()
+        ->assertDispatched('close-modal', id: 'menu-item-editor');
+
+    $item = MenuItem::where('label', 'Offers')->firstOrFail();
+
+    $component->call('editItem', $item->id)
+        ->assertSet('editingItemId', $item->id)
+        ->set('label', 'Special offers')
+        ->call('saveItem')
+        ->assertHasNoErrors();
+
+    expect($item->fresh()->label)->toBe('Special offers')
+        ->and(Menu::where('key', 'header-primary')->value('name'))->toBe('Store navigation');
+
+    $this->actingAs($admin)->get('/admin/content/navigation')
+        ->assertSee('What these settings control')
+        ->assertSee('Identify this menu and choose where its links appear on the storefront.')
+        ->assertSee('Add a label and destination, then optionally choose a parent item')
+        ->assertSee('Open item editor')
+        ->assertSee('Special offers');
 });
 
 it('manages the optional WhatsApp floating action from footer settings', function () {
@@ -219,6 +291,374 @@ it('manages the optional WhatsApp floating action from footer settings', functio
     $this->get('/')->assertSuccessful()
         ->assertDontSee('https://wa.me/', false)
         ->assertSee('aria-label="Scroll to top"', false);
+});
+
+it('auto-saves footer and header visibility changes and dispatches Sheaf toasts', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    SiteSetting::create(['group' => 'footer', 'key' => 'show_footer', 'value' => true, 'is_public' => true]);
+    SiteSetting::create(['group' => 'header', 'key' => 'show_search', 'value' => true, 'is_public' => true]);
+
+    Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('show_footer', false)
+        ->assertDispatched('notify', content: 'Footer setting updated.', type: 'success');
+
+    Livewire::actingAs($admin)
+        ->test(HeaderEdit::class)
+        ->set('show_search', false)
+        ->assertDispatched('notify', content: 'Header setting updated.', type: 'success');
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_footer'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'header', 'key' => 'show_search'])->firstOrFail()->value)
+        ->toBeFalse();
+
+    $this->actingAs($admin)->get('/admin/content/header')
+        ->assertSee('role="status"', false)
+        ->assertSee('data-slot="checkbox-wrapper"', false)
+        ->assertDontSee('Header preview')
+        ->assertDontSee('Header logo')
+        ->assertDontSee('Shared Media Library');
+});
+
+it('auto-saves homepage section visibility changes and dispatches Sheaf toasts', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $section = HomepageSection::create([
+        'section_key' => 'hero',
+        'type' => 'hero',
+        'title' => 'Hero',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(Builder::class);
+
+    $component->set('sections.0.enabled', false)
+        ->assertSet('sections.0.enabled', false)
+        ->assertDispatched('notify', content: 'Homepage section visibility updated.', type: 'success');
+
+    expect($section->fresh()->enabled)->toBeFalse();
+
+    $component->set('sections.0.enabled', true)
+        ->assertSet('sections.0.enabled', true)
+        ->assertDispatched('notify', content: 'Homepage section visibility updated.', type: 'success');
+
+    expect($section->fresh()->enabled)->toBeTrue();
+});
+
+it('manages footer visibility and structured social links with the footer editor', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    SiteSetting::create([
+        'group' => 'footer',
+        'key' => 'social_links',
+        'value' => [
+            'facebook' => 'https://facebook.com/storez',
+            'instagram' => 'https://instagram.com/storez',
+        ],
+        'is_public' => true,
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(FooterEdit::class);
+
+    $component->set('show_footer', false)
+        ->set('show_newsletter', false)
+        ->set('show_payment_methods', true)
+        ->call('addSocialLink')
+        ->set('social_links.2.name', 'TikTok')
+        ->set('social_links.2.link', 'https://tiktok.com/@storez')
+        ->call('removeSocialLink', 1)
+        ->call('saveFooter')
+        ->assertHasNoErrors();
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_footer'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_newsletter'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_payment_methods'])->firstOrFail()->value)
+        ->toBeTrue()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'social_links'])->firstOrFail()->value)
+        ->toBe([
+            'facebook' => 'https://facebook.com/storez',
+            'TikTok' => 'https://tiktok.com/@storez',
+        ]);
+
+    $this->actingAs($admin)->get('/admin/content/footer')
+        ->assertSee('data-slot="checkbox-wrapper"', false)
+        ->assertSee('Add social link')
+        ->assertSee('wire:model="social_links.0.name"', false)
+        ->assertDontSee('Footer preview')
+        ->assertDontSee('Footer logo')
+        ->assertDontSee('Shared Media Library');
+});
+
+it('allows administrators to upload and select a footer logo from the shared media library', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create(['is_admin' => true]);
+    $libraryAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/footer/existing-logo.png',
+        'filename' => 'existing-logo.png',
+        'mime_type' => 'image/png',
+        'size' => 100,
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->call('selectMedia', $libraryAsset->id, $libraryAsset->url(), 'footer_logo')
+        ->assertSet('logo_media_id', $libraryAsset->id)
+        ->assertDispatched('notify', content: 'Footer logo selected. Save footer to apply it.', type: 'success');
+
+    $file = UploadedFile::fake()->image('footer-logo.png', 320, 120);
+
+    $component->set('footer_logo_file', $file)
+        ->call('uploadFooterLogo')
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Footer logo uploaded and selected. Save footer to apply it.', type: 'success');
+
+    $asset = MediaAsset::where('filename', 'footer-logo.png')->firstOrFail();
+
+    $component->assertSet('logo_media_id', $asset->id)
+        ->assertSee('wire:model="footer_logo_file"', false);
+
+    expect(Storage::disk('public')->exists($asset->path))->toBeTrue();
+
+    $component->call('saveFooter')->assertHasNoErrors();
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'logo_media_id'])->firstOrFail()->value)
+        ->toBe($asset->id);
+});
+
+it('allows administrators to upload and select a header logo', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create(['is_admin' => true]);
+    $file = UploadedFile::fake()->image('header-logo.png', 320, 120);
+
+    $component = Livewire::actingAs($admin)
+        ->test(HeaderEdit::class)
+        ->set('header_logo_file', $file)
+        ->call('uploadHeaderLogo')
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Header logo uploaded and selected. Save header to apply it.', type: 'success');
+
+    $asset = MediaAsset::where('filename', 'header-logo.png')->firstOrFail();
+
+    $component->assertSet('logo_media_id', $asset->id)
+        ->assertSet('logo_url', $asset->url())
+        ->assertSee('wire:model="header_logo_file"', false);
+
+    expect(Storage::disk('public')->exists($asset->path))->toBeTrue();
+
+    $component->call('saveHeader')->assertHasNoErrors();
+
+    expect(SiteSetting::where(['group' => 'header', 'key' => 'logo_media_id'])->firstOrFail()->value)
+        ->toBe($asset->id);
+});
+
+it('manages the single announcement from Header settings with a Sheaf modal', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(HeaderEdit::class)
+        ->assertSee('Announcement')
+        ->assertSee('Add announcement')
+        ->assertSee('header-announcement-editor', false)
+        ->assertSee('wire:click="openAnnouncementCreate"', false)
+        ->assertDontSee('Announcements</a>', false)
+        ->assertDontSee('Header preview')
+        ->call('openAnnouncementCreate')
+        ->assertDispatched('open-modal', id: 'header-announcement-editor')
+        ->set('announcement_internal_title', 'Delivery notice')
+        ->set('announcement_message', 'Free delivery this week.')
+        ->set('announcement_style', 'info')
+        ->set('announcement_placement', 'top_bar')
+        ->set('announcement_status', 'published')
+        ->set('announcement_priority', 'normal')
+        ->set('announcement_dismissible', true)
+        ->call('saveAnnouncement')
+        ->assertHasNoErrors()
+        ->assertDispatched('close-modal', id: 'header-announcement-editor')
+        ->assertDispatched('notify', content: 'Announcement saved.', type: 'success')
+        ->assertSee('Delivery notice')
+        ->assertDontSee('wire:click="openAnnouncementCreate"', false);
+
+    $announcement = Announcement::query()->where('internal_title', 'Delivery notice')->firstOrFail();
+
+    $component->call('editAnnouncement', $announcement->id)
+        ->assertSet('announcement_id', $announcement->id)
+        ->assertSet('announcement_internal_title', 'Delivery notice')
+        ->assertDispatched('open-modal', id: 'header-announcement-editor')
+        ->set('announcement_message', 'Updated delivery notice.')
+        ->call('saveAnnouncement')
+        ->assertHasNoErrors();
+
+    expect($announcement->fresh()->message)->toBe('Updated delivery notice.');
+
+    $component->call('deleteAnnouncement', $announcement->id)
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Announcement deleted.', type: 'success')
+        ->assertSee('Add announcement');
+
+    expect(Announcement::withTrashed()->whereKey($announcement->id)->exists())->toBeFalse();
+});
+
+it('enforces a single announcement at the database level', function () {
+    Announcement::create([
+        'internal_title' => 'First announcement',
+        'message' => 'First message',
+        'placement' => 'top_bar',
+        'status' => 'published',
+    ]);
+
+    expect(fn () => Announcement::create([
+        'internal_title' => 'Second announcement',
+        'message' => 'Second message',
+        'placement' => 'top_bar',
+        'status' => 'published',
+    ]))->toThrow(QueryException::class);
+});
+
+it('rejects invalid footer social links without changing saved settings', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    SiteSetting::create([
+        'group' => 'footer',
+        'key' => 'social_links',
+        'value' => ['facebook' => 'https://facebook.com/storez'],
+        'is_public' => true,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('social_links.0.link', 'not-a-url')
+        ->call('saveFooter')
+        ->assertHasErrors(['social_links.0.link']);
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'social_links'])->firstOrFail()->value)
+        ->toBe(['facebook' => 'https://facebook.com/storez']);
+});
+
+it('renders the homepage sections in a Sheaf data table with a modal editor', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)->get('/admin/content/homepage')
+        ->assertSuccessful()
+        ->assertSee('<table', false)
+        ->assertSee('homepage-section-editor', false)
+        ->assertSee('Add section')
+        ->assertSeeInOrder(['Order', 'Section', 'Type', 'Query', 'Status', 'Actions'])
+        ->assertSee('Version history')
+        ->assertDontSee('Choose a section type, then add, edit, reorder, or hide it from the table below.')
+        ->assertDontSee('Storefront preview');
+});
+
+it('opens Homepage Builder add and edit actions in the Sheaf modal', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    HomepageSection::create([
+        'section_key' => 'hero',
+        'type' => 'hero',
+        'title' => 'Hero',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(Builder::class)
+        ->call('editSection', 0)
+        ->assertSet('editingSectionIndex', 0)
+        ->assertSet('isAddingSection', false)
+        ->assertDispatched('open-modal', id: 'homepage-section-editor')
+        ->assertSee('Update section')
+        ->assertDontSee('Save section')
+        ->set('sectionDraft.title', 'Updated hero')
+        ->call('saveSection')
+        ->assertDispatched('close-modal', id: 'homepage-section-editor')
+        ->assertDispatched('notify', content: 'Homepage section updated.', type: 'success');
+
+    expect(HomepageSection::where('section_key', 'hero')->value('title'))->toBe('Updated hero');
+
+    $component->call('addSection')
+        ->assertSet('editingSectionIndex', null)
+        ->assertSet('isAddingSection', true)
+        ->assertSet('sectionDraft.type', 'hero')
+        ->assertDispatched('open-modal', id: 'homepage-section-editor')
+        ->set('sectionDraft.type', 'newsletter')
+        ->assertSet('sectionDraft.title', 'Newsletter')
+        ->assertSee('Section type')
+        ->assertSee('Save section')
+        ->assertDontSee('Edit section')
+        ->call('saveSection')
+        ->assertSet('isAddingSection', false)
+        ->assertSet('sectionDraft', [])
+        ->assertDispatched('notify', content: 'Homepage section added.', type: 'success');
+});
+
+it('configures homepage product query settings from the builder modal', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $category = Category::create(['name' => 'Homepage Electronics', 'slug' => 'homepage-electronics', 'is_active' => true]);
+
+    $component = Livewire::actingAs($admin)->test(Builder::class)
+        ->call('addSection')
+        ->set('sectionDraft.type', 'products')
+        ->assertSet('sectionDraft.settings.source', 'featured')
+        ->assertSee('Product source')
+        ->set('sectionDraft.settings.source', 'category')
+        ->set('sectionDraft.settings.category', $category->slug)
+        ->set('sectionDraft.settings.sort', 'price_desc')
+        ->set('sectionDraft.settings.limit', 3)
+        ->call('saveSection');
+
+    $section = HomepageSection::where('title', 'Products')->firstOrFail();
+
+    expect($section->type)->toBe('products')
+        ->and($section->settings)->toMatchArray([
+            'source' => 'category',
+            'category' => 'homepage-electronics',
+            'sort' => 'price_desc',
+            'limit' => 3,
+        ])
+        ->and($component->get('sectionDraft'))->toBe([]);
+});
+
+it('loads persisted homepage product query settings when editing', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    HomepageSection::create([
+        'section_key' => 'brand-products',
+        'type' => 'products',
+        'title' => 'Brand products',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => ['source' => 'brand', 'brand' => 'fresh', 'sort' => 'newest', 'limit' => 8],
+    ]);
+
+    Livewire::actingAs($admin)->test(Builder::class)
+        ->call('editSection', 0)
+        ->assertSet('sectionDraft.type', 'products')
+        ->assertSet('sectionDraft.settings.source', 'brand')
+        ->assertSet('sectionDraft.settings.brand', 'fresh')
+        ->assertSet('sectionDraft.settings.sort', 'newest')
+        ->assertSet('sectionDraft.settings.limit', 8)
+        ->assertSee('Product source');
+});
+
+it('converts legacy homepage product sections during the data migration', function () {
+    $section = HomepageSection::create([
+        'section_key' => 'legacy-flash-deals',
+        'type' => 'flash_deals',
+        'title' => 'Legacy Flash Sale',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => ['limit' => 4],
+    ]);
+
+    $migration = require base_path('database/migrations/2026_08_27_103639_normalize_homepage_product_sections.php');
+    $migration->up();
+
+    expect($section->fresh()->type)->toBe('products')
+        ->and($section->fresh()->settings)->toMatchArray([
+            'source' => 'on_sale',
+            'sort' => 'default',
+            'limit' => 4,
+        ]);
 });
 
 it('keeps homepage hero slides at full width to prevent carousel clipping', function () {
@@ -298,14 +738,19 @@ it('renders the homepage newsletter input with a visible field treatment', funct
 it('renders homepage product sections as five-card carousels without dots', function () {
     Cache::flush();
 
-    foreach (['flash_deals', 'bestsellers', 'featured_products', 'new_arrivals'] as $index => $type) {
+    foreach ([
+        ['key' => 'flash-deals', 'source' => 'on_sale', 'title' => 'Flash Sale Products'],
+        ['key' => 'bestsellers', 'source' => 'bestsellers', 'title' => 'Best Sellers Products'],
+        ['key' => 'featured-products', 'source' => 'featured', 'title' => 'Featured Products'],
+        ['key' => 'new-arrivals', 'source' => 'newest', 'title' => 'New Arrivals Products'],
+    ] as $index => $productSection) {
         HomepageSection::create([
-            'section_key' => $type,
-            'type' => $type,
-            'title' => str($type)->replace('_', ' ')->title().' Products',
+            'section_key' => $productSection['key'],
+            'type' => 'products',
+            'title' => $productSection['title'],
             'enabled' => true,
             'sort_order' => $index,
-            'settings' => ['limit' => 6],
+            'settings' => ['source' => $productSection['source'], 'sort' => 'default', 'limit' => 6],
         ]);
     }
 
@@ -402,6 +847,8 @@ it('seeds idempotent demo CMS content without overwriting settings', function ()
     $sectionCount = HomepageSection::count();
     $bannerCount = Banner::count();
     $announcementCount = Announcement::count();
+    $productCount = Product::count();
+    $approvedReviewCount = ProductReview::where('status', 'approved')->count();
 
     expect(SiteSetting::where('group', 'general')->pluck('key')->all())
         ->toEqualCanonicalizing(['store_name', 'tagline', 'logo_media_id', 'favicon_media_id', 'support_email', 'support_phone', 'address', 'timezone'])
@@ -414,7 +861,9 @@ it('seeds idempotent demo CMS content without overwriting settings', function ()
         ->and(Banner::where('placement', 'hero')->count())->toBe(3)
         ->and(HomepageSection::where('section_key', 'testimonials')->firstOrFail()->settings['testimonials'])->toHaveCount(5)
         ->and(Banner::where('name', 'StoreZ Demo Everyday Savings')->exists())->toBeTrue()
-        ->and(Announcement::where('internal_title', 'StoreZ Demo Delivery Notice')->exists())->toBeTrue();
+        ->and(Announcement::where('internal_title', 'StoreZ Demo Delivery Notice')->exists())->toBeTrue()
+        ->and($productCount)->toBe(30)
+        ->and($approvedReviewCount)->toBe(90);
 
     $this->get('/')->assertSuccessful()
         ->assertSee('Your trusted online shopping destination in Bangladesh.')
@@ -538,12 +987,13 @@ it('allows administrators to add and reorder homepage testimonials', function ()
     $this->actingAs($admin);
 
     Livewire::test(Builder::class)
+        ->call('editSection', 0)
         ->call('addTestimonial')
         ->assertSet('selectedTestimonialIndex', 0)
-        ->assertSet('sections.0.settings.testimonials.0.role', 'Verified customer')
+        ->assertSet('sectionDraft.settings.testimonials.0.role', 'Verified customer')
         ->call('addTestimonial')
         ->call('moveTestimonial', 1, -1)
-        ->assertSet('sections.0.settings.testimonials.0.id', fn (string $id): bool => str_starts_with($id, 'testimonial-'));
+        ->assertSet('sectionDraft.settings.testimonials.0.id', fn (string $id): bool => str_starts_with($id, 'testimonial-'));
 });
 
 it('validates homepage testimonial settings before persistence', function () {
@@ -571,6 +1021,29 @@ it('validates homepage testimonial settings before persistence', function () {
             'sort_order' => 1,
         ]]],
     ]]))->toThrow(InvalidArgumentException::class);
+});
+
+it('hides the unused banner schedule card and separates the filter toolbar', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)->get('/admin/content/banners')
+        ->assertSuccessful()
+        ->assertSee('mb-5', false)
+        ->assertDontSee('Upcoming schedule');
+});
+
+it('opens banner editing when optional banner fields are null', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $banner = Banner::create([
+        'name' => 'Banner with optional fields',
+        'placement' => 'homepage',
+        'status' => 'draft',
+    ]);
+
+    $this->actingAs($admin)->get("/admin/content/banners/{$banner->id}/edit")
+        ->assertSuccessful()
+        ->assertSee('Edit banner')
+        ->assertSee('Banner with optional fields');
 });
 
 it('rebuilds stale cached CMS model payloads before rendering storefront layouts', function () {

@@ -153,7 +153,6 @@
                                 ['label'=>'Footer','href'=>'/admin/content/footer','match'=>'admin/content/footer*'],
                                 ['label'=>'Media Library','href'=>'/admin/media','match'=>'admin/media*'],
                                 ['label'=>'Redirects','href'=>'/admin/content/redirects','match'=>'admin/content/redirects*'],
-                                ['label'=>'Announcements','href'=>'/admin/content/announcements','match'=>'admin/content/announcements*'],
                             ] as $contentItem)
                                 <a href="{{ url($contentItem['href']) }}" class="flex items-center rounded-lg px-3 py-2 text-[12px] {{ request()->is($contentItem['match']) ? 'bg-[#1e40af] font-semibold text-white' : 'text-[#94a3b8] hover:bg-white/5 hover:text-white' }}">{{ $contentItem['label'] }}</a>
                             @endforeach
@@ -199,6 +198,7 @@
         {{ $slot }}
     </main>
 </div>
+<x-ui.toast position="top-right" />
 @livewireScriptConfig
 </body>
 </html>

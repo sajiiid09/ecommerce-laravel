@@ -14,6 +14,8 @@ class Manager extends Component
 {
     public ?int $menuId = null;
 
+    public ?int $editingItemId = null;
+
     public string $name = '';
 
     public string $key = '';
@@ -70,7 +72,37 @@ class Manager extends Component
         session()->flash('status', 'Navigation menu saved.');
     }
 
+    public function openAddItem(): void
+    {
+        $this->resetItemForm();
+        $this->dispatch('open-modal', id: 'menu-item-editor');
+    }
+
+    public function editItem(int $id): void
+    {
+        $menu = $this->menu();
+        $this->authorize('update', $menu);
+        $item = MenuItem::where('menu_id', $menu->id)->with('targets')->findOrFail($id);
+
+        $this->editingItemId = $item->id;
+        $this->label = $item->label;
+        $this->type = $item->type;
+        $this->url = $item->url ?? '';
+        $this->route_name = $item->route_name ?? '';
+        $this->target_id = $item->targets->first()?->target_id;
+        $this->parent_id = $item->parent_id;
+        $this->enabled = $item->enabled;
+        $this->sort_order = $item->sort_order;
+        $this->dispatch('open-modal', id: 'menu-item-editor');
+    }
+
     public function addItem(): void
+    {
+        $this->editingItemId = null;
+        $this->saveItem();
+    }
+
+    public function saveItem(): void
     {
         $menu = $this->menu();
         $this->authorize('update', $menu);
@@ -103,8 +135,21 @@ class Manager extends Component
             return;
         }
 
-        $this->menus->saveItem(new MenuItem(['menu_id' => $menu->id]), $data);
-        $this->reset(['label', 'url', 'route_name', 'target_id', 'parent_id']);
+        if ($this->editingItemId && (int) $data['parent_id'] === $this->editingItemId) {
+            $this->addError('parent_id', 'A menu item cannot be its own parent.');
+
+            return;
+        }
+
+        $item = $this->editingItemId
+            ? MenuItem::where('menu_id', $menu->id)->findOrFail($this->editingItemId)
+            : new MenuItem(['menu_id' => $menu->id]);
+
+        $wasEditing = $this->editingItemId !== null;
+        $this->menus->saveItem($item, $data);
+        $this->resetItemForm();
+        $this->dispatch('close-modal', id: 'menu-item-editor');
+        session()->flash('status', $wasEditing ? 'Navigation item updated.' : 'Navigation item added.');
     }
 
     public function moveItem(int $id, int $direction): void
@@ -147,5 +192,19 @@ class Manager extends Component
     private function menu(): Menu
     {
         return Menu::findOrFail($this->menuId);
+    }
+
+    private function resetItemForm(): void
+    {
+        $this->editingItemId = null;
+        $this->label = '';
+        $this->type = 'custom_url';
+        $this->url = '';
+        $this->route_name = '';
+        $this->target_id = null;
+        $this->parent_id = null;
+        $this->enabled = true;
+        $this->sort_order = 0;
+        $this->resetValidation();
     }
 }

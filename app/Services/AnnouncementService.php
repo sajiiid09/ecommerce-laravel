@@ -69,7 +69,7 @@ class AnnouncementService
     public function delete(Announcement $item): void
     {
         $placement = $item->placement;
-        $item->delete();
+        $item->forceDelete();
         $this->publishing->invalidate('announcement', $placement);
     }
 }

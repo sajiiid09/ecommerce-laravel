@@ -57,7 +57,18 @@ class Index extends Component
         $this->reset(['from_path', 'to_url', 'editingId']);
         $this->status_code = 301;
         $this->enabled = true;
+        $this->dispatch('close-modal', id: 'redirect-editor');
         session()->flash('status', 'Redirect saved.');
+    }
+
+    public function openCreate(): void
+    {
+        $this->authorize('create', Redirect::class);
+        $this->reset(['from_path', 'to_url', 'editingId']);
+        $this->status_code = 301;
+        $this->enabled = true;
+        $this->resetValidation();
+        $this->dispatch('open-modal', id: 'redirect-editor');
     }
 
     public function editRedirect(int $id): void
@@ -69,6 +80,8 @@ class Index extends Component
         $this->to_url = $redirect->to_url;
         $this->status_code = $redirect->status_code;
         $this->enabled = $redirect->enabled;
+        $this->resetValidation();
+        $this->dispatch('open-modal', id: 'redirect-editor');
     }
 
     public function cancelEdit(): void
@@ -76,6 +89,8 @@ class Index extends Component
         $this->reset(['from_path', 'to_url', 'editingId']);
         $this->status_code = 301;
         $this->enabled = true;
+        $this->resetValidation();
+        $this->dispatch('close-modal', id: 'redirect-editor');
     }
 
     public function importRedirects(): void

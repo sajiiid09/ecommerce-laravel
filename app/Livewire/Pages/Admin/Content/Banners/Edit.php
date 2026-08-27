@@ -70,12 +70,20 @@ class Edit extends Component
 
         $this->bannerId = $banner->id;
 
-        foreach ([
-            'name', 'placement', 'eyebrow', 'title', 'description', 'cta_label', 'destination_type', 'destination_value',
-            'desktop_media_id', 'mobile_media_id', 'status', 'starts_at', 'ends_at', 'sort_order',
-        ] as $field) {
-            $this->{$field} = $banner->{$field};
-        }
+        $this->name = (string) $banner->name;
+        $this->placement = (string) $banner->placement;
+        $this->eyebrow = (string) ($banner->eyebrow ?? '');
+        $this->title = (string) ($banner->title ?? '');
+        $this->description = (string) ($banner->description ?? '');
+        $this->cta_label = (string) ($banner->cta_label ?? '');
+        $this->destination_type = (string) ($banner->destination_type ?? 'url');
+        $this->destination_value = (string) ($banner->destination_value ?? '');
+        $this->desktop_media_id = $banner->desktop_media_id ? (int) $banner->desktop_media_id : null;
+        $this->mobile_media_id = $banner->mobile_media_id ? (int) $banner->mobile_media_id : null;
+        $this->status = (string) $banner->status;
+        $this->starts_at = $banner->starts_at?->format('Y-m-d\\TH:i');
+        $this->ends_at = $banner->ends_at?->format('Y-m-d\\TH:i');
+        $this->sort_order = (int) $banner->sort_order;
 
         $this->theme = (string) ($banner->settings['theme'] ?? 'blue');
     }
