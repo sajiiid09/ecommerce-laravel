@@ -31,7 +31,13 @@ class Index extends ResourceIndex
     protected function rows()
     {
         return Product::query()
-            ->with(['brand', 'primaryCategory', 'defaultVariant.inventory'])
+            ->with([
+                'brand',
+                'primaryCategory',
+                'media' => fn ($media) => $media->whereNull('product_variant_id')->orderBy('sort_order'),
+                'media.asset',
+                'defaultVariant.inventory',
+            ])
             ->when($this->searchQuery, fn ($query) => $query->search($this->searchQuery))
             ->when($this->status, fn ($query) => $query->where('status', $this->status))
             ->when($this->categoryFilter, fn ($query) => $query->where('primary_category_id', $this->categoryFilter))

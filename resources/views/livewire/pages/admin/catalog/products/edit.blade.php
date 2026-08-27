@@ -159,9 +159,7 @@
                         <x-ui.select placeholder="Standard Rate" class="w-44" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                             <x-ui.select.option value="standard">Standard Rate</x-ui.select.option>
                         </x-ui.select>
-                        <label class="flex items-center gap-2 text-sm font-semibold text-[#111827]">
-                            <input type="checkbox" wire:model.live="track_quantity" class="rounded border-[#d1d5db] text-[#2563eb]"> Track stock quantity
-                        </label>
+                        <x-ui.checkbox wire:model.live="track_quantity" label="Track stock quantity" size="sm" />
                     </div>
                 </section>
 
@@ -216,12 +214,9 @@
                                 Low Stock Threshold
                                 <x-ui.input type="number" min="0" wire:model.live="low_stock_threshold" placeholder="10" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                             </label>
-                            <label class="flex items-center gap-2 text-sm font-semibold text-[#111827]"><input type="checkbox" wire:model.live="allow_backorders" class="rounded border-[#d1d5db] text-[#2563eb]"> Allow backorders</label>
+                            <x-ui.checkbox wire:model.live="allow_backorders" label="Allow backorders" size="sm" />
                         </div>
-                        <label class="flex items-center gap-3 text-sm font-semibold text-[#111827]">
-                            <input type="checkbox" wire:model.live="is_featured" class="size-4 rounded border-[#d1d5db] text-[#2563eb] focus:ring-[#2563eb]">
-                            <span>Featured Product</span>
-                        </label>
+                        <x-ui.checkbox wire:model.live="is_featured" label="Featured product" size="sm" />
                     </div>
                 </section>
 
@@ -246,7 +241,7 @@
                     <h2 class="font-bold text-[#111827]">Product Attributes</h2>
                     <div class="mt-4 space-y-3">
                         @forelse($attributes as $attribute)
-                            <label wire:key="product-attribute-{{ $attribute->id }}" class="block space-y-1.5 text-sm font-semibold text-[#111827]">
+                            <div wire:key="product-attribute-{{ $attribute->id }}" class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 {{ $attribute->name }} @if($attribute->unit)<span class="text-xs font-normal text-[#9ca3af]">({{ $attribute->unit }})</span>@endif
                                 @if(in_array($attribute->type, ['select', 'multi_select'], true))
                                     <x-ui.select wire:model.live="attribute_values.{{ $attribute->id }}" :multiple="$attribute->type === 'multi_select'" searchable clearable placeholder="Select {{ strtolower($attribute->name) }}" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white" :wire:key="'product-attribute-select-'.$attribute->id">
@@ -257,11 +252,11 @@
                                 @elseif($attribute->type === 'number')
                                     <x-ui.input type="number" wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                                 @elseif($attribute->type === 'boolean')
-                                    <span class="flex items-center gap-2 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm font-normal"><input type="checkbox" wire:model.live="attribute_values.{{ $attribute->id }}" class="rounded border-[#d1d5db] text-[#2563eb]"> Yes</span>
+                                    <x-ui.checkbox wire:model.live="attribute_values.{{ $attribute->id }}" label="Yes" size="sm" />
                                 @else
                                     <x-ui.input wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                                 @endif
-                            </label>
+                            </div>
                         @empty
                             <p class="text-xs text-[#9ca3af]">Create reusable attributes before adding product specifications.</p>
                         @endforelse

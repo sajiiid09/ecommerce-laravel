@@ -50,7 +50,6 @@
                                 <p class="flex items-center gap-2"><svg class="size-4 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg> Max 10 MB</p>
                                 <p class="flex items-center gap-2"><svg class="size-4 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg> Simple products supported</p>
                             </div>
-                            <a href="#" class="flex items-center gap-1 text-xs font-bold text-[#2563eb]">Download CSV Template</a>
                         </div>
                     </div>
                     <div class="mt-4">
@@ -148,7 +147,6 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">Recent Imports</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View All</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @foreach([['Products Import','Success','156 created','24 May 2026'],['Stock Update','Partial','3 warnings','22 May 2026'],['Price Sync','Failed','2 errors','20 May 2026']] as [$name,$status,$detail,$date])

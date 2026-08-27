@@ -5,11 +5,20 @@ namespace App\Livewire\Pages\Store;
 use App\Services\CatalogQueryService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 class Category extends Component
 {
+    use WithPagination;
+
     public ?string $slug = null;
+
+    public array $selectedBrands = [];
+
+    public bool $inStock = false;
+
+    public string $sort = 'popular';
 
     protected CatalogQueryService $catalog;
 
@@ -21,15 +30,18 @@ class Category extends Component
     public function mount(?string $slug = null): void
     {
         $this->slug = $slug;
+        $this->selectedBrands = array_values(array_filter(array_map('strval', (array) request('brand', []))));
+        $this->inStock = request()->boolean('in_stock');
+        $this->sort = (string) request('sort', 'popular');
     }
 
     public function render()
     {
         $filters = [
             'category' => $this->slug,
-            'brands' => (array) request('brand', []),
-            'in_stock' => request()->boolean('in_stock'),
-            'sort' => request('sort', 'popular'),
+            'brands' => $this->selectedBrands,
+            'in_stock' => $this->inStock,
+            'sort' => $this->sort,
         ];
 
         $categories = $this->catalog->categoryOptions();
@@ -41,8 +53,9 @@ class Category extends Component
             'categories' => $categories,
             'brands' => collect($this->catalog->brandOptions())->pluck('name')->all(),
             'products' => $this->catalog->products($filters),
-            'selectedBrands' => $filters['brands'],
-            'sort' => $filters['sort'],
+            'selectedBrands' => $this->selectedBrands,
+            'inStock' => $this->inStock,
+            'sort' => $this->sort,
         ]);
     }
 }

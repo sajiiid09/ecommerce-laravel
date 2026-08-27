@@ -36,7 +36,7 @@
                     </div>
                     <div class="mt-4 grid grid-cols-4 gap-3">
                         @foreach(['Product ID','Name','Slug','Product Type','Status','Visibility','Brand','Primary Category','Tags','SKU','Regular Price','Sale Price','Cost Price','Stock','Featured','Created At','Updated At'] as $field)
-                            <label class="flex items-center gap-2 text-sm text-[#374151]"><input type="checkbox" checked class="rounded border-[#d1d5db] text-[#2563eb]"> {{ $field }}</label>
+                            <x-ui.checkbox checked :label="$field" size="sm" />
                         @endforeach
                     </div>
                 </div>
@@ -50,7 +50,7 @@
                     <p class="mt-1 text-xs text-[#6b7280]">Include Variant Details</p>
                     <div class="mt-4 grid grid-cols-5 gap-3">
                         @foreach(['Variant SKU','Options','Variant Price','Variant Stock','Barcode'] as $field)
-                            <label class="flex items-center gap-2 text-sm text-[#374151]"><input type="checkbox" checked class="rounded border-[#d1d5db] text-[#2563eb]"> {{ $field }}</label>
+                            <x-ui.checkbox checked :label="$field" size="sm" />
                         @endforeach
                     </div>
                 </div>
@@ -100,7 +100,6 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">Recent Exports</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View All</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @foreach([['Products Export','CSV','May 24, 2026 · 2,458 rows'],['Inventory Export','CSV','May 23, 2026 · 3,108 rows'],['Low Stock Report','CSV','May 21, 2026 · 256 rows']] as [$name,$fmt,$detail])

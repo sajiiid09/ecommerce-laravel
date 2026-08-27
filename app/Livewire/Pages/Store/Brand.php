@@ -5,10 +5,13 @@ namespace App\Livewire\Pages\Store;
 use App\Services\CatalogQueryService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 class Brand extends Component
 {
+    use WithPagination;
+
     public ?string $slug = null;
 
     protected CatalogQueryService $catalog;

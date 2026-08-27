@@ -54,14 +54,8 @@
                     </label>
 
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                            <input type="checkbox" wire:model="editIsActive" class="rounded border-slate-300 text-blue-600">
-                            Active
-                        </label>
-                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                            <input type="checkbox" wire:model="editIsFeatured" class="rounded border-slate-300 text-blue-600">
-                            Featured
-                        </label>
+                        <x-ui.checkbox wire:model="editIsActive" label="Active" size="sm" />
+                        <x-ui.checkbox wire:model="editIsFeatured" label="Featured" size="sm" />
                     </div>
 
                     <label class="block text-sm font-semibold text-slate-700">
@@ -72,10 +66,7 @@
                         @enderror
                     </label>
                 @elseif($this->isTagResource())
-                    <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <input type="checkbox" wire:model="editIsActive" class="rounded border-slate-300 text-blue-600">
-                        Active
-                    </label>
+                    <x-ui.checkbox wire:model="editIsActive" label="Active" size="sm" />
                 @endif
 
                 <div class="flex justify-end gap-2">
@@ -102,7 +93,6 @@
                         <div>
                             <p class="text-xs font-semibold text-[#6b7280]">{{ $label }}</p>
                             <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ $value }}</p>
-                            <a href="#" class="mt-1 inline-block text-xs font-bold text-[#2563eb]">View all →</a>
                         </div>
                         <span style="background: {{ $color }}15; color: {{ $color }}" class="grid size-11 place-items-center rounded-full">
                             <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $path }}"/></svg>
@@ -186,7 +176,6 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">Most Used {{ $title }}</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View All</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @forelse($mostUsed as $i => $tag)
@@ -206,7 +195,6 @@
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-bold text-[#111827]">{{ rtrim($title, 's') }} Health</h3>
-                        <a href="#" class="text-xs font-bold text-[#2563eb]">View Report</a>
                     </div>
                     <div class="mt-4 space-y-3">
                         @foreach(['Unused' => $health['unused'], 'Inactive' => $health['inactive']] as $label=>$count)
@@ -216,7 +204,6 @@
                             </div>
                         @endforeach
                     </div>
-                    <a href="#" class="mt-4 block text-center text-xs font-bold text-[#2563eb]">View Full Report →</a>
                 </div>
             </div>
         </div>

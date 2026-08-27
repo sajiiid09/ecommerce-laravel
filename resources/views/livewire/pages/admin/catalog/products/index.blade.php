@@ -87,11 +87,17 @@
                             </x-ui.table.columns></x-ui.table.header>
                             <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
+                                    @php($statusValue = $row->status?->value ?? $row->status)
                                     <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
                                         <x-ui.table.cell class="w-[42%] px-2 py-2 text-xs sm:px-3 sm:py-3 md:w-[28%]">
                                             <div class="flex min-w-0 items-center gap-2 sm:gap-3">
-                                                <div class="grid size-8 shrink-0 rounded-lg bg-[#f3f4f6] sm:size-9 md:size-10">
-                                                    <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                                                @php($thumbnail = $row->media->first())
+                                                <div class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f3f4f6] sm:size-9 md:size-10">
+                                                    @if ($thumbnail)
+                                                        <img src="{{ $thumbnail->asset?->url() ?? asset('storage/'.ltrim((string) $thumbnail->path, '/')) }}" alt="" aria-hidden="true" class="size-full object-contain">
+                                                    @else
+                                                        <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+                                                    @endif
                                                 </div>
                                                 <div class="min-w-0">
                                                     <p class="truncate text-[11px] font-bold text-[#111827] sm:text-xs">{{ $row->name }}</p>
@@ -105,8 +111,7 @@
                                         <x-ui.table.cell class="w-[16%] px-2 py-3 text-[11px] font-semibold text-[#111827] sm:text-xs md:w-[12%]">&#2547;{{ number_format(($row->defaultVariant?->currentPriceMinor() ?? 0)/100,2) }}</x-ui.table.cell>
                                         <x-ui.table.cell class="w-[11%] px-2 py-3 text-[11px] sm:text-xs md:w-[8%]"><span class="font-semibold {{ ($row->defaultVariant?->availableQuantity() ?? 0) < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->defaultVariant?->availableQuantity() ?? 0 }}</span></x-ui.table.cell>
                                         <x-ui.table.cell class="w-[15%] px-2 py-3 md:w-[10%]">
-                                            @php $st = $row->status?->value ?? $row->status; @endphp
-                                            <span class="inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold sm:px-2 sm:text-[11px] {{ $st === 'published' ? 'bg-[#dcfce7] text-[#16a34a]' : ($st === 'draft' ? 'bg-[#fef3c7] text-[#d97706]' : 'bg-[#f3f4f6] text-[#6b7280]') }}">{{ ucfirst($st) }}</span>
+                                            <span class="inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold sm:px-2 sm:text-[11px] {{ $statusValue === 'published' ? 'bg-[#dcfce7] text-[#16a34a]' : ($statusValue === 'draft' ? 'bg-[#fef3c7] text-[#d97706]' : 'bg-[#f3f4f6] text-[#6b7280]') }}">{{ ucfirst($statusValue) }}</span>
                                         </x-ui.table.cell>
                                         <x-ui.table.cell class="w-[12%] px-1 py-2 md:w-[8%]">
                                             <div class="flex items-center justify-end gap-0.5 sm:gap-1">

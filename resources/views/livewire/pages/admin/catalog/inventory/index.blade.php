@@ -16,14 +16,13 @@
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach ([
                 ['label' => 'Total Units', 'value' => number_format($stats['total_units']), 'tone' => 'blue'],
-                ['label' => 'Inventory Value', 'value' => 'à§³'.number_format($stats['inventory_value_minor'] / 100, 2), 'tone' => 'emerald'],
+                ['label' => 'Inventory Value', 'value' => number_format($stats['inventory_value_minor'] / 100, 2), 'tone' => 'emerald'],
                 ['label' => 'Low Stock', 'value' => number_format($stats['low_stock']), 'tone' => 'orange'],
                 ['label' => 'Out of Stock', 'value' => number_format($stats['out_of_stock']), 'tone' => 'red'],
             ] as $card)
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-slate-500">{{ $card['label'] }}</p>
-                    <p class="mt-2 text-2xl font-extrabold text-slate-950">{{ $card['value'] }}</p>
-                    <button type="button" wire:click="$set('status', '{{ str($card['label'])->snake() }}')" class="mt-1 text-xs font-bold text-blue-600">View details →</button>
+                    <p class="mt-2 text-2xl font-extrabold text-slate-950">@if($card['label'] === 'Inventory Value')&#2547;@endif{{ $card['value'] }}</p>
                 </div>
             @endforeach
         </div>
@@ -42,7 +41,7 @@
                     <button type="button" wire:click="resetFilters" class="text-sm font-semibold text-slate-500 hover:text-slate-900">Reset</button>
                 </div>
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" table:class="min-w-[980px] text-left" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <x-ui.table.header class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                         <x-ui.table.columns>
                             <x-ui.table.head>Product / Variant</x-ui.table.head><x-ui.table.head>SKU</x-ui.table.head><x-ui.table.head column="quantity_on_hand" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">On Hand</x-ui.table.head><x-ui.table.head column="quantity_reserved" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Reserved</x-ui.table.head><x-ui.table.head>Available</x-ui.table.head><x-ui.table.head>Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
@@ -53,13 +52,13 @@
                             @php($available = $row->availableQuantity())
                             @php($rowStatus = $available <= 0 ? 'Out of Stock' : ($row->isLowStock() ? 'Low Stock' : 'In Stock'))
                             <x-ui.table.row :key="$row->id" class="text-slate-700 hover:bg-slate-50">
-                                <td class="px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? '—' }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></td>
-                                <td class="px-4 py-4 text-xs font-medium text-slate-500">{{ $row->variant?->sku ?? '—' }}</td>
-                                <td class="px-4 py-4 font-semibold text-slate-950">{{ $row->quantity_on_hand }}</td>
-                                <td class="px-4 py-4 text-slate-500">{{ $row->quantity_reserved }}</td>
-                                <td class="px-4 py-4 font-semibold text-slate-950">{{ $available }}</td>
-                                <td class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $rowStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : ($rowStatus === 'Low Stock' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700') }}">{{ $rowStatus }}</span></td>
-                                <td class="px-5 py-4"><div class="flex items-center gap-2"><button type="button" wire:click="openAdjust({{ $row->id }})" wire:loading.attr="disabled" wire:target="openAdjust({{ $row->id }})" class="text-xs font-bold text-blue-600 disabled:opacity-50">Adjust</button>@if(config('features.advanced_inventory_history'))<a href="{{ url('/admin/catalog/inventory/'.$row->variant_id.'/history') }}" class="text-xs font-semibold text-slate-500">History</a>@endif</div></td>
+                                <x-ui.table.cell class="px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? html_entity_decode('&mdash;') }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4 text-xs font-medium text-slate-500">{{ $row->variant?->sku ?? html_entity_decode('&mdash;') }}</x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4 font-semibold text-slate-950">{{ $row->quantity_on_hand }}</x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4 text-slate-500">{{ $row->quantity_reserved }}</x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4 font-semibold text-slate-950">{{ $available }}</x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $rowStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : ($rowStatus === 'Low Stock' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700') }}">{{ $rowStatus }}</span></x-ui.table.cell>
+                                <x-ui.table.cell class="px-5 py-4"><div class="flex items-center gap-2"><button type="button" wire:click="openAdjust({{ $row->id }})" wire:loading.attr="disabled" wire:target="openAdjust({{ $row->id }})" class="text-xs font-bold text-blue-600 disabled:opacity-50">Adjust</button>@if(config('features.advanced_inventory_history'))<a href="{{ url('/admin/catalog/inventory/'.$row->variant_id.'/history') }}" class="text-xs font-semibold text-slate-500">History</a>@endif</div></x-ui.table.cell>
                             </x-ui.table.row>
                         @empty
                             <x-ui.table.empty>{{ filled($searchQuery) || $status !== 'all' ? 'No inventory records match the selected search or filter.' : 'No inventory records found.' }}</x-ui.table.empty>
