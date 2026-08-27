@@ -19,7 +19,81 @@
             mobileMenuOpen: false,
             showScrollTop: false,
             cart: @js($cartItems),
-            wishlist: @js(\App\Support\StorefrontDemoData::wishlistIds()),
+            wishlist: @js($wishlistIds ?? []),
+            wishlistAuthenticated: @js($wishlistAuthenticated ?? false),
+            wishlistStorageKey: @js($wishlistStorageKey ?? 'storez-wishlist-guest'),
+            wishlistSyncUrl: @js(route('store.wishlist.sync')),
+            wishlistItemsUrl: @js(url('/wishlist/items')),
+            init() {
+                this.initializeWishlist();
+            },
+            normalizeWishlist(ids) {
+                return [...new Set((Array.isArray(ids) ? ids : []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+            },
+            storeWishlistLocally() {
+                try {
+                    window.localStorage.setItem(this.wishlistStorageKey, JSON.stringify(this.wishlist));
+                } catch (error) {
+                    // Local storage may be unavailable in privacy-restricted browsers.
+                }
+            },
+            requestHeaders() {
+                return {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                };
+            },
+            async requestWishlist(url, options = {}) {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: { ...this.requestHeaders(), ...(options.headers || {}) },
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Unable to update wishlist.');
+                }
+                return payload;
+            },
+            initializeWishlist() {
+                const serverIds = this.normalizeWishlist(this.wishlist);
+                if (this.wishlistAuthenticated) {
+                    try {
+                        window.localStorage.removeItem('storez-wishlist-guest');
+                    } catch (error) {
+                        // Local storage may be unavailable in privacy-restricted browsers.
+                    }
+                    this.wishlist = serverIds;
+                    this.storeWishlistLocally();
+                    return;
+                }
+
+                let storedIds = null;
+                try {
+                    const stored = window.localStorage.getItem(this.wishlistStorageKey);
+                    storedIds = stored === null ? null : this.normalizeWishlist(JSON.parse(stored));
+                } catch (error) {
+                    storedIds = null;
+                }
+
+                this.wishlist = storedIds ?? serverIds;
+                this.storeWishlistLocally();
+                this.syncGuestWishlist().catch(() => {});
+            },
+            async syncGuestWishlist() {
+                if (this.wishlistAuthenticated) {
+                    return this.wishlist;
+                }
+
+                const payload = await this.requestWishlist(this.wishlistSyncUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ ids: this.wishlist }),
+                });
+                this.wishlist = this.normalizeWishlist(payload.ids);
+                this.storeWishlistLocally();
+                return this.wishlist;
+            },
             notify(content, type = 'success') {
                 window.dispatchEvent(new CustomEvent('notify', {
                     detail: { content, type, duration: 3200 }
@@ -32,12 +106,43 @@
                 this.cartOpen = true;
                 this.notify(`${product.name} added to cart`);
             },
-            toggleWishlist(productId) {
-                const isSaved = this.wishlist.includes(productId);
+            async toggleWishlist(productId) {
+                const id = Number(productId);
+                const isSaved = this.wishlist.includes(id);
+                const previous = [...this.wishlist];
                 this.wishlist = isSaved
-                    ? this.wishlist.filter((id) => id !== productId)
-                    : [...this.wishlist, productId];
-                this.notify(isSaved ? 'Removed from wishlist' : 'Added to wishlist', isSaved ? 'info' : 'success');
+                    ? this.wishlist.filter((wishlistId) => wishlistId !== id)
+                    : [...this.wishlist, id];
+                this.storeWishlistLocally();
+
+                try {
+                    const payload = await this.requestWishlist(`${this.wishlistItemsUrl}/${id}`, {
+                        method: isSaved ? 'DELETE' : 'POST',
+                    });
+                    this.wishlist = this.normalizeWishlist(payload.ids);
+                    this.storeWishlistLocally();
+                    this.notify(isSaved ? 'Removed from wishlist' : 'Added to wishlist', isSaved ? 'info' : 'success');
+                } catch (error) {
+                    this.wishlist = previous;
+                    this.storeWishlistLocally();
+                    this.notify(error.message || 'Unable to update wishlist.', 'error');
+                }
+            },
+            async clearWishlist() {
+                const previous = [...this.wishlist];
+                this.wishlist = [];
+                this.storeWishlistLocally();
+
+                try {
+                    const payload = await this.requestWishlist(this.wishlistItemsUrl, { method: 'DELETE' });
+                    this.wishlist = this.normalizeWishlist(payload.ids);
+                    this.storeWishlistLocally();
+                    this.notify('Wishlist cleared', 'info');
+                } catch (error) {
+                    this.wishlist = previous;
+                    this.storeWishlistLocally();
+                    this.notify(error.message || 'Unable to clear wishlist.', 'error');
+                }
             },
             changeCartQuantity(item, amount) {
                 item.quantity = Math.max(1, item.quantity + amount);

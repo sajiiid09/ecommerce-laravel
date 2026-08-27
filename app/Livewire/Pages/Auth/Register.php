@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Auth;
 
 use App\Models\User;
 use App\Services\CartService;
+use App\Services\WishlistService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -31,6 +32,7 @@ class Register extends Component
         Auth::login($user);
         session()->regenerate();
         app(CartService::class)->merge($user);
+        app(WishlistService::class)->mergeGuest($user);
 
         $this->redirect(route('account.dashboard'));
     }

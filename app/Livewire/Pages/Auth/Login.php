@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Auth;
 
 use App\Services\CartService;
+use App\Services\WishlistService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
@@ -39,6 +40,7 @@ class Login extends Component
         RateLimiter::clear($key);
         session()->regenerate();
         app(CartService::class)->merge(Auth::user());
+        app(WishlistService::class)->mergeGuest(Auth::user());
         // Keep the application base path when the app is served from a subdirectory
         // (for example, /storez/public in the local XAMPP setup). Avoid redirecting
         // to a stale intended path captured before the user opened the login screen.

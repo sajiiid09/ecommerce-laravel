@@ -8,7 +8,6 @@
 <main
     x-data="{
         quantity: 1,
-        wished: false,
         selectedImage: @js($gallery[0]),
         variants: @js($product['variants'] ?? []),
         selectedVariantId: @js($product['variantId'] ?? null),
@@ -55,7 +54,7 @@
                         <p class="text-sm font-semibold text-store-blue">{{ $product['brand'] }}</p>
                         <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">{{ $product['name'] }}</h1>
                     </div>
-                    <button type="button" class="grid size-11 shrink-0 place-items-center rounded-full border border-store-border text-store-muted hover:border-store-red hover:text-store-red" @click="wished = !wished" :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'">
+                    <button type="button" class="grid size-11 shrink-0 place-items-center rounded-full border border-store-border text-store-muted hover:border-store-red hover:text-store-red" @click="toggleWishlist({{ $product['id'] }})" :class="wishlist.includes({{ $product['id'] }}) && 'text-store-red'" :aria-label="wishlist.includes({{ $product['id'] }}) ? 'Remove from wishlist' : 'Add to wishlist'">
                         <x-ui.icon name="heart" class="size-5 !text-current" />
                     </button>
                 </div>

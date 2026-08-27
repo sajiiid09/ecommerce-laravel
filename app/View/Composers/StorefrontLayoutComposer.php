@@ -7,6 +7,7 @@ use App\Services\AnnouncementService;
 use App\Services\CartService;
 use App\Services\CatalogQueryService;
 use App\Services\SiteSettingsService;
+use App\Services\WishlistService;
 use App\Support\StorefrontDemoData;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -27,6 +28,9 @@ class StorefrontLayoutComposer
 
         $view->with([
             'cartItems' => Schema::hasTable('carts') ? app(CartService::class)->present() : StorefrontDemoData::cartItems(),
+            'wishlistIds' => app(WishlistService::class)->ids(),
+            'wishlistAuthenticated' => auth()->check(),
+            'wishlistStorageKey' => auth()->check() ? 'storez-wishlist-user-'.auth()->id() : 'storez-wishlist-guest',
             'categories' => $this->catalog->categoryOptions(),
             'storeName' => $storeName,
             'storeTagline' => $tagline,

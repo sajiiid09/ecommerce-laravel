@@ -7,7 +7,7 @@
                 <p class="mt-1 text-sm text-store-muted">Save your favorite products and shop them anytime.</p>
             </div><button type="button"
                 class="h-10 rounded-control border border-store-blue bg-white px-4 text-sm font-bold text-store-blue disabled:cursor-not-allowed disabled:opacity-50"
-                @click="wishlist.forEach((id) => { const product = @js($products).find((item) => item.id === id); if (product) addToCart(product); }); wishlist = []"
+                @click="wishlist.forEach((id) => { const product = @js($products).find((item) => item.id === id); if (product) addToCart(product); }); clearWishlist()"
                 :disabled="wishlist.length === 0">Move All to Cart</button>
         </div>
         <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
