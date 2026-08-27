@@ -9,6 +9,7 @@ use App\Livewire\Pages\Admin\Catalog\Products\Index as ProductsIndex;
 use App\Livewire\Pages\Admin\Catalog\Products\Variants as ProductVariantsIndex;
 use App\Livewire\Pages\Admin\Catalog\Tags\Index as TagsIndex;
 use App\Livewire\Pages\Admin\Catalog\Variants\Index as VariantsIndex;
+use App\Livewire\Pages\Store\Category as StoreCategory;
 use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
@@ -26,6 +27,69 @@ use App\Services\ProductVariantService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+
+it('queries homepage product sections by source, filters, sort, and limit', function () {
+    Cache::flush();
+    $category = Category::create(['name' => 'Homepage Audio', 'slug' => 'homepage-audio', 'is_active' => true]);
+    $brand = Brand::create(['name' => 'Homepage Brand', 'slug' => 'homepage-brand', 'is_active' => true]);
+    $otherCategory = Category::create(['name' => 'Homepage Other Category', 'slug' => 'homepage-other-category', 'is_active' => true]);
+    $otherBrand = Brand::create(['name' => 'Homepage Other Brand', 'slug' => 'homepage-other-brand', 'is_active' => true]);
+
+    $makeProduct = function (string $name, array $attributes = [], int $price = 1000, ?int $salePrice = null) use ($category, $brand): Product {
+        $categoryId = $attributes['category_id'] ?? $category->id;
+        unset($attributes['category_id']);
+        $product = Product::create(array_merge([
+            'name' => $name,
+            'slug' => str()->slug($name),
+            'product_type' => 'simple',
+            'brand_id' => $brand->id,
+            'primary_category_id' => $category->id,
+            'status' => 'published',
+            'visibility' => 'visible',
+            'is_featured' => false,
+            'published_at' => now(),
+        ], $attributes));
+        $product->categories()->attach($categoryId);
+        ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'HOME-'.$product->id,
+            'name' => 'Default',
+            'combination_key' => 'default',
+            'regular_price_minor' => $price,
+            'sale_price_minor' => $salePrice,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+
+        return $product;
+    };
+
+    $featured = $makeProduct('Homepage Featured', ['is_featured' => true], 1500);
+    $newest = $makeProduct('Homepage Newest', ['published_at' => now()->addMinute()], 1200);
+    $sale = $makeProduct('Homepage Sale', [], 2000, 1600);
+    $brandProduct = $makeProduct('Homepage Brand Product', [], 1800);
+    $cheap = $makeProduct('Homepage Cheap', ['is_featured' => true], 500);
+    $hidden = $makeProduct('Homepage Hidden', ['status' => 'draft', 'is_featured' => true], 100);
+    $outside = $makeProduct('Homepage Outside Filters', [
+        'brand_id' => $otherBrand->id,
+        'primary_category_id' => $otherCategory->id,
+        'category_id' => $otherCategory->id,
+    ], 2200);
+
+    $ids = fn (array $settings): array => collect(app(CatalogQueryService::class)->homepageProducts($settings))
+        ->pluck('id')
+        ->all();
+
+    expect($ids(['source' => 'featured', 'limit' => 24]))->toContain($featured->id)
+        ->and($ids(['source' => 'newest', 'limit' => 24]))->toContain($newest->id)
+        ->and($ids(['source' => 'bestsellers', 'limit' => 24]))->toContain($brandProduct->id)->not->toContain($hidden->id)
+        ->and($ids(['source' => 'on_sale', 'limit' => 24]))->toEqual([$sale->id])
+        ->and($ids(['source' => 'category', 'category' => $category->slug, 'limit' => 24]))
+        ->toContain($brandProduct->id)->not->toContain($outside->id)
+        ->and($ids(['source' => 'brand', 'brand' => $brand->slug, 'limit' => 24]))
+        ->toContain($brandProduct->id)->not->toContain($outside->id)
+        ->and($ids(['source' => 'featured', 'sort' => 'price_asc', 'limit' => 1]))->toEqual([$cheap->id]);
+});
 
 it('persists product taxonomy, SEO, attributes, and rich text', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
@@ -190,6 +254,93 @@ it('invalidates catalog option caches after category changes', function () {
     expect(Cache::has('catalog:category-options'))->toBeFalse();
 });
 
+it('renders storefront category filters and pagination with Sheaf UI', function () {
+    Cache::flush();
+    $category = Category::create(['name' => 'Store Category', 'slug' => 'store-category', 'is_active' => true]);
+    $brand = Brand::create(['name' => 'Store Brand', 'slug' => 'store-brand', 'is_active' => true]);
+
+    foreach (range(1, 13) as $index) {
+        $product = Product::create([
+            'name' => "Category Product {$index}",
+            'slug' => "category-product-{$index}",
+            'product_type' => 'simple',
+            'brand_id' => $brand->id,
+            'primary_category_id' => $category->id,
+            'status' => 'published',
+            'visibility' => 'visible',
+        ]);
+
+        $product->categories()->attach($category);
+    }
+
+    Livewire::test(StoreCategory::class, ['slug' => $category->slug])
+        ->assertSee('data-slot="checkbox-wrapper"', false)
+        ->assertSee('data-slot="checkbox-indicator"', false)
+        ->assertSee('name="brand[]"', false)
+        ->assertSee('Pagination Navigation', false)
+        ->assertSee('wire:click="gotoPage(2)"', false)
+        ->call('gotoPage', 2)
+        ->assertSee('Category Product 1', false);
+});
+
+it('formats storefront card prices from minor units', function () {
+    Cache::flush();
+    $category = Category::create(['name' => 'Pricing Category', 'slug' => 'pricing-category', 'is_active' => true]);
+    $product = Product::create([
+        'name' => 'Pricing Product',
+        'slug' => 'pricing-product',
+        'product_type' => 'simple',
+        'primary_category_id' => $category->id,
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $product->categories()->attach($category);
+    $product->variants()->create([
+        'sku' => 'PRICE-1',
+        'name' => 'Default',
+        'combination_key' => 'default',
+        'regular_price_minor' => 299000,
+        'compare_at_price_minor' => 349000,
+        'is_active' => true,
+        'is_default' => true,
+    ]);
+
+    $currency = html_entity_decode('&#2547;');
+
+    Livewire::test(StoreCategory::class, ['slug' => $category->slug])
+        ->assertSee($currency.'2,990.00', false)
+        ->assertDontSee($currency.'299,000.00', false);
+});
+
+it('renders the first product image as the admin product thumbnail', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $asset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/product-thumbnail.jpg',
+        'filename' => 'product-thumbnail.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
+    $product = Product::create([
+        'name' => 'Thumbnail Product',
+        'slug' => 'thumbnail-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $product->media()->create([
+        'media_asset_id' => $asset->id,
+        'role' => 'primary',
+        'sort_order' => 0,
+    ]);
+
+    Livewire::test(ProductsIndex::class)
+        ->assertSee('<img', false)
+        ->assertSee(Storage::disk('public')->url($asset->path), false)
+        ->assertSee('Thumbnail Product', false);
+});
+
 it('validates and persists type-aware catalog attributes', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
 
@@ -258,6 +409,19 @@ it('renders Sheaf selection controls and a readable page-size selector on the br
         ->assertSee('aria-label="Rows per page"', false)
         ->assertSee('<option value="15">15</option>', false)
         ->assertDontSee('153050', false);
+});
+
+it('renders the inventory datatable with readable currency and no dead detail links', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+    Livewire::test(InventoryIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('min-w-[980px]', false)
+        ->assertSee('&#2547;', false)
+        ->assertSee('0.00', false)
+        ->assertDontSee('View details', false)
+        ->assertDontSee('Ã', false)
+        ->assertDontSee('â', false);
 });
 
 it('renders every requested catalog list through the Sheaf table', function () {
@@ -468,6 +632,7 @@ it('renders related products in a five-card carousel without dots', function () 
         ->and($content)->toContain('aria-label="Related products"')
         ->and($content)->toContain('xl:basis-[calc((100%-3rem)/5)]')
         ->and($content)->toContain('Related Product 1')
+        ->and($content)->toContain(html_entity_decode('&#2547;').'10.01')
         ->and($content)->toContain('View All')
         ->and($content)->not->toContain('role="tablist"');
 });

@@ -127,7 +127,7 @@ class ContentSeeder extends Seeder
                 'name' => 'Footer Company',
                 'location' => 'footer_company',
                 'items' => [
-                    ['label' => 'Featured Brands', 'url' => '/brands/soundmax', 'type' => 'custom_url'],
+                    ['label' => 'Featured Brands', 'url' => '/brands/sony', 'type' => 'custom_url'],
                     ['label' => 'Electronics', 'url' => '/category/electronics', 'type' => 'custom_url'],
                     ['label' => 'Contact StoreZ', 'url' => '/offers', 'type' => 'custom_url'],
                 ],
@@ -177,11 +177,11 @@ class ContentSeeder extends Seeder
             ['section_key' => 'hero', 'type' => 'hero', 'title' => 'Back to Better Deals Every Day!', 'eyebrow' => 'StoreZ everyday value', 'subtitle' => 'Groceries, fashion, electronics and more at unbeatable prices.', 'settings' => ['cta' => 'Shop Now', 'url' => '/offers']],
             ['section_key' => 'trust', 'type' => 'trust', 'title' => 'Why Shop with StoreZ?', 'settings' => []],
             ['section_key' => 'categories', 'type' => 'categories', 'title' => 'Shop by Category', 'settings' => ['limit' => 12]],
-            ['section_key' => 'flash-deals', 'type' => 'flash_deals', 'title' => 'Flash Sale', 'settings' => ['limit' => 6]],
-            ['section_key' => 'bestsellers', 'type' => 'bestsellers', 'title' => 'Best Sellers', 'settings' => ['limit' => 6]],
-            ['section_key' => 'featured-products', 'type' => 'featured_products', 'title' => 'Fresh Picks for You', 'settings' => ['limit' => 6]],
+            ['section_key' => 'flash-deals', 'type' => 'products', 'title' => 'Flash Sale', 'settings' => ['source' => 'on_sale', 'sort' => 'default', 'limit' => 6]],
+            ['section_key' => 'bestsellers', 'type' => 'products', 'title' => 'Best Sellers', 'settings' => ['source' => 'bestsellers', 'sort' => 'default', 'limit' => 6]],
+            ['section_key' => 'featured-products', 'type' => 'products', 'title' => 'Fresh Picks for You', 'settings' => ['source' => 'featured', 'sort' => 'default', 'limit' => 6]],
             ['section_key' => 'brands', 'type' => 'brands', 'title' => 'Top Brands You Trust', 'settings' => ['limit' => 12]],
-            ['section_key' => 'new-arrivals', 'type' => 'new_arrivals', 'title' => 'New Arrivals', 'settings' => ['limit' => 6]],
+            ['section_key' => 'new-arrivals', 'type' => 'products', 'title' => 'New Arrivals', 'settings' => ['source' => 'newest', 'sort' => 'default', 'limit' => 6]],
             ['section_key' => 'banners', 'type' => 'banners', 'title' => 'Featured Promotions', 'settings' => ['placement' => 'homepage', 'limit' => 6]],
             ['section_key' => 'shop-by-need', 'type' => 'shop_by_need', 'title' => 'Shop by Need', 'subtitle' => 'Find practical picks for every part of your day.', 'settings' => ['content_json' => "Daily essentials\nHome upgrades\nPersonal care"]],
             ['section_key' => 'testimonials', 'type' => 'testimonials', 'title' => 'What Our Customers Say', 'subtitle' => 'Real value, delivered with care.', 'settings' => ['content_json' => '“Great value and fast delivery.” — A StoreZ customer']],
@@ -311,9 +311,11 @@ class ContentSeeder extends Seeder
 
     private function seedAnnouncement(): void
     {
-        $announcement = Announcement::firstOrCreate(
-            ['internal_title' => 'StoreZ Demo Delivery Notice'],
-            [
+        $announcement = Announcement::query()->first();
+
+        if ($announcement === null) {
+            $announcement = Announcement::create([
+                'internal_title' => 'StoreZ Demo Delivery Notice',
                 'message' => 'Free delivery is available on selected StoreZ orders this week.',
                 'style' => 'info',
                 'placement' => 'top_bar',
@@ -322,8 +324,8 @@ class ContentSeeder extends Seeder
                 'dismissible' => true,
                 'priority' => 'normal',
                 'status' => 'published',
-            ],
-        );
+            ]);
+        }
 
         if ($announcement->wasRecentlyCreated) {
             $this->publishing->invalidate('announcement', 'top_bar');

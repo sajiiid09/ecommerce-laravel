@@ -15,8 +15,16 @@ use InvalidArgumentException;
 class HomepageService
 {
     private const SECTION_TYPES = [
-        'hero', 'trust', 'categories', 'flash_deals', 'bestsellers', 'featured_products',
-        'brands', 'new_arrivals', 'banners', 'shop_by_need', 'testimonials', 'newsletter',
+        'hero', 'trust', 'categories', 'products', 'brands', 'banners', 'shop_by_need',
+        'testimonials', 'newsletter',
+        'flash_deals', 'bestsellers', 'featured_products', 'new_arrivals',
+    ];
+
+    private const LEGACY_PRODUCT_SECTION_SOURCES = [
+        'featured_products' => 'featured',
+        'new_arrivals' => 'newest',
+        'bestsellers' => 'bestsellers',
+        'flash_deals' => 'on_sale',
     ];
 
     public function __construct(
@@ -122,11 +130,11 @@ class HomepageService
             ['section_key' => 'hero', 'type' => 'hero', 'title' => 'Back to Better Deals Every Day!', 'enabled' => true, 'sort_order' => 0, 'settings' => ['cta' => 'Shop Now', 'heroBanners' => []]],
             ['section_key' => 'trust', 'type' => 'trust', 'title' => 'Why Shop with StoreZ?', 'enabled' => true, 'sort_order' => 1, 'settings' => []],
             ['section_key' => 'categories', 'type' => 'categories', 'title' => 'Shop by Category', 'enabled' => true, 'sort_order' => 2, 'settings' => []],
-            ['section_key' => 'flash-deals', 'type' => 'flash_deals', 'title' => 'Flash Sale', 'enabled' => true, 'sort_order' => 3, 'settings' => ['limit' => 6]],
-            ['section_key' => 'bestsellers', 'type' => 'bestsellers', 'title' => 'Best Sellers', 'enabled' => true, 'sort_order' => 4, 'settings' => ['limit' => 6]],
-            ['section_key' => 'featured-products', 'type' => 'featured_products', 'title' => 'Fresh Picks for You', 'enabled' => true, 'sort_order' => 5, 'settings' => ['limit' => 6]],
+            ['section_key' => 'flash-deals', 'type' => 'products', 'title' => 'Flash Sale', 'enabled' => true, 'sort_order' => 3, 'settings' => ['source' => 'on_sale', 'sort' => 'default', 'limit' => 6]],
+            ['section_key' => 'bestsellers', 'type' => 'products', 'title' => 'Best Sellers', 'enabled' => true, 'sort_order' => 4, 'settings' => ['source' => 'bestsellers', 'sort' => 'default', 'limit' => 6]],
+            ['section_key' => 'featured-products', 'type' => 'products', 'title' => 'Fresh Picks for You', 'enabled' => true, 'sort_order' => 5, 'settings' => ['source' => 'featured', 'sort' => 'default', 'limit' => 6]],
             ['section_key' => 'brands', 'type' => 'brands', 'title' => 'Top Brands You Trust', 'enabled' => true, 'sort_order' => 6, 'settings' => []],
-            ['section_key' => 'new-arrivals', 'type' => 'new_arrivals', 'title' => 'New Arrivals', 'enabled' => true, 'sort_order' => 7, 'settings' => ['limit' => 6]],
+            ['section_key' => 'new-arrivals', 'type' => 'products', 'title' => 'New Arrivals', 'enabled' => true, 'sort_order' => 7, 'settings' => ['source' => 'newest', 'sort' => 'default', 'limit' => 6]],
             ['section_key' => 'banners', 'type' => 'banners', 'title' => 'Featured Promotions', 'enabled' => true, 'sort_order' => 8, 'settings' => []],
             ['section_key' => 'shop-by-need', 'type' => 'shop_by_need', 'title' => 'Shop by Need', 'enabled' => true, 'sort_order' => 9, 'settings' => []],
             ['section_key' => 'testimonials', 'type' => 'testimonials', 'title' => 'What Our Customers Say', 'enabled' => true, 'sort_order' => 10, 'settings' => ['testimonials' => [
@@ -159,6 +167,10 @@ class HomepageService
                 $this->validateTestimonials(($section['settings'] ?? [])['testimonials'] ?? null);
             }
 
+            if ($section['type'] === 'products') {
+                $this->validateProductSettings($section['settings'] ?? []);
+            }
+
             $key = Str::slug((string) $section['section_key']);
 
             if ($key === '' || in_array($key, $keys, true)) {
@@ -172,6 +184,11 @@ class HomepageService
     private function hydrateSection(array $section): array
     {
         $settings = $section['settings'] ?? [];
+
+        if (isset(self::LEGACY_PRODUCT_SECTION_SOURCES[$section['type'] ?? ''])) {
+            $settings['source'] ??= self::LEGACY_PRODUCT_SECTION_SOURCES[$section['type']];
+            $section['type'] = 'products';
+        }
 
         if (($section['type'] ?? null) === 'categories') {
             $settings['categories'] = array_slice($this->catalog->categoryOptions(), 0, max(1, min(24, (int) ($settings['limit'] ?? 12))));
@@ -207,16 +224,39 @@ class HomepageService
             $settings['testimonials'] = $this->hydrateTestimonials($settings);
         }
 
-        if (in_array($section['type'] ?? null, ['featured_products', 'bestsellers', 'new_arrivals', 'flash_deals'], true)) {
-            $settings['products'] = $this->catalog->homepageProducts(
-                (string) $section['type'],
-                max(1, min(24, (int) ($settings['limit'] ?? 6))),
-            );
+        if (($section['type'] ?? null) === 'products') {
+            $settings = $this->catalog->normalizeHomepageProductSettings($settings);
+            $settings['products'] = $this->catalog->homepageProducts($settings);
         }
 
         $section['settings'] = $settings;
 
         return $section;
+    }
+
+    private function validateProductSettings(array $settings): void
+    {
+        $sources = ['featured', 'newest', 'bestsellers', 'on_sale', 'category', 'brand'];
+        $sorts = ['default', 'newest', 'price_asc', 'price_desc'];
+        $source = (string) ($settings['source'] ?? 'featured');
+        $sort = (string) ($settings['sort'] ?? 'default');
+        $limit = $settings['limit'] ?? 6;
+
+        if (! in_array($source, $sources, true) || ! in_array($sort, $sorts, true)) {
+            throw new InvalidArgumentException('Homepage product query settings are invalid.');
+        }
+
+        if ((! is_int($limit) && ! ctype_digit((string) $limit)) || (int) $limit < 1 || (int) $limit > 24) {
+            throw new InvalidArgumentException('Homepage product limits must be between 1 and 24.');
+        }
+
+        if ($source === 'category' && blank($settings['category'] ?? null)) {
+            throw new InvalidArgumentException('A category is required for category product sections.');
+        }
+
+        if ($source === 'brand' && blank($settings['brand'] ?? null)) {
+            throw new InvalidArgumentException('A brand is required for brand product sections.');
+        }
     }
 
     private function hydratedFallback(): array

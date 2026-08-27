@@ -17,6 +17,17 @@ class CatalogQueryService
 {
     private const PUBLIC_VISIBILITIES = ['visible', 'catalog_search', 'catalog_only'];
 
+    private const HOMEPAGE_PRODUCT_SOURCES = ['featured', 'newest', 'bestsellers', 'on_sale', 'category', 'brand'];
+
+    private const HOMEPAGE_PRODUCT_SORTS = ['default', 'newest', 'price_asc', 'price_desc'];
+
+    private const LEGACY_HOMEPAGE_PRODUCT_SOURCES = [
+        'featured_products' => 'featured',
+        'new_arrivals' => 'newest',
+        'bestsellers' => 'bestsellers',
+        'flash_deals' => 'on_sale',
+    ];
+
     public function __construct(private readonly CatalogCache $cache) {}
 
     public function products(array $filters = [], int $perPage = 12): LengthAwarePaginator
@@ -38,24 +49,43 @@ class CatalogQueryService
         return $paginator->through(fn (Product $product): array => $this->toCard($product));
     }
 
-    public function homepageProducts(string $type, int $limit = 6): array
+    public function homepageProducts(array|string $querySettings, int $limit = 6): array
     {
+        $settings = $this->normalizeHomepageProductSettings($querySettings, $limit);
+
         if (! Schema::hasTable('products')) {
-            return $this->homepageDemoProducts($type, $limit);
+            return $this->homepageDemoProducts($settings);
         }
 
         $query = $this->publicProductsQuery();
+        $this->applyHomepageProductSource($query, $settings);
+        $this->applyHomepageProductSort($query, $settings);
 
-        match ($type) {
-            'featured_products' => $query->featured()->latest('products.updated_at'),
-            'bestsellers' => $query->latest('products.created_at'),
-            'new_arrivals' => $query->latest('products.published_at'),
-            'flash_deals' => $query->whereHas('variants', fn (Builder $variants) => $variants->whereNotNull('sale_price_minor'))
-                ->orderByDesc('catalog_price'),
-            default => $query->latest('products.updated_at'),
-        };
+        return $query->limit($settings['limit'])->get()->map(fn (Product $product): array => $this->toCard($product))->all();
+    }
 
-        return $query->limit($limit)->get()->map(fn (Product $product): array => $this->toCard($product))->all();
+    public function normalizeHomepageProductSettings(array|string $querySettings, int $legacyLimit = 6): array
+    {
+        if (is_string($querySettings)) {
+            return [
+                'source' => self::LEGACY_HOMEPAGE_PRODUCT_SOURCES[$querySettings] ?? 'featured',
+                'category' => null,
+                'brand' => null,
+                'sort' => 'default',
+                'limit' => max(1, min(24, $legacyLimit)),
+            ];
+        }
+
+        $source = (string) ($querySettings['source'] ?? 'featured');
+        $sort = (string) ($querySettings['sort'] ?? 'default');
+
+        return [
+            'source' => in_array($source, self::HOMEPAGE_PRODUCT_SOURCES, true) ? $source : 'featured',
+            'category' => filled($querySettings['category'] ?? null) ? (string) $querySettings['category'] : null,
+            'brand' => filled($querySettings['brand'] ?? null) ? (string) $querySettings['brand'] : null,
+            'sort' => in_array($sort, self::HOMEPAGE_PRODUCT_SORTS, true) ? $sort : 'default',
+            'limit' => max(1, min(24, (int) ($querySettings['limit'] ?? 6))),
+        ];
     }
 
     public function product(string $slug): ?array
@@ -296,16 +326,69 @@ class CatalogQueryService
             || (bool) ($filters['in_stock'] ?? false);
     }
 
-    private function homepageDemoProducts(string $type, int $limit): array
+    private function applyHomepageProductSource(Builder $query, array $settings): void
+    {
+        match ($settings['source']) {
+            'featured' => $query->featured(),
+            'on_sale' => $query->whereHas('variants', fn (Builder $variants) => $variants->whereNotNull('sale_price_minor')),
+            'category' => $query->whereHas('categories', fn (Builder $categories) => $categories
+                ->active()
+                ->where('slug', $settings['category'] ?? '')),
+            'brand' => $query->whereHas('brand', fn (Builder $brand) => $brand
+                ->active()
+                ->where('slug', $settings['brand'] ?? '')),
+            default => null,
+        };
+    }
+
+    private function applyHomepageProductSort(Builder $query, array $settings): void
+    {
+        if ($settings['sort'] !== 'default') {
+            match ($settings['sort']) {
+                'newest' => $query->latest('products.published_at')->latest('products.id'),
+                'price_asc' => $query->orderBy('catalog_price')->orderByDesc('products.id'),
+                'price_desc' => $query->orderByDesc('catalog_price')->orderByDesc('products.id'),
+                default => null,
+            };
+
+            return;
+        }
+
+        match ($settings['source']) {
+            'newest' => $query->latest('products.published_at')->latest('products.id'),
+            'bestsellers' => $query->latest('products.created_at')->latest('products.id'),
+            'on_sale' => $query->orderByDesc('catalog_price')->orderByDesc('products.id'),
+            default => $query->latest('products.updated_at')->latest('products.id'),
+        };
+    }
+
+    private function homepageDemoProducts(array $settings): array
     {
         $products = StorefrontDemoData::products();
-        $offset = match ($type) {
-            'bestsellers', 'flash_deals' => 3,
-            'new_arrivals' => 6,
+        $offset = match ($settings['source']) {
+            'bestsellers', 'on_sale' => 3,
+            'newest' => 6,
             default => 0,
         };
 
-        return array_slice($products, $offset, $limit);
+        if ($settings['source'] === 'brand' && filled($settings['brand'])) {
+            $products = $this->filterDemo($products, ['brands' => [$settings['brand']]]);
+            $offset = 0;
+        }
+
+        if ($settings['source'] === 'category' && filled($settings['category'])) {
+            $products = $this->filterDemo($products, ['category' => $settings['category']]);
+            $offset = 0;
+        }
+
+        if (in_array($settings['sort'], ['price_asc', 'price_desc'], true)) {
+            usort($products, fn (array $left, array $right): int => $settings['sort'] === 'price_asc'
+                ? $left['price'] <=> $right['price']
+                : $right['price'] <=> $left['price']);
+            $offset = 0;
+        }
+
+        return array_slice($products, $offset, $settings['limit']);
     }
 
     private function filterDemo(array $products, array $filters): array
@@ -333,7 +416,7 @@ class CatalogQueryService
 
     private function demoPaginator(array $items, int $perPage): LengthAwarePaginator
     {
-        $page = max(1, (int) request('page', 1));
+        $page = Paginator::resolveCurrentPage();
         $collection = collect($items);
         $slice = $collection->forPage($page, $perPage)->values();
 

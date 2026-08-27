@@ -24,7 +24,7 @@ class Offers extends Component
     public function render()
     {
         return view('pages.store.offers-content', [
-            'products' => $this->catalog->homepageProducts('flash_deals', 6),
+            'products' => $this->catalog->homepageProducts(['source' => 'on_sale', 'sort' => 'default', 'limit' => 6]),
             'banners' => Schema::hasTable('banners')
                 ? $this->banners->active('offers')->map(fn ($banner): array => $this->banners->present($banner))->all()
                 : [],
