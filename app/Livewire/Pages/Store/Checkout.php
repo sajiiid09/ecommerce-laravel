@@ -2,13 +2,16 @@
 
 namespace App\Livewire\Pages\Store;
 
+use App\Models\UserAddress;
 use App\Services\CartService;
+use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Support\StorefrontDemoData;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -33,11 +36,17 @@ class Checkout extends Component
 
     public string $country = 'BD';
 
+    public ?int $selectedAddressId = null;
+
     public string $delivery_method = 'standard';
 
     public string $payment_method = 'cod';
 
     public string $checkout_token = '';
+
+    public string $couponCode = '';
+
+    public string $appliedCouponCode = '';
 
     public function mount(): void
     {
@@ -46,11 +55,43 @@ class Checkout extends Component
         $this->customer_name = (string) ($user?->name ?? '');
         $this->customer_email = (string) ($user?->email ?? '');
         $this->customer_phone = (string) ($user?->phone ?? '');
+
+        if ($user) {
+            $defaultAddress = $user->addresses()->where('is_default', true)->first();
+
+            if ($defaultAddress) {
+                $this->selectAddress($defaultAddress->id);
+            }
+        }
+    }
+
+    public function selectAddress(int $addressId): void
+    {
+        $address = auth()->user()?->addresses()->findOrFail($addressId);
+        abort_unless($address instanceof UserAddress, 404);
+
+        $this->selectedAddressId = $address->id;
+        $this->fillAddressFields($address);
+        $this->resetValidation();
+    }
+
+    public function useNewAddress(): void
+    {
+        $this->selectedAddressId = null;
+        $this->address_line = '';
+        $this->city = 'Dhaka';
+        $this->district = '';
+        $this->postal_code = '';
+        $this->country = 'BD';
+        $this->resetValidation('selectedAddressId');
     }
 
     public function nextStep(PaymentManager $payments): void
     {
-        $this->validateCurrentStep($payments);
+        if (! $this->validateCurrentStep($payments)) {
+            return;
+        }
+
         $this->step = min(4, $this->step + 1);
     }
 
@@ -59,11 +100,37 @@ class Checkout extends Component
         $this->step = max(1, $this->step - 1);
     }
 
+    public function applyCoupon(CouponService $coupons): void
+    {
+        $this->validate(['couponCode' => ['required', 'string', 'max:50']]);
+
+        try {
+            $cart = app(CartService::class)->current();
+            $quote = $coupons->quote($this->couponCode, $cart, auth()->user(), $this->customer_email);
+            $this->appliedCouponCode = $quote['code'];
+            $this->couponCode = $quote['code'];
+            $this->resetValidation('couponCode');
+        } catch (ValidationException $exception) {
+            $this->setErrorBag($exception->validator->errors());
+        }
+    }
+
+    public function removeCoupon(): void
+    {
+        $this->couponCode = '';
+        $this->appliedCouponCode = '';
+        $this->resetValidation('couponCode');
+    }
+
     public function placeOrder(OrderService $orders, PaymentManager $payments): void
     {
         if (! config('features.guest_checkout') && ! auth()->check()) {
             $this->redirectRoute('login');
 
+            return;
+        }
+
+        if (! $this->resolveSelectedAddress()) {
             return;
         }
 
@@ -91,6 +158,7 @@ class Checkout extends Component
             'delivery_method' => $this->delivery_method,
             'payment_method' => $this->payment_method,
             'checkout_token' => $this->checkout_token,
+            'coupon_code' => $this->appliedCouponCode ?: null,
         ], auth()->user());
 
         $this->dispatch('cart-updated');
@@ -127,23 +195,38 @@ class Checkout extends Component
                 'items' => $items,
                 'subtotal' => collect($items)->sum('line_total'),
                 'shipping' => $this->delivery_method === 'express' ? 6000 : 0,
+                'discount' => 0,
+                'couponQuote' => null,
+                'savedAddresses' => auth()->check() ? auth()->user()->addresses()->latest()->get() : collect(),
                 'paymentMethods' => app(PaymentManager::class)->available(),
             ]);
         }
 
         $cart = app(CartService::class)->current();
+        $subtotal = app(CartService::class)->subtotal($cart);
+        $couponQuote = $this->appliedCouponCode === ''
+            ? null
+            : app(CouponService::class)->quote($this->appliedCouponCode, $cart, auth()->user(), $this->customer_email);
+        $discount = $couponQuote['discount_minor'] ?? 0;
 
         return view('pages.store.checkout-content', [
             'cart' => $cart,
             'items' => app(CartService::class)->present($cart),
-            'subtotal' => app(CartService::class)->subtotal($cart),
+            'savedAddresses' => auth()->check() ? auth()->user()->addresses()->latest()->get() : collect(),
+            'subtotal' => $subtotal,
             'shipping' => $this->delivery_method === 'express' ? 6000 : 0,
+            'discount' => $discount,
+            'couponQuote' => $couponQuote,
             'paymentMethods' => app(PaymentManager::class)->available(),
         ]);
     }
 
-    private function validateCurrentStep(PaymentManager $payments): void
+    private function validateCurrentStep(PaymentManager $payments): bool
     {
+        if ($this->step === 1 && ! $this->resolveSelectedAddress()) {
+            return false;
+        }
+
         $rules = match ($this->step) {
             1 => ['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['required', 'email', 'max:255'], 'customer_phone' => ['required', 'string', 'max:30'], 'address_line' => ['required', 'string', 'max:500'], 'city' => ['required', 'string', 'max:100']],
             2 => ['delivery_method' => ['required', 'in:standard,express']],
@@ -151,5 +234,43 @@ class Checkout extends Component
             default => [],
         };
         $this->validate($rules);
+
+        return true;
+    }
+
+    private function resolveSelectedAddress(): bool
+    {
+        if ($this->selectedAddressId === null) {
+            return true;
+        }
+
+        if (! auth()->check()) {
+            $this->addError('selectedAddressId', 'Please enter a new shipping address.');
+
+            return false;
+        }
+
+        $address = auth()->user()->addresses()->find($this->selectedAddressId);
+
+        if (! $address) {
+            $this->addError('selectedAddressId', 'That saved address is no longer available.');
+
+            return false;
+        }
+
+        $this->fillAddressFields($address);
+
+        return true;
+    }
+
+    private function fillAddressFields(UserAddress $address): void
+    {
+        $this->customer_name = $address->recipient_name;
+        $this->customer_phone = $address->phone;
+        $this->address_line = $address->address_line;
+        $this->city = $address->city;
+        $this->district = (string) ($address->district ?? '');
+        $this->postal_code = (string) ($address->postal_code ?? '');
+        $this->country = $address->country;
     }
 }

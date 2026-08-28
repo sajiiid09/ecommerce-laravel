@@ -12,12 +12,13 @@ class OrderService
 {
     public function __construct(
         private readonly CartService $carts,
+        private readonly CouponService $coupons,
         private readonly InventoryService $inventory,
         private readonly PaymentManager $payments,
     ) {}
 
     /**
-     * @param  array{customer_name: string, customer_email: string, customer_phone?: string|null, address_line: string, city: string, district?: string|null, postal_code?: string|null, country?: string, delivery_method: string, payment_method: string, checkout_token: string}  $data
+     * @param  array{customer_name: string, customer_email: string, customer_phone?: string|null, address_line: string, city: string, district?: string|null, postal_code?: string|null, country?: string, delivery_method: string, payment_method: string, checkout_token: string, coupon_code?: string|null}  $data
      */
     public function place(array $data, ?User $user = null): Order
     {
@@ -34,10 +35,13 @@ class OrderService
             $cart = $this->carts->validate();
             $shippingMinor = $data['delivery_method'] === 'express' ? 6000 : 0;
             $subtotalMinor = $this->carts->subtotal($cart);
+            $customer = $user ?? auth()->user();
+            $couponQuote = $this->coupons->redeem($data['coupon_code'] ?? null, $cart, $customer, $data['customer_email']);
+            $discountMinor = $couponQuote['discount_minor'] ?? 0;
 
             $order = Order::create([
                 'order_number' => $this->nextOrderNumber(),
-                'user_id' => $user?->id ?? auth()->id(),
+                'user_id' => $customer?->id,
                 'checkout_token' => $data['checkout_token'],
                 'customer_name' => $data['customer_name'],
                 'customer_email' => $data['customer_email'],
@@ -47,9 +51,11 @@ class OrderService
                 'currency' => 'BDT',
                 'subtotal_minor' => $subtotalMinor,
                 'shipping_minor' => $shippingMinor,
-                'discount_minor' => 0,
+                'discount_minor' => $discountMinor,
+                'coupon_id' => $couponQuote['coupon']->id ?? null,
+                'coupon_code' => $couponQuote['code'] ?? null,
                 'tax_minor' => 0,
-                'total_minor' => $subtotalMinor + $shippingMinor,
+                'total_minor' => $subtotalMinor + $shippingMinor - $discountMinor,
                 'delivery_method' => $data['delivery_method'],
                 'payment_method' => $data['payment_method'],
                 'placed_at' => now(),

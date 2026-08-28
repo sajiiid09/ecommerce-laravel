@@ -4,20 +4,22 @@ namespace App\Services\Payments;
 
 use App\Contracts\PaymentProvider;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Services\CouponService;
 use App\Services\PaymentCredentialService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class StripePaymentProvider implements PaymentProvider
 {
-    public function __construct(private readonly PaymentCredentialService $credentials) {}
+    public function __construct(private readonly PaymentCredentialService $credentials, private readonly CouponService $coupons) {}
 
     public function create(Order $order): Payment
     {
         $secret = $this->secret(requireEnabled: true);
 
-        $order->loadMissing('items');
+        $order->loadMissing(['items', 'coupon.products:id', 'coupon.categories:id', 'items.product.categories', 'items.product.primaryCategory']);
         $payload = [
             'mode' => 'payment',
             'success_url' => route('stripe.checkout.success').'?session_id={CHECKOUT_SESSION_ID}',
@@ -29,14 +31,46 @@ class StripePaymentProvider implements PaymentProvider
             'payment_intent_data[metadata][order_number]' => $order->order_number,
         ];
 
-        foreach ($order->items as $index => $item) {
+        $eligibleItems = $order->items;
+        if ($order->coupon && ($order->coupon->products->isNotEmpty() || $order->coupon->categories->isNotEmpty())) {
+            $productIds = $order->coupon->products->modelKeys();
+            $categoryIds = $this->coupons->categoryIdsIncludingDescendants($order->coupon->categories->modelKeys());
+            $eligibleItems = $order->items->filter(function ($item) use ($productIds, $categoryIds): bool {
+                return in_array($item->product_id, $productIds, true)
+                    || in_array($item->product?->primary_category_id, $categoryIds, true)
+                    || $item->product?->categories->pluck('id')->intersect($categoryIds)->isNotEmpty();
+            });
+        }
+        $allocations = $this->allocateDiscount($eligibleItems->all(), (int) $order->discount_minor);
+        $lineIndex = 0;
+        foreach ($order->items as $itemIndex => $item) {
             $name = $item->variant_name
                 ? $item->product_name.' — '.$item->variant_name
                 : $item->product_name;
-            $payload["line_items[$index][price_data][currency]"] = strtolower($order->currency);
-            $payload["line_items[$index][price_data][product_data][name]"] = $name;
-            $payload["line_items[$index][price_data][unit_amount]"] = (string) $item->unit_price_minor;
-            $payload["line_items[$index][quantity]"] = (string) $item->quantity;
+            if ($order->discount_minor > 0) {
+                $lineTotal = (int) $item->line_total_minor - ($allocations[$itemIndex] ?? 0);
+                if ($lineTotal < 1) {
+                    continue;
+                }
+                $name .= ' x '.$item->quantity;
+                $quantity = 1;
+                $unitAmount = $lineTotal;
+            } else {
+                $quantity = $item->quantity;
+                $unitAmount = $item->unit_price_minor;
+            }
+            $payload["line_items[$lineIndex][price_data][currency]"] = strtolower($order->currency);
+            $payload["line_items[$lineIndex][price_data][product_data][name]"] = $name;
+            $payload["line_items[$lineIndex][price_data][unit_amount]"] = (string) $unitAmount;
+            $payload["line_items[$lineIndex][quantity]"] = (string) $quantity;
+            $lineIndex++;
+        }
+
+        if ($order->shipping_minor > 0) {
+            $payload["line_items[$lineIndex][price_data][currency]"] = strtolower($order->currency);
+            $payload["line_items[$lineIndex][price_data][product_data][name]"] = 'Delivery';
+            $payload["line_items[$lineIndex][price_data][unit_amount]"] = (string) $order->shipping_minor;
+            $payload["line_items[$lineIndex][quantity]"] = '1';
         }
 
         $response = Http::asForm()
@@ -211,5 +245,46 @@ class StripePaymentProvider implements PaymentProvider
     private function paymentFailure(string $message): never
     {
         throw ValidationException::withMessages(['payment_method' => $message]);
+    }
+
+    /**
+     * @param  array<int, OrderItem>  $items
+     * @return array<int, int>
+     */
+    private function allocateDiscount(array $items, int $discount): array
+    {
+        if ($discount <= 0) {
+            return [];
+        }
+
+        $total = array_sum(array_map(fn ($item): int => (int) $item->line_total_minor, $items));
+        if ($total < 1) {
+            return array_fill(0, count($items), 0);
+        }
+
+        $allocations = [];
+        $remainders = [];
+        $allocated = 0;
+        foreach ($items as $index => $item) {
+            $lineTotal = (int) $item->line_total_minor;
+            $numerator = $discount * $lineTotal;
+            $allocations[$index] = intdiv($numerator, $total);
+            $remainders[$index] = $numerator % $total;
+            $allocated += $allocations[$index];
+        }
+
+        arsort($remainders);
+        $remaining = $discount - $allocated;
+        foreach (array_keys($remainders) as $index) {
+            if ($remaining < 1) {
+                break;
+            }
+            if ($allocations[$index] < (int) $items[$index]->line_total_minor) {
+                $allocations[$index]++;
+                $remaining--;
+            }
+        }
+
+        return $allocations;
     }
 }
