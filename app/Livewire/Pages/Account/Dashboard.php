@@ -42,6 +42,7 @@ class Dashboard extends Component
         return view('pages.account.dashboard-content', [
             'user' => $user,
             'ordersCount' => $user->orders()->count(),
+            'addressesCount' => $user->addresses()->count(),
         ]);
     }
 }

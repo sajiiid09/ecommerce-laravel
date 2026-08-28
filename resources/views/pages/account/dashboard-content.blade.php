@@ -12,7 +12,7 @@
         <div class="mt-6 grid gap-4 sm:grid-cols-3">
             <div class="rounded-card border border-store-border bg-white p-5"><p class="text-sm text-store-muted">Orders placed</p><p class="mt-2 text-3xl font-extrabold text-store-ink">{{ $ordersCount }}</p></div>
             <div class="rounded-card border border-store-border bg-white p-5"><p class="text-sm text-store-muted">Wishlist items</p><p class="mt-2 text-3xl font-extrabold text-store-ink" x-text="wishlist.length">0</p></div>
-            <div class="rounded-card border border-store-border bg-white p-5"><p class="text-sm text-store-muted">Saved addresses</p><p class="mt-2 text-3xl font-extrabold text-store-ink">0</p></div>
+            <div class="rounded-card border border-store-border bg-white p-5"><p class="text-sm text-store-muted">Saved addresses</p><p class="mt-2 text-3xl font-extrabold text-store-ink">{{ $addressesCount }}</p></div>
         </div>
 
         <div class="mt-6 grid gap-5 lg:grid-cols-[240px_1fr]">
