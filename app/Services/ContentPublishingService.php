@@ -15,7 +15,7 @@ class ContentPublishingService
             ]),
             'homepage' => ['cms:homepage'],
             'banner' => $key ? [$this->cache->banners($key)] : [],
-            'menu' => $key ? [$this->cache->menu($key)] : [],
+            'menu' => $key ? [$this->cache->menu($key), $this->cache->navigation($key)] : [],
             'settings' => $key && str_contains($key, ':') ? [$this->cache->settings(...explode(':', $key, 2))] : [],
             'redirect' => $key ? [$this->cache->redirect($key)] : [],
             'announcement' => $key ? [$this->cache->announcements($key)] : [],

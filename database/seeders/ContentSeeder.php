@@ -183,7 +183,7 @@ class ContentSeeder extends Seeder
             ['section_key' => 'brands', 'type' => 'brands', 'title' => 'Top Brands You Trust', 'settings' => ['limit' => 12]],
             ['section_key' => 'new-arrivals', 'type' => 'products', 'title' => 'New Arrivals', 'settings' => ['source' => 'newest', 'sort' => 'default', 'limit' => 6]],
             ['section_key' => 'banners', 'type' => 'banners', 'title' => 'Featured Promotions', 'settings' => ['placement' => 'homepage', 'limit' => 6]],
-            ['section_key' => 'shop-by-need', 'type' => 'shop_by_need', 'title' => 'Shop by Need', 'subtitle' => 'Find practical picks for every part of your day.', 'settings' => ['content_json' => "Daily essentials\nHome upgrades\nPersonal care"]],
+            // ['section_key' => 'shop-by-need', 'type' => 'shop_by_need', 'title' => 'Shop by Need', 'subtitle' => 'Find practical picks for every part of your day.', 'settings' => ['content_json' => "Daily essentials\nHome upgrades\nPersonal care"]],
             ['section_key' => 'testimonials', 'type' => 'testimonials', 'title' => 'What Our Customers Say', 'subtitle' => 'Real value, delivered with care.', 'settings' => ['content_json' => '“Great value and fast delivery.” — A StoreZ customer']],
             ['section_key' => 'newsletter', 'type' => 'newsletter', 'title' => 'Stay in the loop', 'subtitle' => 'Get offers and product updates in your inbox.', 'settings' => []],
         ];
@@ -311,7 +311,9 @@ class ContentSeeder extends Seeder
 
     private function seedAnnouncement(): void
     {
-        $announcement = Announcement::query()->first();
+        $announcement = Announcement::query()
+            ->where('internal_title', 'StoreZ Demo Delivery Notice')
+            ->first();
 
         if ($announcement === null) {
             $announcement = Announcement::create([

@@ -1,10 +1,12 @@
 <?php
 
+use App\Livewire\Pages\Admin\Content\Announcements\Index as AnnouncementsIndex;
 use App\Livewire\Pages\Admin\Content\Footer\Edit as FooterEdit;
 use App\Livewire\Pages\Admin\Content\Header\Edit as HeaderEdit;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
 use App\Livewire\Pages\Admin\Content\Navigation\Manager as NavigationManager;
 use App\Livewire\Pages\Admin\Content\Redirects\Index as RedirectsIndex;
+use App\Livewire\Pages\Admin\Reviews\Index as AdminReviewsIndex;
 use App\Models\Announcement;
 use App\Models\Banner;
 use App\Models\Category;
@@ -29,7 +31,6 @@ use App\Services\RedirectService;
 use App\Services\SiteSettingsService;
 use App\Support\StorefrontCatalog;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +68,68 @@ it('rejects duplicate and reserved page slugs', function () {
     expect(fn () => app(PageService::class)->save([
         'title' => 'Admin', 'slug' => 'admin', 'status' => 'draft', 'visibility' => 'public',
     ]))->toThrow(InvalidArgumentException::class);
+});
+
+it('renders product reviews with the Sheaf data table and paginator', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $product = Product::create([
+        'name' => 'Review Table Product',
+        'slug' => 'review-table-product',
+        'product_type' => 'simple',
+        'short_description' => 'Product for the review table test.',
+        'description_json' => [],
+        'description_html' => '<p>Product for the review table test.</p>',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'is_featured' => false,
+        'taxable' => false,
+        'is_indexable' => true,
+        'published_at' => now(),
+    ]);
+
+    foreach (range(1, 16) as $index) {
+        $customer = User::factory()->create(['name' => "Review Customer {$index}"]);
+        $review = ProductReview::create([
+            'product_id' => $product->id,
+            'user_id' => $customer->id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'rating' => 5,
+            'title' => "Review title {$index}",
+            'review' => "Review body {$index}.",
+            'status' => 'pending',
+        ]);
+        $review->update(['created_at' => now()->addSeconds($index)]);
+    }
+
+    Livewire::actingAs($admin)
+        ->test(AdminReviewsIndex::class)
+        ->assertSee('Product Reviews')
+        ->assertSee('Filter')
+        ->assertSet('status', 'all')
+        ->assertSee('Review Table Product')
+        ->assertSee('Review title 15')
+        ->assertSee('Action')
+        ->assertSee('normal-case', false)
+        ->assertSee('Pagination Navigation')
+        ->assertSee('<table', false)
+        ->assertSee('All reviews')
+        ->assertSee('value="all"', false)
+        ->call('gotoPage', 2)
+        ->assertSee('Review title 16')
+        ->set('status', 'all')
+        ->assertSee('Review title 15')
+        ->assertSee('Items per page')
+        ->assertSee('wire:model.live="perPage"', false)
+        ->set('perPage', 10)
+        ->assertSet('perPage', 10)
+        ->assertSee('Action')
+        ->assertSee('View')
+        ->assertSee('Delete')
+        ->call('view', ProductReview::where('title', 'Review title 1')->value('id'))
+        ->assertSet('viewingReview.id', ProductReview::where('title', 'Review title 1')->value('id'))
+        ->assertSee('Review body 1')
+        ->assertDispatched('open-modal', id: 'review-details');
 });
 
 it('requires administrators for CMS routes', function () {
@@ -193,6 +256,7 @@ it('renders persisted navigation, settings, banners, and announcements on the st
     HomepageSection::create(['section_key' => 'cms-banner', 'type' => 'banners', 'title' => 'Campaigns', 'enabled' => true, 'sort_order' => 0, 'settings' => []]);
     Banner::create(['name' => 'Summer campaign', 'placement' => 'homepage', 'title' => 'Summer savings', 'description' => 'Save today', 'cta_label' => 'Shop now', 'destination_type' => 'url', 'destination_value' => '/offers', 'status' => 'published', 'sort_order' => 0]);
     Announcement::create(['internal_title' => 'Notice', 'message' => 'Free delivery this week', 'placement' => 'top_bar', 'status' => 'published']);
+    Announcement::create(['internal_title' => 'Storefront notice', 'message' => 'More savings today', 'placement' => 'top_bar', 'style' => 'warning', 'status' => 'published']);
     SiteSetting::create(['group' => 'footer', 'key' => 'description', 'value' => 'Persisted footer content', 'is_public' => true]);
 
     $this->get('/')->assertSuccessful()
@@ -201,9 +265,43 @@ it('renders persisted navigation, settings, banners, and announcements on the st
         ->assertSee('Summer savings')
         ->assertSee('group relative min-h-56 overflow-hidden rounded-card bg-store-navy text-white', false)
         ->assertSee('Free delivery this week')
+        ->assertSee('bg-amber-400 text-amber-950', false)
+        ->assertSee('aria-live="polite"', false)
+        ->assertSee('aria-label="Next announcement"', false)
+        ->assertDontSee('aria-label="Dismiss announcement"', false)
         ->assertSee('Persisted footer content');
 
     expect(app(MenuService::class)->navigation('header-primary')[0]['url'])->toBe(url('/shipping'));
+});
+
+it('caches transformed menu navigation and invalidates it when an item changes', function () {
+    Cache::flush();
+    $menu = Menu::create(['name' => 'Cached navigation', 'key' => 'cached-navigation', 'enabled' => true]);
+    $item = MenuItem::create([
+        'menu_id' => $menu->id,
+        'label' => 'Shipping',
+        'type' => 'custom_url',
+        'url' => '/shipping',
+        'enabled' => true,
+        'sort_order' => 0,
+    ]);
+    $menus = app(MenuService::class);
+
+    expect($menus->navigation($menu->key)[0]['label'])->toBe('Shipping')
+        ->and(Cache::has('cms:navigation:cached-navigation'))->toBeTrue();
+
+    $menus->saveItem($item, [
+        'label' => 'Delivery',
+        'type' => 'custom_url',
+        'url' => '/delivery',
+        'parent_id' => null,
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+
+    expect(Cache::has('cms:navigation:cached-navigation'))->toBeFalse()
+        ->and($menus->navigation($menu->key)[0]['label'])->toBe('Delivery');
 });
 
 it('allows administrators to edit menu settings and add or edit menu items in the Sheaf modal', function () {
@@ -416,7 +514,7 @@ it('allows administrators to upload and select a footer logo from the shared med
         ->assertHasNoErrors()
         ->assertDispatched('notify', content: 'Footer logo uploaded and selected. Save footer to apply it.', type: 'success');
 
-    $asset = MediaAsset::where('filename', 'footer-logo.png')->firstOrFail();
+    $asset = MediaAsset::where('original_filename', 'footer-logo.png')->firstOrFail();
 
     $component->assertSet('logo_media_id', $asset->id)
         ->assertSee('wire:model="footer_logo_file"', false);
@@ -441,7 +539,7 @@ it('allows administrators to upload and select a header logo', function () {
         ->assertHasNoErrors()
         ->assertDispatched('notify', content: 'Header logo uploaded and selected. Save header to apply it.', type: 'success');
 
-    $asset = MediaAsset::where('filename', 'header-logo.png')->firstOrFail();
+    $asset = MediaAsset::where('original_filename', 'header-logo.png')->firstOrFail();
 
     $component->assertSet('logo_media_id', $asset->id)
         ->assertSet('logo_url', $asset->url())
@@ -455,54 +553,62 @@ it('allows administrators to upload and select a header logo', function () {
         ->toBe($asset->id);
 });
 
-it('manages the single announcement from Header settings with a Sheaf modal', function () {
+it('manages multiple announcements from the dedicated Content panel', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
     $component = Livewire::actingAs($admin)
-        ->test(HeaderEdit::class)
-        ->assertSee('Announcement')
-        ->assertSee('Add announcement')
-        ->assertSee('header-announcement-editor', false)
-        ->assertSee('wire:click="openAnnouncementCreate"', false)
-        ->assertDontSee('Announcements</a>', false)
-        ->assertDontSee('Header preview')
-        ->call('openAnnouncementCreate')
-        ->assertDispatched('open-modal', id: 'header-announcement-editor')
-        ->set('announcement_internal_title', 'Delivery notice')
-        ->set('announcement_message', 'Free delivery this week.')
-        ->set('announcement_style', 'info')
-        ->set('announcement_placement', 'top_bar')
-        ->set('announcement_status', 'published')
-        ->set('announcement_priority', 'normal')
-        ->set('announcement_dismissible', true)
+        ->test(AnnouncementsIndex::class)
+        ->assertSee('Announcements')
+        ->assertSee('Create announcement')
+        ->assertSee('announcement-editor', false)
+        ->call('openCreate')
+        ->assertDispatched('open-modal', id: 'announcement-editor')
+        ->set('internal_title', 'Delivery notice')
+        ->set('message', 'Free delivery this week.')
+        ->set('style', 'info')
+        ->set('form_placement', 'top_bar')
+        ->set('form_status', 'published')
+        ->set('priority', 'normal')
+        ->set('link_label', 'Shop offers')
+        ->set('link_url', '/offers')
+        ->set('dismissible', true)
         ->call('saveAnnouncement')
         ->assertHasNoErrors()
-        ->assertDispatched('close-modal', id: 'header-announcement-editor')
+        ->assertDispatched('close-modal', id: 'announcement-editor')
         ->assertDispatched('notify', content: 'Announcement saved.', type: 'success')
-        ->assertSee('Delivery notice')
-        ->assertDontSee('wire:click="openAnnouncementCreate"', false);
+        ->assertSee('Delivery notice');
 
     $announcement = Announcement::query()->where('internal_title', 'Delivery notice')->firstOrFail();
 
-    $component->call('editAnnouncement', $announcement->id)
-        ->assertSet('announcement_id', $announcement->id)
-        ->assertSet('announcement_internal_title', 'Delivery notice')
-        ->assertDispatched('open-modal', id: 'header-announcement-editor')
-        ->set('announcement_message', 'Updated delivery notice.')
+    $component->call('openEdit', $announcement->id)
+        ->assertSet('editingId', $announcement->id)
+        ->assertSet('internal_title', 'Delivery notice')
+        ->assertDispatched('open-modal', id: 'announcement-editor')
+        ->set('message', 'Updated delivery notice.')
         ->call('saveAnnouncement')
         ->assertHasNoErrors();
 
-    expect($announcement->fresh()->message)->toBe('Updated delivery notice.');
+    expect($announcement->fresh()->message)->toBe('Updated delivery notice.')
+        ->and($announcement->fresh()->link_url)->toBe('/offers');
+
+    $component->call('openCreate')
+        ->set('internal_title', 'Second notice')
+        ->set('message', 'Second message.')
+        ->set('form_placement', 'top_bar')
+        ->set('form_status', 'published')
+        ->call('saveAnnouncement')
+        ->assertHasNoErrors();
+
+    expect(Announcement::where('placement', 'top_bar')->count())->toBe(2);
 
     $component->call('deleteAnnouncement', $announcement->id)
         ->assertHasNoErrors()
-        ->assertDispatched('notify', content: 'Announcement deleted.', type: 'success')
-        ->assertSee('Add announcement');
+        ->assertDispatched('notify', content: 'Announcement deleted.', type: 'success');
 
     expect(Announcement::withTrashed()->whereKey($announcement->id)->exists())->toBeFalse();
 });
 
-it('enforces a single announcement at the database level', function () {
+it('allows multiple announcements for the same placement and orders them by priority', function () {
     Announcement::create([
         'internal_title' => 'First announcement',
         'message' => 'First message',
@@ -510,12 +616,16 @@ it('enforces a single announcement at the database level', function () {
         'status' => 'published',
     ]);
 
-    expect(fn () => Announcement::create([
+    Announcement::create([
         'internal_title' => 'Second announcement',
         'message' => 'Second message',
         'placement' => 'top_bar',
+        'priority' => 'high',
         'status' => 'published',
-    ]))->toThrow(QueryException::class);
+    ]);
+
+    expect(app(AnnouncementService::class)->active('top_bar')->pluck('internal_title')->all())
+        ->toBe(['Second announcement', 'First announcement']);
 });
 
 it('rejects invalid footer social links without changing saved settings', function () {
