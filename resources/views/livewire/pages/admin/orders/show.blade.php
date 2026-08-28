@@ -13,6 +13,7 @@
         <div class="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-base font-bold text-slate-900">Items</h2>
+                @if($orderModel->discount_minor > 0)<p class="mt-3 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">Coupon{{ $orderModel->coupon_code ? ' '.$orderModel->coupon_code : '' }} saved ৳{{ number_format($orderModel->discount_minor / 100, 2) }}.</p>@endif
                 <div class="mt-4 divide-y divide-slate-100">
                     @foreach($orderModel->items as $item)
                         <div class="flex justify-between gap-4 py-4 first:pt-0">
