@@ -26,20 +26,25 @@ class AdminRouteSmokeTest extends TestCase
             ->assertSee('sidebarCollapsed', false)
             ->assertSee('toggleSidebar', false)
             ->assertSee('lg:w-[76px]', false)
-            ->assertSee('lg:pl-[76px]', false);
+            ->assertSee('lg:pl-[76px]', false)
+            ->assertSee('data-icon="sidebar-simple"', false);
         $this->assertSame(1, substr_count($dashboard->getContent(), 'x-on:click="toggleSidebar()"'));
     }
 
-    public function test_announcement_admin_page_is_removed_from_the_sidebar_and_routes(): void
+    public function test_announcement_admin_page_is_available_under_content(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
 
-        $this->actingAs($admin)->get('/admin/content/announcements')->assertNotFound();
+        $this->actingAs($admin)->get('/admin/content/announcements')
+            ->assertOk()
+            ->assertSee('Announcements')
+            ->assertSee('Announcements</a>', false);
 
         $this->actingAs($admin)->get('/admin/content/header')
             ->assertOk()
-            ->assertSee('Announcement')
-            ->assertDontSee('Announcements</a>', false);
+            ->assertSee('Show announcements')
+            ->assertDontSee('header-announcement-editor', false)
+            ->assertDontSee('Manage the single message', false);
     }
 
     public function test_admin_catalog_pages_hide_nonfunctional_placeholder_links(): void

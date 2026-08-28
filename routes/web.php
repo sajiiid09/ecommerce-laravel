@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\StripeCheckoutController;
 use App\Http\Controllers\WishlistController;
+use App\Livewire\Pages\Account\Addresses;
 use App\Livewire\Pages\Account\Dashboard;
 use App\Livewire\Pages\Account\OrderDetail;
 use App\Livewire\Pages\Account\Orders;
@@ -13,9 +14,12 @@ use App\Livewire\Pages\Admin\Catalog\Products\Import;
 use App\Livewire\Pages\Admin\Catalog\Products\Variants;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
 use App\Livewire\Pages\Admin\Content\Navigation\Manager;
+use App\Livewire\Pages\Admin\Coupons\Index as AdminCouponsIndex;
+use App\Livewire\Pages\Admin\Customers\Index as AdminCustomersIndex;
 use App\Livewire\Pages\Admin\Media\Index;
 use App\Livewire\Pages\Admin\Orders\Index as AdminOrdersIndex;
 use App\Livewire\Pages\Admin\Orders\Show as AdminOrderShow;
+use App\Livewire\Pages\Admin\Profile as AdminProfile;
 use App\Livewire\Pages\Admin\Reviews\Index as AdminReviewsIndex;
 use App\Livewire\Pages\Admin\Settings\General as AdminGeneralSettings;
 use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
@@ -71,6 +75,7 @@ Route::delete('/wishlist/items/{productId}', [WishlistController::class, 'remove
 Route::livewire('/login', new Login)->middleware('guest')->name('login');
 Route::livewire('/register', new Register)->middleware('guest')->name('register');
 Route::livewire('/account', new Dashboard)->middleware('auth')->name('account.dashboard');
+Route::livewire('/account/addresses', new Addresses)->middleware('auth')->name('account.addresses');
 Route::livewire('/orders', new Orders)->middleware('auth')->name('account.orders');
 Route::livewire('/account/orders/{order}', new OrderDetail)->middleware('auth')->name('account.order');
 Route::livewire('/account/orders/{order?}/track', new Tracking)->middleware('auth')->name('account.tracking');
@@ -83,6 +88,9 @@ Route::prefix('admin/orders')->middleware(['auth', 'admin'])->group(function ():
     Route::livewire('/{order}', new AdminOrderShow)->name('admin.order');
 });
 Route::livewire('/admin/reviews', new AdminReviewsIndex)->middleware(['auth', 'admin'])->name('admin.reviews');
+Route::livewire('/admin/customers', new AdminCustomersIndex)->middleware(['auth', 'admin'])->name('admin.customers');
+Route::livewire('/admin/coupons', new AdminCouponsIndex)->middleware(['auth', 'admin'])->name('admin.coupons');
+Route::livewire('/admin/profile', new AdminProfile)->middleware(['auth', 'admin'])->name('admin.profile');
 Route::livewire('/admin/settings/general', new AdminGeneralSettings)->middleware(['auth', 'admin'])->name('admin.settings.general');
 Route::livewire('/admin/settings/payments', new AdminPaymentSettings)->middleware(['auth', 'admin'])->name('admin.settings.payments');
 
@@ -125,6 +133,7 @@ Route::prefix('admin/content')->middleware(['auth', 'admin'])->group(function ()
     Route::livewire('/banners/create', new App\Livewire\Pages\Admin\Content\Banners\Edit)->name('admin.content.banners.create');
     Route::livewire('/banners/{banner}/edit', new App\Livewire\Pages\Admin\Content\Banners\Edit)->name('admin.content.banners.edit');
     Route::livewire('/navigation', new Manager)->name('admin.content.navigation');
+    Route::livewire('/announcements', new App\Livewire\Pages\Admin\Content\Announcements\Index)->name('admin.content.announcements');
     Route::get('/header/preview', function (CatalogQueryService $catalog) {
         return view('pages.store.header-preview', ['categories' => $catalog->categoryOptions()]);
     })->name('admin.content.header.preview');
