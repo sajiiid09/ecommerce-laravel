@@ -31,15 +31,49 @@
                 </div>
             </x-admin.cms.panel>
 
-            <x-admin.cms.panel title="Brand media" description="Select image assets from the shared Media Library. Header and Footer-specific logos remain independent and take precedence when configured.">
+            <x-admin.cms.panel title="Brand media" description="Upload the logo and favicon used across the customer-facing storefront.">
                 <div class="grid gap-5 lg:grid-cols-2">
                     <div>
-                        <x-admin.media-picker :assets="$mediaAssets" :selected="$logoMediaId" title="Default store logo" context="general_logo" />
+                        {{-- Shared Media Library selection is temporarily hidden; direct upload remains available. --}}
+                        {{-- <x-admin.media-picker :assets="$mediaAssets" :selected="$logoMediaId" title="Default store logo" context="general_logo" /> --}}
+                        <div class="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-4">
+                            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                <div class="min-w-0 flex-1">
+                                    <label class="block text-sm font-semibold text-slate-700" for="general-logo-file">Upload a new logo</label>
+                                    <x-ui.input id="general-logo-file" type="file" wire:model="logoFile" accept="image/*" class="mt-1" />
+                                    <p class="mt-1 text-xs font-normal text-slate-500">Choose an image from your computer. Maximum 10 MB.</p>
+                                    @error('logoFile')<span class="mt-1 block text-xs font-normal text-red-600">{{ $message }}</span>@enderror
+                                </div>
+                                <x-ui.button type="button" variant="primary" color="blue" icon="arrow-up" class="w-full sm:mt-7 sm:w-auto"
+                                    wire:click="uploadStoreLogo" wire:loading.attr="disabled"
+                                    wire:target="uploadStoreLogo,logoFile">
+                                    <span wire:loading.remove wire:target="uploadStoreLogo">Upload and select</span>
+                                    <span wire:loading wire:target="uploadStoreLogo">Uploading...</span>
+                                </x-ui.button>
+                            </div>
+                        </div>
                         <button type="button" wire:click="$set('logoMediaId', null)" class="mt-2 text-xs font-semibold text-slate-500 hover:text-red-600">Use packaged logo fallback</button>
                         @error('logoMediaId')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </div>
                     <div>
-                        <x-admin.media-picker :assets="$mediaAssets" :selected="$faviconMediaId" title="Store favicon" context="general_favicon" />
+                        {{-- Shared Media Library selection is temporarily hidden; direct upload remains available. --}}
+                        {{-- <x-admin.media-picker :assets="$mediaAssets" :selected="$faviconMediaId" title="Store favicon" context="general_favicon" /> --}}
+                        <div class="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-4">
+                            <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                <div class="min-w-0 flex-1">
+                                    <label class="block text-sm font-semibold text-slate-700" for="general-favicon-file">Upload a new favicon</label>
+                                    <x-ui.input id="general-favicon-file" type="file" wire:model="faviconFile" accept="image/*" class="mt-1" />
+                                    <p class="mt-1 text-xs font-normal text-slate-500">Choose an image from your computer. Maximum 10 MB.</p>
+                                    @error('faviconFile')<span class="mt-1 block text-xs font-normal text-red-600">{{ $message }}</span>@enderror
+                                </div>
+                                <x-ui.button type="button" variant="primary" color="blue" icon="arrow-up" class="w-full sm:mt-7 sm:w-auto"
+                                    wire:click="uploadStoreFavicon" wire:loading.attr="disabled"
+                                    wire:target="uploadStoreFavicon,faviconFile">
+                                    <span wire:loading.remove wire:target="uploadStoreFavicon">Upload and select</span>
+                                    <span wire:loading wire:target="uploadStoreFavicon">Uploading...</span>
+                                </x-ui.button>
+                            </div>
+                        </div>
                         <button type="button" wire:click="$set('faviconMediaId', null)" class="mt-2 text-xs font-semibold text-slate-500 hover:text-red-600">Use packaged favicon fallback</button>
                         @error('faviconMediaId')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                     </div>
@@ -69,11 +103,19 @@
             <x-admin.cms.panel title="Regional settings" description="Choose the timezone used when displaying store-local dates and times.">
                 <label class="block max-w-md text-sm font-semibold text-slate-700">
                     Timezone
-                    <select wire:model.live="timezone" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                    <x-ui.select
+                        wire:model.live="timezone"
+                        placeholder="Select timezone"
+                        searchable
+                        :invalid="$errors->has('timezone')"
+                        class="mt-1 w-full"
+                    >
                         @foreach($timezones as $timezoneOption)
-                            <option wire:key="timezone-{{ $timezoneOption }}" value="{{ $timezoneOption }}">{{ $timezoneOption }}</option>
+                            <x-ui.select.option wire:key="timezone-{{ $timezoneOption }}" value="{{ $timezoneOption }}">
+                                {{ $timezoneOption }}
+                            </x-ui.select.option>
                         @endforeach
-                    </select>
+                    </x-ui.select>
                     @error('timezone')<span class="mt-1 block text-xs font-normal text-red-600">{{ $message }}</span>@enderror
                 </label>
             </x-admin.cms.panel>
