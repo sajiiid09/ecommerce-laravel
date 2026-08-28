@@ -20,6 +20,10 @@
             request()->is('admin/catalog/inventory/*/history') => 'Inventory History',
             request()->is('admin/catalog/inventory') => 'Inventory',
             request()->is('admin/media') => 'Media Library',
+            request()->is('admin/content/announcements') => 'Announcements',
+            request()->is('admin/customers') => 'Customers',
+            request()->is('admin/coupons') => 'Coupons',
+            request()->is('admin/profile') => 'Admin Profile',
             request()->is('admin/settings/general') => 'General Settings',
             request()->is('admin/settings/payments') => 'Payment Settings',
             default => 'Admin Dashboard',
@@ -68,6 +72,9 @@
                 }
                 if (Route::has('admin.customers')) {
                     $navItems[] = ['label' => 'Customers', 'href' => route('admin.customers'), 'icon' => 'users', 'match' => 'admin/customers*'];
+                }
+                if (Route::has('admin.coupons')) {
+                    $navItems[] = ['label' => 'Coupons', 'href' => route('admin.coupons'), 'icon' => 'tag', 'match' => 'admin/coupons*'];
                 }
                 if (config('features.reviews') && Route::has('admin.reviews')) {
                     $navItems[] = ['label' => 'Reviews', 'href' => route('admin.reviews'), 'icon' => 'chat-bubble-left-right', 'match' => 'admin/reviews*'];
@@ -150,6 +157,7 @@
                                 ['label'=>'Banners','href'=>'/admin/content/banners','match'=>'admin/content/banners*'],
                                 ['label'=>'Navigation','href'=>'/admin/content/navigation','match'=>'admin/content/navigation*'],
                                 ['label'=>'Header','href'=>'/admin/content/header','match'=>'admin/content/header*'],
+                                ['label'=>'Announcements','href'=>'/admin/content/announcements','match'=>'admin/content/announcements*'],
                                 ['label'=>'Footer','href'=>'/admin/content/footer','match'=>'admin/content/footer*'],
                                 ['label'=>'Media Library','href'=>'/admin/media','match'=>'admin/media*'],
                                 ['label'=>'Redirects','href'=>'/admin/content/redirects','match'=>'admin/content/redirects*'],
@@ -176,23 +184,47 @@
         <header class="sticky top-0 z-20 flex h-[64px] items-center justify-between border-b border-[#e5e7eb] bg-white px-5 sm:px-6">
             <div class="flex items-center gap-4">
                 <button type="button" x-on:click="toggleSidebar()" x-bind:aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" x-bind:title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" class="hidden size-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#f3f4f6] lg:inline-flex">
-                    <svg x-bind:class="sidebarCollapsed ? 'rotate-180' : ''" class="size-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/></svg>
+                    <x-ui.icon name="ps:sidebar-simple" variant="regular" data-icon="sidebar-simple" x-bind:class="sidebarCollapsed ? 'rotate-180' : ''" class="size-5 transition-transform" aria-hidden="true" />
                 </button>
                 <button x-on:click="sidebarOpen = true" class="text-xl text-[#374151] lg:hidden" aria-label="Open menu">
                     <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </button>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2.5 border-l border-[#e5e7eb] pl-3">
-                    <div class="grid size-9 place-items-center rounded-full bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
-                        {{ strtoupper(substr(auth()->user()->name ?? 'A',0,1)) }}
-                    </div>
-                    <div class="hidden leading-tight sm:block">
-                        <p class="text-xs font-bold text-[#111827]">{{ auth()->user()->name ?? 'Admin User' }}</p>
-                        <p class="text-[10px] text-[#9ca3af]">Administrator</p>
-                    </div>
-                    <svg class="size-4 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-                </div>
+            <div class="flex shrink-0 items-center gap-3 border-l border-[#e5e7eb] pl-3">
+                <x-ui.dropdown position="bottom-end">
+                    <x-slot:button>
+                        <button
+                            type="button"
+                            class="!inline-flex !flex-row !items-center !justify-center !gap-2.5 !whitespace-nowrap rounded-lg px-2 py-1.5 text-left hover:bg-[#f3f4f6]"
+                            aria-label="Open administrator menu"
+                        >
+                            <span class="grid size-9 place-items-center rounded-full bg-[#dbeafe] text-sm font-bold text-[#2563eb]">
+                                {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                            </span>
+                            <span class="hidden min-w-0 leading-tight sm:block">
+                                <span class="block text-xs font-bold text-[#111827]">{{ auth()->user()->name ?? 'Admin User' }}</span>
+                                <span class="block text-[10px] text-[#9ca3af]">Administrator</span>
+                            </span>
+                            <x-ui.icon name="chevron-down" class="size-4 text-[#9ca3af]" aria-hidden="true" />
+                        </button>
+                    </x-slot:button>
+                    <x-slot:menu class="w-64">
+                        <div class="col-span-full border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+                            <p class="truncate text-xs font-bold text-neutral-900 dark:text-white">{{ auth()->user()->email }}</p>
+                            <p class="mt-0.5 text-[11px] text-neutral-500">Administrator account</p>
+                        </div>
+                        <x-ui.dropdown.item as="a" href="{{ route('admin.profile') }}" icon="user-circle">
+                            Profile
+                        </x-ui.dropdown.item>
+                        <x-ui.dropdown.separator />
+                        <form method="POST" action="{{ route('logout') }}" class="col-span-full">
+                            @csrf
+                            <x-ui.dropdown.item as="button" type="submit" icon="arrow-right-on-rectangle">
+                                Sign out
+                            </x-ui.dropdown.item>
+                        </form>
+                    </x-slot:menu>
+                </x-ui.dropdown>
             </div>
         </header>
         {{ $slot }}

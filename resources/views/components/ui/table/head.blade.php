@@ -12,7 +12,7 @@
 @php       
     $classes = [
         '[:where(&)]:first:pl-2 [:where(&)]:last:pr-2 [:where(&)]:py-1 [:where(&)]:px-4 my-1 right-align',
-        'text-left text-sm font-medium w-fit',
+        'text-left text-sm font-medium normal-case w-fit',
         'text-neutral-800 dark:text-white',
         'sticky left-0' => $sticky
     ];

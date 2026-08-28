@@ -59,15 +59,12 @@
     
     // Build the pagination attrs bag
     $paginatorAttrs = new \Illuminate\View\ComponentAttributeBag();
+    $paginationOptions = $attributes->get('pagination:options');
 
     if ($paginationVariant = $attributes->get('pagination:variant')) {
         $paginatorAttrs = $paginatorAttrs->merge(['variant' => $paginationVariant]);
     }
     
-    if ($paginationOptions = $attributes->get('pagination:options')) {
-        $paginatorAttrs = $paginatorAttrs->merge(['options' => $paginationOptions]);
-    }
-
     $ignoredAttrs = [
         'wire:loading',
         'wire:target',
@@ -102,9 +99,10 @@
     @endif
 
     @if ($paginator)
-        <x-ui.pagination 
-            :$paginator 
-            :attributes="$paginatorAttrs"
-        />
+        @if ($paginationOptions !== null)
+            <x-ui.pagination :$paginator :options="$paginationOptions" :attributes="$paginatorAttrs" />
+        @else
+            <x-ui.pagination :$paginator :attributes="$paginatorAttrs" />
+        @endif
     @endif
 </div>

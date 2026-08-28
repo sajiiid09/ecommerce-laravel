@@ -57,6 +57,12 @@
         },
         "dropdown": {
             "installationTime": 1787736726
+        },
+        "breadcrumbs": {
+            "installationTime": 1787845529
+        },
+        "skeleton": {
+            "installationTime": 1787848889
         }
     }
 }

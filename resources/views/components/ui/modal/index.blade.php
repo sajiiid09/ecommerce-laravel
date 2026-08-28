@@ -218,7 +218,7 @@
     <template x-teleport="body">
         <div
             x-show="isOpen"
-            class="fixed inset-0  overflow-y-auto"
+            class="modal-overlay fixed inset-0 overflow-y-auto"
             aria-modal="true"
             role="dialog"
             style="display: none;z-index:9999"
@@ -348,7 +348,7 @@
                         @if($hasSlot)
                             <div
                                 @class([
-                                    'modal-content flex-1 px-6 py-4 min-h-0 text-neutral-900 dark:text-neutral-50',
+                                    'modal-content scrollbar-hidden flex-1 px-6 py-4 min-h-0 text-neutral-900 dark:text-neutral-50',
                                     'overflow-y-auto' => $slideover || $width === 'screen' || $stickyFooter || $stickyHeader,
                                     'max-h-[calc(100vh-13.8rem)]' => ($stickyHeader || $stickyFooter) && !$slideover && $width !== 'screen',
                                 ])

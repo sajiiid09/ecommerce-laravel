@@ -42,7 +42,8 @@
             "radio",
             "pagination",
             "dropdown",
-            "table"
+            "table",
+            "breadcrumbs"
         ],
         "text": [
             "select"
