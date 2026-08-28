@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Support\StorefrontDemoData;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -163,7 +164,7 @@ class CatalogQueryService
 
     private function publicProductsQuery(): Builder
     {
-        return Product::query()
+        $query = Product::query()
             ->published()
             ->whereIn('visibility', self::PUBLIC_VISIBILITIES)
             ->with([
@@ -187,6 +188,21 @@ class CatalogQueryService
                     ->orderBy('sort_order')
                     ->limit(1),
             ]);
+
+        if (! Schema::hasTable('product_reviews')) {
+            return $query;
+        }
+
+        return $query->addSelect([
+            'review_average' => ProductReview::query()
+                ->selectRaw('ROUND(AVG(rating), 1)')
+                ->whereColumn('product_id', 'products.id')
+                ->where('status', 'approved'),
+            'review_count' => ProductReview::query()
+                ->selectRaw('COUNT(*)')
+                ->whereColumn('product_id', 'products.id')
+                ->where('status', 'approved'),
+        ]);
     }
 
     private function applyFilters(Builder $query, array $filters): void
@@ -250,8 +266,8 @@ class CatalogQueryService
             'price' => $price,
             'oldPrice' => $oldPrice ?: null,
             'discount' => $oldPrice > 0 ? max(0, (int) round(($oldPrice - $price) / $oldPrice * 100)) : null,
-            'rating' => 0,
-            'reviews' => 0,
+            'rating' => round((float) ($product->review_average ?? 0), 1),
+            'reviews' => (int) ($product->review_count ?? 0),
             'inStock' => $this->variantIsAvailable($variant),
             'sku' => $variant?->sku,
             'variantId' => $variant?->id,

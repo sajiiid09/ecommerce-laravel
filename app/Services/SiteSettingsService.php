@@ -11,9 +11,14 @@ class SiteSettingsService
 
     public function get(string $group, string $key, mixed $default = null): mixed
     {
-        return Cache::remember($this->cache->settings($group, $key), 300, function () use ($group, $key, $default): mixed {
-            return SiteSetting::where(['group' => $group, 'key' => $key])->first()?->value ?? $default;
+        $cached = Cache::remember($this->cache->settings($group, $key), 300, function () use ($group, $key, $default): array {
+            return [
+                '__storez_cached_setting' => true,
+                'value' => SiteSetting::where(['group' => $group, 'key' => $key])->first()?->value ?? $default,
+            ];
         });
+
+        return $cached['value'];
     }
 
     public function set(string $group, string $key, mixed $value, bool $public = true): SiteSetting

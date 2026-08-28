@@ -143,7 +143,7 @@
                     @foreach ($combos as $combo)
                         <article class="flex items-center gap-3 rounded-card border border-store-border bg-white p-3">
                             <img src="{{ asset('images/placeholders/no-image.svg') }}" alt=""
-                                class="size-20 object-contain">
+                                loading="lazy" decoding="async" class="size-20 object-contain">
                             <div>
                                 <h3 class="text-sm font-bold text-store-ink">{{ $combo['name'] }}</h3>
                                 <p class="mt-1 font-extrabold text-store-red">৳{{ number_format($combo['price']) }}</p>

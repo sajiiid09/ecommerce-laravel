@@ -12,7 +12,7 @@
             </button>
 
             <a href="{{ route('store.home') }}" wire:navigate class="shrink-0" aria-label="{{ $storeName }} home">
-                <img src="{{ $configuredLogo ?: asset('images/brand/storez-logo.png') }}" alt="{{ $storeName }}" class="h-auto w-25 sm:w-30">
+                <img src="{{ $configuredLogo ?: asset('images/brand/storez-logo.png') }}" alt="{{ $storeName }}" loading="eager" fetchpriority="high" decoding="async" class="h-auto w-25 sm:w-30">
             </a>
 
             <button type="button"
@@ -49,13 +49,32 @@
             @endif
 
             <nav class="ml-auto flex items-center gap-2 sm:gap-4" aria-label="Account shortcuts">
-                <a href="{{ route('account.dashboard') }}" wire:navigate
-                    class="hidden h-11 items-center gap-2 rounded-control px-2 text-xs text-store-muted hover:bg-store-soft hover:text-store-blue lg:flex"><x-ui.icon
-                        name="user" class="size-6 shrink-0 !text-store-ink" /><span><span
-                            class="block font-semibold text-store-ink">Account</span>
-                        {{-- <span>Sign in /
-                            Register</span></span> --}}
-                </a>
+                @auth
+                    <div class="relative" x-data="{ accountMenuOpen: false }" @keydown.escape.window="accountMenuOpen = false">
+                        <button type="button" class="flex h-11 items-center gap-1 rounded-control px-1 text-left text-xs text-store-muted hover:bg-store-soft hover:text-store-blue sm:gap-2 sm:px-2" @click="accountMenuOpen = !accountMenuOpen" :aria-expanded="accountMenuOpen.toString()" aria-controls="store-account-menu">
+                            <x-ui.icon name="user" class="size-6 shrink-0 !text-store-ink" />
+                            <span class="hidden sm:block"><span class="block font-semibold text-store-ink">Account</span><span class="block text-[10px] text-store-muted">{{ auth()->user()->name }}</span></span>
+                            <x-ui.icon name="chevron-down" class="size-4 !text-current" />
+                        </button>
+                        <div id="store-account-menu" x-cloak x-show="accountMenuOpen" x-transition @click.outside="accountMenuOpen = false" class="absolute right-0 top-full z-50 mt-2 w-56 rounded-card border border-store-border bg-white p-2 shadow-store-soft">
+                            <a href="{{ route('account.dashboard') }}" wire:navigate @click="accountMenuOpen = false" class="block rounded-control px-3 py-2 text-sm text-store-text hover:bg-store-soft">Profile</a>
+                            <a href="{{ route('account.orders') }}" wire:navigate @click="accountMenuOpen = false" class="block rounded-control px-3 py-2 text-sm text-store-text hover:bg-store-soft">My Orders</a>
+                            <a href="{{ route('store.wishlist') }}" wire:navigate @click="accountMenuOpen = false" class="block rounded-control px-3 py-2 text-sm text-store-text hover:bg-store-soft">Wishlist</a>
+                            <a href="{{ route('account.addresses') }}" wire:navigate @click="accountMenuOpen = false" class="block rounded-control px-3 py-2 text-sm text-store-text hover:bg-store-soft">Addresses</a>
+                            <div class="my-1 border-t border-store-border"></div>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="flex w-full items-center rounded-control px-3 py-2 text-left text-sm text-store-text hover:bg-store-soft hover:text-store-red">Sign out</button>
+                            </form>
+                        </div>
+                    </div>
+                @else
+                    <a href="{{ route('login') }}" wire:navigate
+                        class="hidden h-11 items-center gap-2 rounded-control px-2 text-xs text-store-muted hover:bg-store-soft hover:text-store-blue lg:flex"><x-ui.icon
+                            name="user" class="size-6 shrink-0 !text-store-ink" /><span><span
+                                class="block font-semibold text-store-ink">Account</span><span class="block text-[10px]">Sign in / Register</span></span>
+                    </a>
+                @endauth
                 <a href="{{ route('store.wishlist') }}" wire:navigate
                     class="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control px-2 text-store-ink hover:bg-store-soft"
                     aria-label="Wishlist"><x-ui.icon name="heart"
@@ -63,9 +82,17 @@
                         class="hidden text-xs xl:inline">Wishlist</span></a>
                 <button type="button"
                     class="relative inline-flex size-11 items-center justify-center rounded-control text-store-ink hover:bg-store-soft"
-                    @click="cartOpen = true" aria-controls="cart-drawer">
-                    <x-ui.icon name="shopping-cart" class="size-6 !text-store-ink" />
+                    x-ref="cartTrigger" @click="openCart($event.currentTarget)" aria-controls="cart-drawer"
+                    :aria-expanded="cartOpen.toString()" :aria-busy="(!cartLoaded).toString()">
+                    <span x-cloak x-show="!cartLoaded" aria-hidden="true">
+                        <x-ui.icon.loading class="size-6 !text-store-ink" />
+                    </span>
+                    <span x-cloak x-show="cartLoaded" aria-hidden="true">
+                        <x-ui.icon name="shopping-cart" class="size-6 !text-store-ink" />
+                    </span>
                     <span
+                        x-cloak
+                        x-show="cartLoaded && cart.reduce((total, item) => total + item.quantity, 0) > 0"
                         class="absolute right-0 top-0 grid size-4 place-items-center rounded-full bg-store-red text-[10px] font-bold text-white"
                         x-text="cart.reduce((total, item) => total + item.quantity, 0)"></span>
                     <span class="sr-only">Open shopping cart</span>

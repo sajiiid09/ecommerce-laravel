@@ -5,7 +5,7 @@
         <x-store.ui.container class="py-10">
             <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
                 <div>
-                    @if($footerLogo)<img src="{{ $footerLogo }}" alt="{{ $footerStoreName }}" class="h-9 w-auto object-contain">@else<h2 class="text-base font-bold text-white">About {{ $footerStoreName }}</h2>@endif
+                    @if($footerLogo)<img src="{{ $footerLogo }}" alt="{{ $footerStoreName }}" loading="lazy" decoding="async" class="h-9 w-auto object-contain">@else<h2 class="text-base font-bold text-white">About {{ $footerStoreName }}</h2>@endif
                     @if($footerStoreTagline)<p class="mt-2 text-xs font-semibold text-blue-100">{{ $footerStoreTagline }}</p>@endif
                     <p class="mt-3 text-sm leading-6 text-blue-100">{{ $footerDescription }}</p>
                     @if($footerSupportEmail)<a href="mailto:{{ $footerSupportEmail }}" class="mt-3 inline-block text-sm text-blue-100 hover:text-white">{{ $footerSupportEmail }}</a>@endif

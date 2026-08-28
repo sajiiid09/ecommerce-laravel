@@ -29,7 +29,13 @@
     class="bg-white py-6 sm:py-8"
 >
     <x-store.ui.container>
-        <x-store.ui.breadcrumb :items="[['label' => 'All Products', 'url' => route('store.category')], ['label' => $product['name']]]" />
+        <nav aria-label="Breadcrumb" class="mb-5 text-xs text-store-muted">
+            <x-ui.breadcrumbs class="flex flex-wrap items-center gap-2">
+                <x-ui.breadcrumbs.item href="{{ route('store.home') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">Home</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item href="{{ route('store.category') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">All Products</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item aria-current="page" class="!text-xs !font-medium !text-store-ink">{{ $product['name'] }}</x-ui.breadcrumbs.item>
+            </x-ui.breadcrumbs>
+        </nav>
 
         <div class="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <section class="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)]">
@@ -39,12 +45,12 @@
                             :class="selectedImage === @js($image) ? 'border-2 border-store-blue' : 'border-store-border'"
                             @click="selectedImage = @js($image)"
                             aria-label="Show image {{ $loop->iteration }} of {{ count($gallery) }}">
-                            <img src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}" class="size-full object-contain">
+                            <img src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async" class="size-full object-contain">
                         </button>
                     @endforeach
                 </div>
                 <div class="order-1 flex aspect-square items-center justify-center rounded-card border border-store-border bg-white p-8 sm:order-2">
-                    <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}" class="size-full object-contain">
+                    <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}" loading="eager" fetchpriority="high" decoding="async" class="size-full object-contain">
                 </div>
             </section>
 
@@ -146,12 +152,8 @@
             </div>
         </section>
 
-        @if(config('features.reviews'))
-            <section class="mt-8 rounded-card border border-store-border bg-white p-5">
-                <div class="flex flex-wrap items-end justify-between gap-3"><div><h2 class="text-xl font-extrabold tracking-tight text-store-ink">Customer reviews</h2><p class="mt-1 text-sm text-store-muted">{{ $reviewSummary['count'] }} reviews · {{ number_format($reviewSummary['average'], 1) }}/5 average rating</p></div></div>
-                @if(session('review_status')) <p class="mt-4 rounded-control bg-green-50 p-3 text-sm text-green-700">{{ session('review_status') }}</p> @endif
-                <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"><div class="space-y-4">@forelse($reviews as $review)<article class="border-b border-store-border pb-4 last:border-0"><div class="flex items-center justify-between gap-3"><p class="font-bold text-store-ink">{{ $review->name }}</p><span class="text-sm text-store-warning">{{ str_repeat('★', $review->rating) }}</span></div>@if($review->title)<h3 class="mt-2 text-sm font-bold text-store-ink">{{ $review->title }}</h3>@endif<p class="mt-1 text-sm leading-6 text-store-text">{{ $review->review }}</p>@if($review->is_verified_purchase)<span class="mt-2 inline-block text-xs font-bold text-store-success">Verified purchase</span>@endif</article>@empty<p class="text-sm text-store-muted">No approved reviews yet.</p>@endforelse</div><form wire:submit="submitReview" class="rounded-control bg-store-soft p-4"><h3 class="font-bold text-store-ink">Write a review</h3>@guest<p class="mt-2 text-sm text-store-muted">Please <a href="{{ route('login') }}" wire:navigate class="font-semibold text-store-blue">sign in</a> to review this product.</p>@else<label class="mt-4 block text-sm font-semibold text-store-ink">Rating<select wire:model="reviewRating" class="mt-2 h-10 w-full rounded-control border border-store-border px-3"><option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3">3 — Okay</option><option value="2">2 — Poor</option><option value="1">1 — Bad</option></select></label><label class="mt-3 block text-sm font-semibold text-store-ink">Title<input wire:model="reviewTitle" class="mt-2 h-10 w-full rounded-control border border-store-border px-3"></label><label class="mt-3 block text-sm font-semibold text-store-ink">Review<textarea wire:model="reviewBody" rows="4" class="mt-2 w-full rounded-control border border-store-border px-3 py-2"></textarea>@error('reviewBody')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror</label><button type="submit" class="mt-4 h-10 w-full rounded-control bg-store-blue text-sm font-bold text-white">Submit Review</button>@endguest</form></div>
-            </section>
+        @if (config('features.reviews'))
+            <livewire:components.store.product-reviews :product-id="$product['id']" />
         @endif
 
         <section class="mt-8">
@@ -159,15 +161,10 @@
                 <h2 class="text-xl font-extrabold tracking-tight text-store-ink">You May Also Like</h2>
                 <a href="{{ route('store.category') }}" wire:navigate class="text-sm font-semibold text-store-blue">View All →</a>
             </div>
-            @if ($related->isNotEmpty())
-                <x-store.ui.carousel loop :show-dots="false" label="Related products">
-                    @foreach ($related as $item)
-                        <x-store.catalog.product-card wire:key="related-product-{{ $item['id'] }}" :product="$item" compact class="min-w-0 basis-full shrink-0 sm:basis-[calc((100%-0.75rem)/2)] md:basis-[calc((100%-1.5rem)/3)] xl:basis-[calc((100%-3rem)/5)]" />
-                    @endforeach
-                </x-store.ui.carousel>
-            @else
-                <p class="rounded-card border border-store-border bg-white p-6 text-sm text-store-muted">No related products available.</p>
-            @endif
+            <livewire:components.store.related-products
+                :product-id="$product['id']"
+                :category-slug="$product['categorySlug'] ?? null"
+            />
         </section>
     </x-store.ui.container>
 </main>

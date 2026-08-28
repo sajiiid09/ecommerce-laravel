@@ -1,5 +1,10 @@
 <main class="bg-store-soft py-6 sm:py-8">
     <x-store.ui.container>
+        <div class="{{ auth()->check() ? 'grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]' : '' }}">
+            @auth
+                <x-store.account.sidebar />
+            @endauth
+            <div>
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">My Wishlist <span
@@ -23,6 +28,8 @@
                 href="{{ route('store.category') }}" wire:navigate
                 class="mt-5 inline-flex h-10 items-center rounded-control bg-store-blue px-4 text-sm font-bold text-white">Browse
                 products</a>
+        </div>
+            </div>
         </div>
     </x-store.ui.container>
 </main>

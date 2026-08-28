@@ -1,13 +1,18 @@
 <main class="bg-store-soft py-6 sm:py-8">
     <x-store.ui.container>
-        <x-store.ui.breadcrumb :items="[['label' => 'Shopping Cart']]" />
+        <nav aria-label="Breadcrumb" class="mb-5 text-xs text-store-muted">
+            <x-ui.breadcrumbs class="flex flex-wrap items-center gap-2">
+                <x-ui.breadcrumbs.item href="{{ route('store.home') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">Home</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item aria-current="page" class="!text-xs !font-medium !text-store-ink">Shopping Cart</x-ui.breadcrumbs.item>
+            </x-ui.breadcrumbs>
+        </nav>
         <div class="flex items-end justify-between gap-4"><div><h1 class="text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">Shopping Cart</h1><p class="mt-1 text-sm text-store-muted">{{ collect($items)->sum('quantity') }} items ready for checkout</p></div><a href="{{ route('store.category') }}" wire:navigate class="hidden text-sm font-semibold text-store-blue hover:underline sm:inline">Continue Shopping →</a></div>
         @if($errors->has('cart')) <div class="mt-4 rounded-control bg-red-50 p-4 text-sm text-red-700">{{ $errors->first('cart') }}</div> @endif
         <div class="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <section class="rounded-card border border-store-border bg-white">
                 @forelse($items as $item)
                     <article wire:key="cart-item-{{ $item['id'] }}" class="grid gap-3 border-b border-store-border p-4 last:border-0 sm:grid-cols-[minmax(0,1fr)_130px_130px_40px] sm:items-center sm:gap-4 sm:px-5">
-                        <div class="flex min-w-0 items-center gap-3"><img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" class="size-20 shrink-0 rounded-control border border-store-border object-contain"><div class="min-w-0"><p class="line-clamp-2 text-sm font-bold text-store-ink">{{ $item['name'] }}</p>@if($item['variant']) <p class="mt-1 text-xs text-store-muted">{{ $item['variant'] }} · {{ $item['sku'] }}</p> @endif<p class="mt-1 text-sm font-extrabold text-store-red">৳{{ number_format($item['price'] / 100, 2) }}</p></div></div>
+                        <div class="flex min-w-0 items-center gap-3"><img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" loading="lazy" decoding="async" class="size-20 shrink-0 rounded-control border border-store-border object-contain"><div class="min-w-0"><p class="line-clamp-2 text-sm font-bold text-store-ink">{{ $item['name'] }}</p>@if($item['variant']) <p class="mt-1 text-xs text-store-muted">{{ $item['variant'] }} · {{ $item['sku'] }}</p> @endif<p class="mt-1 text-sm font-extrabold text-store-red">৳{{ number_format($item['price'] / 100, 2) }}</p></div></div>
                         <div class="flex items-center justify-between sm:block"><span class="text-xs font-semibold text-store-muted sm:hidden">Quantity</span><div class="inline-flex h-9 items-center rounded-control border border-store-border"><button type="button" wire:click="updateItem({{ $item['id'] }}, {{ max(1, $item['quantity'] - 1) }})" class="grid size-9 place-items-center" aria-label="Decrease quantity">−</button><span class="w-8 text-center text-sm font-bold">{{ $item['quantity'] }}</span><button type="button" wire:click="updateItem({{ $item['id'] }}, {{ $item['quantity'] + 1 }})" class="grid size-9 place-items-center" aria-label="Increase quantity">+</button></div></div>
                         <div class="flex items-center justify-between sm:block sm:text-right"><span class="text-xs font-semibold text-store-muted sm:hidden">Subtotal</span><span class="text-sm font-extrabold text-store-red">৳{{ number_format($item['line_total'] / 100, 2) }}</span></div>
                         <button type="button" wire:click="removeItem({{ $item['id'] }})" class="text-left text-xs font-semibold text-store-error hover:underline sm:text-center">Remove</button>

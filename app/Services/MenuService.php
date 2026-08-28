@@ -8,6 +8,7 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
 use App\Models\Product;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MenuService
@@ -43,23 +44,25 @@ class MenuService
      */
     public function navigation(string $key): array
     {
-        $menu = $this->menu($key);
+        return Cache::remember($this->cache->navigation($key), 300, function () use ($key): array {
+            $menu = $this->menu($key);
 
-        if (! $menu) {
-            return [];
-        }
+            if (! $menu) {
+                return [];
+            }
 
-        return $menu->items
-            ->map(fn (MenuItem $item): array => [
-                'label' => $item->label,
-                'url' => $this->itemUrl($item),
-                'enabled' => $item->enabled,
-                'children' => $item->children->map(fn (MenuItem $child): array => [
-                    'label' => $child->label,
-                    'url' => $this->itemUrl($child),
-                    'enabled' => $child->enabled,
-                ])->all(),
-            ])->all();
+            return $menu->items
+                ->map(fn (MenuItem $item): array => [
+                    'label' => $item->label,
+                    'url' => $this->itemUrl($item),
+                    'enabled' => $item->enabled,
+                    'children' => $item->children->map(fn (MenuItem $child): array => [
+                        'label' => $child->label,
+                        'url' => $this->itemUrl($child),
+                        'enabled' => $child->enabled,
+                    ])->all(),
+                ])->all();
+        });
     }
 
     public function saveMenu(Menu $menu, array $data): Menu
@@ -70,6 +73,8 @@ class MenuService
         $this->cache->forget(array_filter([
             $previousKey ? $this->cache->menu($previousKey) : null,
             $this->cache->menu($menu->key),
+            $previousKey ? $this->cache->navigation($previousKey) : null,
+            $this->cache->navigation($menu->key),
         ]));
 
         return $menu;
@@ -108,7 +113,10 @@ class MenuService
 
     public function invalidate(string $key): void
     {
-        $this->cache->forget($this->cache->menu($key));
+        $this->cache->forget([
+            $this->cache->menu($key),
+            $this->cache->navigation($key),
+        ]);
     }
 
     public function itemUrl(MenuItem $item): string

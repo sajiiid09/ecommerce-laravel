@@ -4,11 +4,9 @@ namespace App\View\Composers;
 
 use App\Models\MediaAsset;
 use App\Services\AnnouncementService;
-use App\Services\CartService;
 use App\Services\CatalogQueryService;
 use App\Services\SiteSettingsService;
 use App\Services\WishlistService;
-use App\Support\StorefrontDemoData;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
@@ -26,8 +24,15 @@ class StorefrontLayoutComposer
         $storeName = $hasSettings ? (string) $this->settings->get('general', 'store_name', 'StoreZ') : 'StoreZ';
         $tagline = $hasSettings ? (string) $this->settings->get('general', 'tagline', 'Shop smarter every day.') : 'Shop smarter every day.';
 
+        $showAnnouncements = ! Schema::hasTable('site_settings') || (bool) $this->settings->get('header', 'show_announcement', true);
+        $announcementsByPlacement = collect(['top_bar', 'storefront', 'checkout', 'account'])
+            ->mapWithKeys(fn (string $placement): array => [
+                $placement => Schema::hasTable('announcements') && $showAnnouncements
+                    ? $this->announcements->active($placement)
+                    : collect(),
+            ]);
+
         $view->with([
-            'cartItems' => Schema::hasTable('carts') ? app(CartService::class)->present() : StorefrontDemoData::cartItems(),
             'wishlistIds' => app(WishlistService::class)->ids(),
             'wishlistAuthenticated' => auth()->check(),
             'wishlistStorageKey' => auth()->check() ? 'storez-wishlist-user-'.auth()->id() : 'storez-wishlist-guest',
@@ -46,9 +51,8 @@ class StorefrontLayoutComposer
                 ['title' => 'Fast delivery', 'description' => 'Reliable delivery across Bangladesh.'],
                 ['title' => 'Easy returns', 'description' => 'Helpful support when you need it.'],
             ],
-            'announcements' => Schema::hasTable('announcements') && (! Schema::hasTable('site_settings') || (bool) $this->settings->get('header', 'show_announcement', true))
-                ? $this->announcements->active('top_bar')
-                : collect(),
+            'announcements' => $announcementsByPlacement->get('top_bar', collect()),
+            'announcementsByPlacement' => $announcementsByPlacement,
         ]);
     }
 

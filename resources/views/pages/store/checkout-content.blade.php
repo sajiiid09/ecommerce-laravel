@@ -1,6 +1,12 @@
 <main class="bg-store-soft py-6 sm:py-8">
     <x-store.ui.container>
-        <x-store.ui.breadcrumb :items="[['label' => 'Cart', 'url' => route('store.cart')], ['label' => 'Checkout']]" />
+        <nav aria-label="Breadcrumb" class="mb-5 text-xs text-store-muted">
+            <x-ui.breadcrumbs class="flex flex-wrap items-center gap-2">
+                <x-ui.breadcrumbs.item href="{{ route('store.home') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">Home</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item href="{{ route('store.cart') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">Cart</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item aria-current="page" class="!text-xs !font-medium !text-store-ink">Checkout</x-ui.breadcrumbs.item>
+            </x-ui.breadcrumbs>
+        </nav>
         <h1 class="text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">Checkout</h1>
 
         @if ($errors->has('cart'))
@@ -22,24 +28,57 @@
                 @if ($step === 1)
                     <section class="rounded-card border border-store-border bg-white p-5">
                         <h2 class="text-lg font-extrabold text-store-ink">Customer and delivery address</h2>
-                        <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                            @foreach ([['customer_name', 'Full name', 'text'], ['customer_email', 'Email', 'email'], ['customer_phone', 'Phone', 'text'], ['city', 'City / Area', 'text'], ['district', 'District', 'text'], ['postal_code', 'Postal code', 'text']] as [$field, $label, $type])
-                                <label class="text-sm font-semibold text-store-ink">
-                                    {{ $label }}
-                                    <input type="{{ $type }}" wire:model="{{ $field }}" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
-                                    @error($field)
+                        @auth
+                            <div class="mt-5">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <h3 class="text-sm font-bold text-store-ink">Saved addresses</h3>
+                                    <a href="{{ route('account.addresses') }}" wire:navigate class="text-xs font-bold text-store-blue">Manage addresses</a>
+                                </div>
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                    @forelse ($savedAddresses as $savedAddress)
+                                        <button type="button" wire:key="checkout-address-{{ $savedAddress->id }}" wire:click="selectAddress({{ $savedAddress->id }})" class="rounded-control border-2 p-4 text-left {{ $selectedAddressId === $savedAddress->id ? 'border-store-blue bg-store-blue-soft' : 'border-store-border' }}">
+                                            <span class="flex items-center justify-between gap-2"><span class="font-bold text-store-ink">{{ $savedAddress->label }}</span>@if($savedAddress->is_default)<span class="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-store-blue">Default</span>@endif</span>
+                                            <span class="mt-2 block text-sm font-semibold text-store-ink">{{ $savedAddress->recipient_name }}</span>
+                                            <span class="mt-1 block truncate text-xs text-store-muted">{{ $savedAddress->address_line }}, {{ $savedAddress->city }}</span>
+                                        </button>
+                                    @empty
+                                        <p class="text-sm text-store-muted sm:col-span-2">You have no saved addresses yet.</p>
+                                    @endforelse
+                                    <button type="button" wire:click="useNewAddress" class="rounded-control border-2 border-dashed p-4 text-left {{ $selectedAddressId === null ? 'border-store-blue bg-store-blue-soft' : 'border-store-border' }}"><span class="block font-bold text-store-ink">Use a new address</span><span class="mt-1 block text-xs text-store-muted">Enter a one-time shipping address.</span></button>
+                                </div>
+                                @error('selectedAddressId') <span class="mt-2 block text-xs text-red-600">{{ $message }}</span> @enderror
+                            </div>
+                        @endauth
+
+                        @if (! auth()->check() || $selectedAddressId === null)
+                            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                                @foreach ([['customer_name', 'Full name', 'text'], ['customer_email', 'Email', 'email'], ['customer_phone', 'Phone', 'text'], ['city', 'City / Area', 'text'], ['district', 'District', 'text'], ['postal_code', 'Postal code', 'text']] as [$field, $label, $type])
+                                    <label class="text-sm font-semibold text-store-ink">
+                                        {{ $label }}
+                                        <input type="{{ $type }}" wire:model="{{ $field }}" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
+                                        @error($field)
+                                            <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
+                                        @enderror
+                                    </label>
+                                @endforeach
+                                <label class="text-sm font-semibold text-store-ink sm:col-span-2">
+                                    Address
+                                    <input wire:model="address_line" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
+                                    @error('address_line')
                                         <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
                                     @enderror
                                 </label>
-                            @endforeach
-                            <label class="text-sm font-semibold text-store-ink sm:col-span-2">
-                                Address
-                                <input wire:model="address_line" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
-                                @error('address_line')
-                                    <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
-                                @enderror
-                            </label>
-                        </div>
+                            </div>
+                        @else
+                            @php($selectedAddress = $savedAddresses->firstWhere('id', $selectedAddressId))
+                            @if ($selectedAddress)
+                                <div class="mt-5 rounded-control border border-store-blue bg-store-blue-soft p-4 text-sm text-store-ink">
+                                    <p class="font-bold">Shipping to {{ $selectedAddress->label }}</p>
+                                    <p class="mt-1">{{ $selectedAddress->recipient_name }} · {{ $selectedAddress->phone }}</p>
+                                    <p class="mt-1">{{ $selectedAddress->address_line }}, {{ $selectedAddress->city }}{{ $selectedAddress->district ? ', '.$selectedAddress->district : '' }}{{ $selectedAddress->postal_code ? ' '.$selectedAddress->postal_code : '' }}</p>
+                                </div>
+                            @endif
+                        @endif
                         <button type="button" wire:click="nextStep" class="mt-5 inline-flex h-11 w-full items-center justify-center rounded-control bg-store-blue text-sm font-bold text-white">Continue to Delivery</button>
                     </section>
                 @elseif ($step === 2)
@@ -106,9 +145,22 @@
                         <div wire:key="checkout-item-{{ $item['id'] }}" class="flex justify-between gap-3 text-sm"><span class="text-store-muted">{{ $item['name'] }} × {{ $item['quantity'] }}</span><span class="font-semibold text-store-ink">&#2547;{{ number_format($item['line_total'] / 100, 2) }}</span></div>
                     @endforeach
                 </div>
-                <div class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><span class="text-store-muted">Subtotal</span><span>&#2547;{{ number_format($subtotal / 100, 2) }}</span></div><div class="flex justify-between"><span class="text-store-muted">Delivery</span><span>&#2547;{{ number_format($shipping / 100, 2) }}</span></div></div>
+                <form wire:submit="applyCoupon" class="mt-4">
+                    <label class="text-sm font-semibold text-store-ink">Coupon code</label>
+                    <div class="mt-2 flex gap-2">
+                        <input wire:model="couponCode" type="text" maxlength="50" placeholder="Enter coupon code" class="h-10 min-w-0 flex-1 rounded-control border border-store-border px-3 text-sm uppercase">
+                        @if($couponQuote)
+                            <button type="button" wire:click="removeCoupon" class="h-10 rounded-control border border-store-border px-3 text-sm font-semibold text-store-muted">Remove</button>
+                        @else
+                            <button type="submit" wire:loading.attr="disabled" wire:target="applyCoupon" class="h-10 rounded-control bg-store-blue px-4 text-sm font-bold text-white disabled:opacity-60">Apply</button>
+                        @endif
+                    </div>
+                    @error('couponCode') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
+                    @if($couponQuote) <p class="mt-1 text-xs font-semibold text-emerald-600">{{ $couponQuote['code'] }} applied.</p> @endif
+                </form>
+                <div class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><span class="text-store-muted">Subtotal</span><span>&#2547;{{ number_format($subtotal / 100, 2) }}</span></div><div class="flex justify-between"><span class="text-store-muted">Delivery</span><span>&#2547;{{ number_format($shipping / 100, 2) }}</span></div>@if($discount > 0)<div class="flex justify-between font-semibold text-emerald-600"><span>Discount{{ $couponQuote ? ' ('.$couponQuote['code'].')' : '' }}</span><span>-&#2547;{{ number_format($discount / 100, 2) }}</span></div>@endif</div>
                 <div class="my-4 border-t border-store-border"></div>
-                <div class="flex justify-between text-lg font-extrabold text-store-ink"><span>Total</span><span>&#2547;{{ number_format(($subtotal + $shipping) / 100, 2) }}</span></div>
+                <div class="flex justify-between text-lg font-extrabold text-store-ink"><span>Total</span><span>&#2547;{{ number_format(($subtotal + $shipping - $discount) / 100, 2) }}</span></div>
             </aside>
         </div>
     </x-store.ui.container>

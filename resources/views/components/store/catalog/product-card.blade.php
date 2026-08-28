@@ -4,7 +4,7 @@
     <div class="relative {{ $compact ? 'p-2 sm:p-3' : 'p-4' }}">
         <x-store.ui.discount-badge :discount="$product['discount']" class="absolute left-2 top-2 z-10" />
         <button type="button" class="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/90 text-store-muted transition hover:text-store-red" @click="toggleWishlist({{ $product['id'] }})" :aria-label="wishlist.includes({{ $product['id'] }}) ? 'Remove from wishlist' : 'Add to wishlist'" :class="wishlist.includes({{ $product['id'] }}) && 'text-store-red'"><x-ui.icon name="heart" class="size-5 !text-current" /><span class="sr-only" x-text="wishlist.includes({{ $product['id'] }}) ? 'Saved' : 'Save'" /></button>
-        <a href="{{ route('store.product', ['slug' => $product['slug']]) }}" wire:navigate class="block aspect-square"><img src="{{ asset(ltrim($product['image'], '/')) }}" alt="{{ $product['name'] }}" loading="lazy" class="size-full object-contain transition duration-200 group-hover:scale-[1.03]"></a>
+        <a href="{{ route('store.product', ['slug' => $product['slug']]) }}" wire:navigate class="block aspect-square"><img src="{{ asset(ltrim($product['image'], '/')) }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async" class="size-full object-contain transition duration-200 group-hover:scale-[1.03]"></a>
     </div>
     <div class="flex flex-1 flex-col px-3 pb-3 sm:px-4 sm:pb-4">
         <p class="text-[11px] text-store-muted">{{ $product['brand'] }}</p>

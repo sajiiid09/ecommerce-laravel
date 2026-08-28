@@ -23,7 +23,7 @@ class CatalogCache
 
     public function product(string|int $product): string
     {
-        return 'catalog:product:'.$product;
+        return 'catalog:product:v2:'.$product;
     }
 
     public function reviewSummary(string|int $product): string
@@ -31,10 +31,17 @@ class CatalogCache
         return 'catalog:product:'.$product.':review-summary';
     }
 
-    public function forgetProduct(string|int $product): void
+    public function approvedReviews(string|int $product): string
+    {
+        return 'catalog:product:'.$product.':approved-reviews';
+    }
+
+    public function forgetProduct(string|int $product, string|int|null $reviewProduct = null): void
     {
         Cache::forget($this->product($product));
-        Cache::forget($this->reviewSummary($product));
+        $reviewKey = $reviewProduct ?? $product;
+        Cache::forget($this->reviewSummary($reviewKey));
+        Cache::forget($this->approvedReviews($reviewKey));
     }
 
     public function forgetAll(): void

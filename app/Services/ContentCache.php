@@ -28,7 +28,12 @@ class ContentCache
 
     public function settings(string $group, string $key): string
     {
-        return 'cms:settings:'.$group.':'.$key;
+        return 'cms:settings:v2:'.$group.':'.$key;
+    }
+
+    public function navigation(string $key): string
+    {
+        return 'cms:navigation:'.$key;
     }
 
     public function redirect(string $path): string

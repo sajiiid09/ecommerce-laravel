@@ -1,6 +1,11 @@
 <main x-data="{ filtersOpen: false }" class="bg-store-soft py-6 sm:py-8">
     <x-store.ui.container>
-        <x-store.ui.breadcrumb :items="[['label' => $categoryName]]" />
+        <nav aria-label="Breadcrumb" class="mb-5 text-xs text-store-muted">
+            <x-ui.breadcrumbs class="flex flex-wrap items-center gap-2">
+                <x-ui.breadcrumbs.item href="{{ route('store.home') }}" wire:navigate class="!text-xs !text-store-muted hover:!text-store-blue">Home</x-ui.breadcrumbs.item>
+                <x-ui.breadcrumbs.item aria-current="page" class="!text-xs !font-medium !text-store-ink">{{ $categoryName }}</x-ui.breadcrumbs.item>
+            </x-ui.breadcrumbs>
+        </nav>
         <div class="flex flex-wrap items-end justify-between gap-4"><div><h1 class="text-2xl font-extrabold tracking-tight text-store-ink sm:text-3xl">{{ $categoryName }}</h1><p class="mt-1 text-sm text-store-muted">Browse quality products at everyday StoreZ prices.</p></div><button type="button" class="inline-flex h-10 items-center gap-2 rounded-control border border-store-blue bg-white px-4 text-sm font-bold text-store-blue lg:hidden" @click="filtersOpen = true" aria-controls="category-filters" :aria-expanded="filtersOpen.toString()"><x-ui.icon name="adjustments-horizontal" class="size-4 !text-current" />Filters</button></div>
         <form method="GET" class="mt-6 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
             <div x-cloak x-show="filtersOpen" x-transition.opacity class="fixed inset-0 z-30 bg-store-ink/45 lg:hidden" @click="filtersOpen = false" aria-hidden="true"></div>

@@ -4,7 +4,7 @@
     <div class="flex items-start justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
             @if($avatar)
-                <img src="{{ $avatar }}" alt="" class="size-10 shrink-0 rounded-full object-cover">
+                <img src="{{ $avatar }}" alt="" loading="lazy" decoding="async" class="size-10 shrink-0 rounded-full object-cover">
             @else
                 <span class="grid size-10 shrink-0 place-items-center rounded-full bg-store-soft text-sm font-black text-store-blue">{{ str($name)->substr(0, 1)->upper() }}</span>
             @endif

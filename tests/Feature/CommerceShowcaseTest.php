@@ -1,5 +1,7 @@
 <?php
 
+use App\Livewire\Components\Store\CartDrawer;
+use App\Livewire\Components\Store\ProductReviews;
 use App\Livewire\Pages\Admin\Orders\Show as AdminOrderShow;
 use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
 use App\Livewire\Pages\Auth\Login;
@@ -9,12 +11,14 @@ use App\Models\PaymentProviderCredential;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\CartService;
+use App\Services\CatalogCache;
 use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Services\ProductService;
 use App\Services\ReviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -159,11 +163,104 @@ it('rejects unavailable cart quantities and supports authenticated reviews', fun
     $this->actingAs($customer);
     $reviews = app(ReviewService::class);
     $review = $reviews->submit($product, $customer, ['rating' => 5, 'title' => 'Great', 'review' => 'A useful showcase review.']);
+
+    expect($review->status)->toBe('approved')
+        ->and($review->approved_at)->not->toBeNull();
+
+    $this->get(route('store.product', ['slug' => $product->slug]))
+        ->assertSuccessful()
+        ->assertSee('Rated 5 out of 5, 1 reviews', false)
+        ->assertSee('Loading customer reviews', false)
+        ->assertDontSee('A useful showcase review.', false);
+
+    Livewire::withoutLazyLoading();
+    Livewire::actingAs($customer)
+        ->test(ProductReviews::class, ['productId' => $product->id])
+        ->assertSee('A useful showcase review.', false)
+        ->assertSee('1 reviews · 5.0/5 average rating', false);
+
     $admin = User::factory()->create(['is_admin' => true]);
     $this->actingAs($admin);
     $reviews->approve($review);
 
     expect($reviews->summary($product->fresh()))->toMatchArray(['average' => 5.0, 'count' => 1]);
+
+    $this->get(route('store.category'))
+        ->assertSuccessful()
+        ->assertSee('Rated 5 out of 5, 1 reviews', false)
+        ->assertSee('(1)', false);
+
+    $this->get(route('store.product', ['slug' => $product->slug]))
+        ->assertSuccessful()
+        ->assertSee('Rated 5 out of 5, 1 reviews', false)
+        ->assertSee('Loading customer reviews', false)
+        ->assertDontSee('A useful showcase review.', false);
+
+    $approvedReviewsKey = app(CatalogCache::class)->approvedReviews($product->id);
+    expect(Cache::has($approvedReviewsKey))->toBeFalse();
+    $reviews->approved($product->fresh());
+    expect(Cache::has($approvedReviewsKey))->toBeTrue();
+
+    $reviews->reject($review);
+
+    expect(Cache::has($approvedReviewsKey))->toBeFalse();
+});
+
+it('starts loading cart contents after storefront initialization without rendering them initially', function () {
+    $product = commerceProduct();
+    $variant = $product->defaultVariant;
+    session()->put('cart_token', 'lazy-cart-token');
+    app(CartService::class)->add($variant->id);
+
+    $response = $this->get(route('store.category'));
+
+    $response
+        ->assertSuccessful()
+        ->assertSee('cartLoaded: false', false)
+        ->assertSee("window.Livewire?.dispatch('cart-initialized')", false)
+        ->assertSee('animate-spin', false)
+        ->assertSee('role="dialog"', false)
+        ->assertSee('aria-modal="true"', false)
+        ->assertSee('x-ref="cartPanel"', false)
+        ->assertSee('x-ref="cartClose"', false)
+        ->assertSee('@click="closeCart()"', false)
+        ->assertSee('@keydown.tab="trapCartFocus($event)"', false)
+        ->assertSee('x-show="!cartLoaded"', false)
+        ->assertSee('x-show="cartLoaded"', false)
+        ->assertDontSee('wire:key="drawer-item-', false);
+
+    expect(substr_count($response->getContent(), 'id="cart-drawer"'))->toBe(1);
+
+    Livewire::test(CartDrawer::class)
+        ->assertSet('loaded', false)
+        ->call('loadCart')
+        ->assertSet('loaded', true)
+        ->assertSee($product->name, false)
+        ->call('loadCart')
+        ->assertSet('loaded', true)
+        ->assertSee($product->name, false);
+
+    $cartItem = Cart::where('session_token', 'lazy-cart-token')->firstOrFail()->items()->firstOrFail();
+
+    Livewire::test(CartDrawer::class)
+        ->call('loadCart')
+        ->call('updateItem', $cartItem->id, 2)
+        ->assertSet('items.0.quantity', 2)
+        ->call('removeItem', $cartItem->id)
+        ->assertSet('items', []);
+});
+
+it('uses native lazy loading for storefront images while prioritizing the main product image', function () {
+    $product = commerceProduct();
+
+    $this->get(route('store.category'))
+        ->assertSuccessful()
+        ->assertSee('loading="lazy" decoding="async"', false);
+
+    $this->get(route('store.product', ['slug' => $product->slug]))
+        ->assertSuccessful()
+        ->assertSee('loading="lazy" decoding="async"', false)
+        ->assertSee('loading="eager" fetchpriority="high" decoding="async"', false);
 });
 
 it('scopes customer orders and transitions COD payment state for admins', function () {

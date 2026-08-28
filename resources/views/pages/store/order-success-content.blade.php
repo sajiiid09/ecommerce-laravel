@@ -1,5 +1,6 @@
-@php($order ??= (object) ['customer_name' => 'StoreZ customer', 'order_number' => 'SZ-DEMO', 'status' => 'pending', 'payment_status' => 'unpaid', 'total_minor' => 0, 'customer_email' => 'customer@example.test'])
+@php($order ??= (object) ['customer_name' => 'StoreZ customer', 'order_number' => 'SZ-DEMO', 'status' => 'pending', 'payment_status' => 'unpaid', 'total_minor' => 0, 'discount_minor' => 0, 'coupon_code' => null, 'customer_email' => 'customer@example.test'])
 <main class="bg-store-soft py-12 sm:py-20">
+    @if(($order->discount_minor ?? 0) > 0)<p class="mx-auto mb-3 max-w-[680px] rounded-control bg-emerald-50 p-3 text-center text-sm font-semibold text-emerald-700">Coupon{{ $order->coupon_code ? ' '.$order->coupon_code : '' }} saved ৳{{ number_format($order->discount_minor / 100, 2) }}.</p>@endif
     <x-store.ui.container size="narrow">
         <section class="rounded-card border border-store-border bg-white p-6 text-center shadow-store-soft sm:p-10">
             <div class="mx-auto grid size-16 place-items-center rounded-full bg-green-100 text-3xl text-green-600">✓</div>
