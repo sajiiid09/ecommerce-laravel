@@ -6,7 +6,7 @@
             <p class="mt-1 text-sm text-[#6b7280]">Manage your {{ strtolower($title) }} for the storefront.</p>
         </div>
 
-        <div class="mb-5 flex flex-wrap items-center gap-2">
+        <div class="{{ $this->isCompactResource() ? 'mb-2' : 'mb-5' }} flex flex-wrap items-center gap-2">
             <button wire:click="openCreate" class="rounded-lg bg-[#2563eb] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">+ Add {{ rtrim($title, 's') }}</button>
         </div>
 
@@ -76,6 +76,7 @@
             </form>
         </x-ui.modal>
 
+        @unless($this->isCompactResource())
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @php
                 $total = $rows->total();
@@ -101,9 +102,10 @@
                 </div>
             @endforeach
         </div>
+        @endunless
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
+        <div class="{{ $this->isCompactResource() ? 'w-full' : 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]' }}">
+            <div class="{{ $this->isCompactResource() ? 'w-full' : '' }}">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search {{ strtolower($title) }}..." leftIcon="magnifying-glass" class="min-w-0 flex-1" controlClass="bg-[#f9fafb]" />
                     <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm text-[#374151]">
@@ -126,7 +128,18 @@
                     </div>
                 @endif
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="text-left">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="w-full overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="w-full table-fixed text-left">
+                    @if($this->isCompactResource())
+                        <colgroup>
+                            <col class="w-[5%]">
+                            <col class="w-[25%]">
+                            <col class="w-[21%]">
+                            <col class="w-[12%]">
+                            <col class="w-[12%]">
+                            <col class="w-[15%]">
+                            <col class="w-[10%]">
+                        </colgroup>
+                    @endif
                             <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
                                     <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">{{ rtrim($title, 's') }}</x-ui.table.head>
                                     <x-ui.table.head column="slug" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">Slug</x-ui.table.head>
@@ -153,6 +166,19 @@
                                         </td>
                                         <td class="px-4 py-4 text-xs text-[#9ca3af]">{{ $row->updated_at?->diffForHumans() }}</td>
                                         <td class="px-5 py-4">
+                                            @if($this->isCompactResource())
+                                                <x-ui.dropdown position="bottom-end">
+                                                    <x-slot:button>
+                                                        <x-ui.button type="button" size="sm" variant="outline" color="slate" icon-after="chevron-down" aria-label="Actions for {{ $row->name }}">Action</x-ui.button>
+                                                    </x-slot:button>
+                                                    <x-slot:menu>
+                                                        <x-ui.dropdown.item wire:click="openEdit({{ $row->id }})">Edit</x-ui.dropdown.item>
+                                                        <x-ui.dropdown.item wire:click="toggleActive({{ $row->id }})">{{ ($row->is_active ?? true) ? 'Deactivate' : 'Activate' }}</x-ui.dropdown.item>
+                                                        <x-ui.dropdown.separator />
+                                                        <x-ui.dropdown.item wire:click="delete({{ $row->id }})" wire:confirm="Delete this {{ strtolower(rtrim($title, 's')) }}?" variant="danger">Delete</x-ui.dropdown.item>
+                                                    </x-slot:menu>
+                                                </x-ui.dropdown>
+                                            @else
                                             <div class="flex items-center gap-1">
                                                 <button type="button" wire:click="openEdit({{ $row->id }})" aria-label="Edit {{ $row->name }}" class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#2563eb]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg></button>
                                                 @php($publicUrl = $this->publicUrlFor($row))
@@ -163,6 +189,7 @@
                                                 @endif
                                                 <button wire:click="delete({{ $row->id }})" class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
                                             </div>
+                                            @endif
                                         </td>
                                     </x-ui.table.row>
                                 @empty
@@ -172,6 +199,7 @@
                 </x-ui.table>
             </div>
 
+            @unless($this->isCompactResource())
             <div class="space-y-5">
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between">
@@ -206,6 +234,7 @@
                     </div>
                 </div>
             </div>
+            @endunless
         </div>
     </div>
 </div>

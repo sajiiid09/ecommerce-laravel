@@ -6,24 +6,8 @@
             <p class="mt-1 text-sm text-[#64748b]">Organize products into storefront categories and subcategories.</p>
         </div>
 
-        <div class="mb-5 flex flex-wrap items-center gap-2">
+        <div class="mb-2 flex flex-wrap items-center gap-2">
             <button wire:click="openCreate" class="rounded-lg bg-[#2563eb] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#1d4ed8]">+ Add Category</button>
-        </div>
-
-        <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            @foreach([
-                ['Total Categories', $stats['total'], '#2563eb'],
-                ['Active Categories', $stats['active'], '#10b981'],
-                ['Top-Level Categories', $stats['top_level'], '#8b5cf6'],
-                ['Products Assigned', $stats['assigned'], '#f97316'],
-            ] as [$label, $value, $color])
-                <div wire:key="category-stat-{{ $label }}" class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold text-[#64748b]">{{ $label }}</p>
-                    <p class="mt-2 text-[26px] font-extrabold text-[#111827]">{{ number_format($value) }}</p>
-                    <button wire:click="$set('status', '{{ $label === 'Active Categories' ? 'active' : '' }}')" class="mt-1 text-xs font-bold text-[#2563eb]">View all -&gt;</button>
-                    <span style="background: {{ $color }}15; color: {{ $color }}" class="float-right -mt-10 grid size-11 place-items-center rounded-full">&bull;</span>
-                </div>
-            @endforeach
         </div>
 
         <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-[#e5e7eb]">
@@ -32,8 +16,8 @@
             @endforeach
         </div>
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
+        <div class="w-full">
+            <div class="w-full">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search categories..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
                     <select wire:model.live="parentFilter" aria-label="Filter by parent" class="h-10 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm text-[#374151]"><option value="">All parents</option>@foreach($parents as $parent)<option wire:key="category-parent-filter-{{ $parent->id }}" value="{{ $parent->id }}">{{ $parent->name }}</option>@endforeach</select>
@@ -52,31 +36,48 @@
 
                 @if($errors->has('delete'))<div class="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#b91c1c]">{{ $errors->first('delete') }}</div>@endif
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="text-left">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="w-full overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm" table:class="w-full table-fixed text-left">
+                    <colgroup>
+                        <col class="w-[5%]">
+                        <col class="w-[27%]">
+                        <col class="w-[15%]">
+                        <col class="w-[10%]">
+                        <col class="w-[12%]">
+                        <col class="w-[12%]">
+                        <col class="w-[11%]">
+                        <col class="w-[8%]">
+                    </colgroup>
                     <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
                         <x-ui.table.head column="name" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-5 py-3">Category</x-ui.table.head><x-ui.table.head class="px-4 py-3">Parent</x-ui.table.head><x-ui.table.head class="px-4 py-3">Products</x-ui.table.head><x-ui.table.head class="px-4 py-3">Status</x-ui.table.head><x-ui.table.head column="sort_order" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">Sort Order</x-ui.table.head><x-ui.table.head column="updated_at" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir" class="px-4 py-3">Updated</x-ui.table.head><x-ui.table.head class="px-5 py-3">Actions</x-ui.table.head>
                     </x-ui.table.columns></x-ui.table.header>
                     <x-ui.table.rows>
                         @forelse($rows as $row)
                             <x-ui.table.row :checkboxId="$row->id" :key="'category-'.$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
-                                <x-ui.table.cell class="px-5 py-4"><div class="flex items-center gap-3"><div class="grid size-8 place-items-center rounded-lg bg-[#fef3c7]"><span class="text-[#d97706]">&#9670;</span></div><span class="font-bold text-[#111827]" style="padding-left: {{ min($depths[$row->id] ?? 0, 4) * 20 }}px">{{ $row->name }}</span></div></x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4"><div class="flex min-w-0 items-center gap-3"><div class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#fef3c7]"><span class="text-[#d97706]">&#9670;</span></div><span class="truncate text-sm font-bold text-[#111827]" style="padding-left: {{ min($depths[$row->id] ?? 0, 4) * 20 }}px">{{ $row->name }}</span></div></x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 text-[#64748b]">{{ $row->parent?->name ?? '—' }}</x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 font-semibold text-[#374151]">{{ number_format($row->products_count) }}</x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4"><button wire:click="toggleStatus({{ $row->id }})" class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $row->is_active ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#f3f4f6] text-[#6b7280]' }}">{{ $row->is_active ? 'Active' : 'Inactive' }}</button></x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 text-[#64748b]">{{ $row->sort_order }}</x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 text-xs text-[#94a3b8]">{{ $row->updated_at?->format('M d, Y') }}<br>{{ $row->updated_at?->format('h:i A') }}</x-ui.table.cell>
-                                <x-ui.table.cell class="px-5 py-4"><div class="flex items-center gap-1"><button wire:click="openEdit({{ $row->id }})" aria-label="Edit {{ $row->name }}" class="rounded-lg px-2 py-1 text-xs text-[#64748b] hover:bg-[#f3f4f6] hover:text-[#2563eb]">Edit</button><a href="{{ url('/category/'.$row->slug) }}" target="_blank" rel="noopener" aria-label="View {{ $row->name }}" class="rounded-lg px-2 py-1 text-xs text-[#64748b] hover:bg-[#f3f4f6] hover:text-[#2563eb]">View</a><button wire:click="deleteCategory({{ $row->id }})" wire:confirm="Delete this category?" aria-label="Delete {{ $row->name }}" class="rounded-lg px-2 py-1 text-xs text-[#64748b] hover:bg-[#fef2f2] hover:text-[#ef4444]">Delete</button></div></x-ui.table.cell>
+                                <x-ui.table.cell class="px-4 py-4">
+                                    <x-ui.dropdown position="bottom-end">
+                                        <x-slot:button>
+                                            <x-ui.button type="button" size="sm" variant="outline" color="slate" icon-after="chevron-down" aria-label="Actions for {{ $row->name }}">Action</x-ui.button>
+                                        </x-slot:button>
+                                        <x-slot:menu>
+                                            <x-ui.dropdown.item wire:click="openEdit({{ $row->id }})">Edit</x-ui.dropdown.item>
+                                            <x-ui.dropdown.item wire:click="toggleStatus({{ $row->id }})">{{ $row->is_active ? 'Deactivate' : 'Activate' }}</x-ui.dropdown.item>
+                                            <x-ui.dropdown.separator />
+                                            <x-ui.dropdown.item wire:click="deleteCategory({{ $row->id }})" wire:confirm="Delete this category?" variant="danger">Delete</x-ui.dropdown.item>
+                                        </x-slot:menu>
+                                    </x-ui.dropdown>
+                                </x-ui.table.cell>
                             </x-ui.table.row>
                         @empty
                             <x-ui.table.empty>{{ filled($searchQuery) || filled($status) || $parentFilter ? 'No categories match the selected search or filters.' : 'No categories found.' }}</x-ui.table.empty>
                         @endforelse
                     </x-ui.table.rows>
                 </x-ui.table>
-            </div>
-
-            <div class="space-y-5">
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm"><h3 class="text-sm font-bold text-[#111827]">Category Overview</h3><p class="mt-1 text-xs text-[#9ca3af]">Top categories by product count</p><div class="mt-4 space-y-3">@foreach($overview as $category)<div class="flex items-center justify-between text-sm"><span class="text-[#374151]">{{ $category->name }}</span><span class="font-bold text-[#111827]">{{ number_format($category->products_count) }}</span></div>@endforeach</div></div>
-                <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm"><h3 class="text-sm font-bold text-[#111827]">Category Health</h3><div class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><span>Categories without products</span><span class="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-bold text-[#d97706]">{{ $health['without_products'] }}</span></div><div class="flex justify-between"><span>Categories without image</span><span class="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-bold text-[#d97706]">{{ $health['without_image'] }}</span></div><div class="flex justify-between"><span>Inactive categories</span><span class="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-bold text-[#d97706]">{{ $health['inactive'] }}</span></div></div></div>
             </div>
         </div>
     </div>

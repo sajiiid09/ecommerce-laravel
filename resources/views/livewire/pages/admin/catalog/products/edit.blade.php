@@ -139,19 +139,19 @@
                     <div class="grid gap-4 sm:grid-cols-4">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Regular Price <span class="text-[#ef4444]">*</span>
-                            <x-ui.input type="number" min="0" wire:model.live="regular_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="regular_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Sale Price
-                            <x-ui.input type="number" min="0" wire:model.live="sale_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="sale_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Compare At Price
-                            <x-ui.input type="number" min="0" wire:model.live="compare_at_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="compare_at_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Cost Price
-                            <x-ui.input type="number" min="0" wire:model.live="cost_price_minor" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="cost_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                     </div>
                     <div class="mt-4 flex items-center gap-4">
@@ -163,6 +163,8 @@
                     </div>
                 </section>
 
+                {{-- Search Engine Optimization is intentionally hidden for now. --}}
+                {{--
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <h2 class="mb-4 font-bold text-[#111827]">Search Engine Optimization</h2>
                     <div class="grid gap-4 sm:grid-cols-3">
@@ -180,6 +182,7 @@
                         </label>
                     </div>
                 </section>
+                --}}
             </div>
 
             <div class="space-y-5">
@@ -206,17 +209,21 @@
                                 <span class="text-sm text-[#374151]">Stock Management</span>
                                 <span class="text-xs text-[#10b981] font-bold">Tracking stock quantity</span>
                             </div>
-                            <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 Quantity
                                 <x-ui.input type="number" min="0" wire:model.live="inventory_quantity" placeholder="0" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                             </label>
-                            <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                            <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 Low Stock Threshold
                                 <x-ui.input type="number" min="0" wire:model.live="low_stock_threshold" placeholder="10" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                             </label>
-                            <x-ui.checkbox wire:model.live="allow_backorders" label="Allow backorders" size="sm" />
+                            <div class="pt-1">
+                                <x-ui.checkbox wire:model.live="allow_backorders" label="Allow backorders" size="sm" />
+                            </div>
                         </div>
-                        <x-ui.checkbox wire:model.live="is_featured" label="Featured product" size="sm" />
+                        <div class="pt-1">
+                            <x-ui.checkbox wire:model.live="is_featured" label="Featured product" size="sm" />
+                        </div>
                     </div>
                 </section>
 

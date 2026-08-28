@@ -13,6 +13,8 @@
             </button>
         </div>
 
+        {{-- Variant summary cards are intentionally hidden while the table is the primary view. --}}
+        {{--
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach([
                 ['Total Variants', number_format($rows->total()), '#2563eb', 'M21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9'],
@@ -34,6 +36,7 @@
                 </div>
             @endforeach
         </div>
+        --}}
 
         @if($filtersOpen)
             <div class="mb-4 flex items-end gap-3 rounded-xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
@@ -48,16 +51,26 @@
             @endforeach
         </div>
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
+        <div class="w-full">
+            <div class="w-full">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search product or SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
                     <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="20">20</option><option value="50">50</option></select>
                 </div>
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" class="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" table:class="w-full min-w-[1200px] table-fixed text-left" class="w-full overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-sm">
+                    <colgroup>
+                        <col class="w-[4%]">
+                        <col class="w-[24%]">
+                        <col class="w-[19%]">
+                        <col class="w-[15%]">
+                        <col class="w-[12%]">
+                        <col class="w-[7%]">
+                        <col class="w-[10%]">
+                        <col class="w-[9%]">
+                    </colgroup>
                             <x-ui.table.header class="bg-[#f9fafb] text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]"><x-ui.table.columns withCheckAll>
-                                <x-ui.table.head column="created_at" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Variant</x-ui.table.head><x-ui.table.head>Parent Product</x-ui.table.head><x-ui.table.head column="sku" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">SKU</x-ui.table.head><x-ui.table.head>Options</x-ui.table.head><x-ui.table.head>Price</x-ui.table.head><x-ui.table.head>Stock</x-ui.table.head><x-ui.table.head column="is_active" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Status</x-ui.table.head><x-ui.table.head>Default</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                                <x-ui.table.head column="created_at" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Variant</x-ui.table.head><x-ui.table.head>Parent Product</x-ui.table.head><x-ui.table.head>Options</x-ui.table.head><x-ui.table.head>Price</x-ui.table.head><x-ui.table.head>Stock</x-ui.table.head><x-ui.table.head column="is_active" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
                             </x-ui.table.columns></x-ui.table.header>
                             <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
@@ -67,11 +80,10 @@
                                                 <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
                                                     <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                                                 </div>
-                                                <span class="font-bold text-[#111827]">{{ $row->product?->name ?? '—' }}</span>
+                                                <span class="text-sm font-semibold text-[#111827]">{{ $row->product?->name ?? '—' }}</span>
                                             </div>
                                         </td>
                                         <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? '—' }}</td>
-                                        <td class="px-4 py-4 text-xs font-medium text-[#6b7280]">{{ $row->sku }}</td>
                                         <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues->pluck('value')->join(' / ') ?: '—' }}</td>
                                         <td class="px-4 py-4 font-semibold text-[#111827]">৳{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
                                         <td class="px-4 py-4"><span class="font-semibold {{ $row->availableQuantity() < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->availableQuantity() }}</span></td>
@@ -79,15 +91,38 @@
                                             @php $isActive = $row->is_active ?? true; @endphp
                                             <span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $isActive ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#f3f4f6] text-[#6b7280]' }}">{{ $isActive ? 'Active' : 'Inactive' }}</span>
                                         </td>
-                                        <td class="px-4 py-4">
-                                            <svg class="size-5 {{ ($row->is_default ?? false) ? 'text-[#f59e0b]' : 'text-[#d1d5db]' }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"/></svg>
-                                        </td>
                                         <td class="px-5 py-4">
-                                            <div class="flex items-center gap-1">
-                                                <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#2563eb]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg></button>
-                                                <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#2563eb]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg></button>
-                                                <button class="grid size-8 place-items-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#ef4444]"><svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg></button>
-                                            </div>
+                                            <x-ui.dropdown position="bottom-end">
+                                                <x-slot:button>
+                                                    <x-ui.button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        color="slate"
+                                                        icon-after="chevron-down"
+                                                        aria-label="Actions for {{ $row->product?->name ?? 'variant' }}"
+                                                    >Action</x-ui.button>
+                                                </x-slot:button>
+                                                <x-slot:menu>
+                                                    <x-ui.dropdown.item wire:click="showVariant({{ $row->id }})" icon="eye">
+                                                        View
+                                                    </x-ui.dropdown.item>
+                                                    <x-ui.dropdown.item
+                                                        as="a"
+                                                        href="{{ route('admin.catalog.products.variants', ['product' => $row->product_id]) }}"
+                                                    >
+                                                        Edit
+                                                    </x-ui.dropdown.item>
+                                                    <x-ui.dropdown.separator />
+                                                    <x-ui.dropdown.item
+                                                        wire:click="delete({{ $row->id }})"
+                                                        wire:confirm="Delete this variant?"
+                                                        variant="danger"
+                                                    >
+                                                        Delete
+                                                    </x-ui.dropdown.item>
+                                                </x-slot:menu>
+                                            </x-ui.dropdown>
                                         </td>
                                     </x-ui.table.row>
                                 @empty
@@ -97,6 +132,8 @@
                 </x-ui.table>
             </div>
 
+            {{-- Variant summary cards are intentionally hidden; the table now uses the full content width. --}}
+            {{--
             <div class="space-y-5">
                 <div class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <h3 class="text-sm font-bold text-[#111827]">Variant Summary</h3>
@@ -134,6 +171,62 @@
                     </div>
                 </div>
             </div>
+            --}}
         </div>
+
+        <x-ui.modal
+            id="variant-details"
+            width="2xl"
+            heading="Variant details"
+            description="Product, pricing, inventory, and option details."
+        >
+            @if($viewingVariant)
+                <div class="space-y-6">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <p class="text-lg font-bold text-slate-900">{{ $viewingVariant->product?->name ?? 'Unknown product' }}</p>
+                            <p class="mt-1 text-sm text-slate-500">{{ $viewingVariant->name ?: 'Default variant' }}</p>
+                        </div>
+                        <x-ui.badge variant="solid" :color="$viewingVariant->is_active ? 'emerald' : 'slate'" pill>
+                            {{ $viewingVariant->is_active ? 'Active' : 'Inactive' }}
+                        </x-ui.badge>
+                    </div>
+
+                    <div class="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">SKU</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900">{{ $viewingVariant->sku }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Options</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900">{{ $viewingVariant->optionValues->pluck('value')->join(' / ') ?: 'No options' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Price</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900">{{ html_entity_decode('&#2547;') }}{{ number_format($viewingVariant->currentPriceMinor() / 100, 2) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Available stock</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900">{{ number_format($viewingVariant->availableQuantity()) }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Regular price</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ html_entity_decode('&#2547;') }}{{ number_format(($viewingVariant->regular_price_minor ?? 0) / 100, 2) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale price</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ $viewingVariant->sale_price_minor !== null ? html_entity_decode('&#2547;').number_format($viewingVariant->sale_price_minor / 100, 2) : '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Compare-at price</p>
+                            <p class="mt-1 text-sm text-slate-700">{{ $viewingVariant->compare_at_price_minor !== null ? html_entity_decode('&#2547;').number_format($viewingVariant->compare_at_price_minor / 100, 2) : '—' }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </x-ui.modal>
     </div>
 </div>

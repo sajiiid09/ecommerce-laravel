@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Components\Store\RelatedProducts;
 use App\Livewire\Pages\Admin\Catalog\Attributes\Index as AttributesIndex;
 use App\Livewire\Pages\Admin\Catalog\Brands\Index as BrandsIndex;
 use App\Livewire\Pages\Admin\Catalog\Categories\Index as CategoriesIndex;
@@ -24,6 +25,8 @@ use App\Services\CategoryService;
 use App\Services\InventoryService;
 use App\Services\ProductService;
 use App\Services\ProductVariantService;
+use Database\Seeders\CatalogSeeder;
+use Database\Seeders\ProductSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -147,6 +150,10 @@ it('renders the product edit choices with Sheaf selects', function () {
         'primary_category_id' => $category->id,
         'category_ids' => [$category->id],
         'tag_ids' => [$tag->id],
+        'regular_price_minor' => 1099000,
+        'sale_price_minor' => 999900,
+        'compare_at_price_minor' => 1199000,
+        'cost_price_minor' => 800000,
     ]);
 
     Livewire::test(ProductEdit::class, ['product' => $product])
@@ -154,8 +161,27 @@ it('renders the product edit choices with Sheaf selects', function () {
         ->assertSee('Select additional categories', false)
         ->assertSee('Select tags', false)
         ->assertSee('rounded-lg', false)
+        ->assertSet('regular_price', '10990.00')
+        ->assertSet('sale_price', '9999.00')
+        ->assertSee('wire:model.live="regular_price"', false)
+        ->assertSee('pt-1', false)
+        ->assertDontSee('Search Engine Optimization', false)
         ->assertDontSee('<select', false)
         ->assertSee('data-slot="option"', false);
+
+    Livewire::test(ProductEdit::class, ['product' => $product])
+        ->set('regular_price', '12990.00')
+        ->set('sale_price', '11990.00')
+        ->set('compare_at_price', '13990.00')
+        ->set('cost_price', '8000.00')
+        ->call('saveProduct');
+
+    $savedVariant = $product->fresh(['defaultVariant'])->defaultVariant;
+
+    expect($savedVariant->regular_price_minor)->toBe(1299000)
+        ->and($savedVariant->sale_price_minor)->toBe(1199000)
+        ->and($savedVariant->compare_at_price_minor)->toBe(1399000)
+        ->and($savedVariant->cost_price_minor)->toBe(800000);
 });
 
 it('maps real variant options and variant media for the storefront', function () {
@@ -365,6 +391,114 @@ it('validates and persists type-aware catalog attributes', function () {
         ->assertHasErrors('values_text');
 });
 
+it('renders the attributes datatable with dropdown actions without summary cards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    Attribute::create([
+        'name' => 'Material',
+        'slug' => 'material',
+        'type' => 'text',
+        'is_active' => true,
+    ]);
+
+    Livewire::test(AttributesIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('wire:loading', false)
+        ->assertSee('aria-label="Rows per page"', false)
+        ->assertSee('Action', false)
+        ->assertSee('Edit', false)
+        ->assertSee('Deactivate', false)
+        ->assertSee('Delete', false)
+        ->assertSee('wire:click="openEdit(', false)
+        ->assertSee('wire:click="toggleActive(', false)
+        ->assertSee('wire:click="deleteAttribute(', false)
+        ->assertDontSee('Total attributes', false)
+        ->assertDontSee('With products', false);
+});
+
+it('renders the tags datatable full width with dropdown actions without side cards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    Tag::create([
+        'name' => 'New Arrival',
+        'slug' => 'new-arrival',
+        'type' => 'product',
+        'is_active' => true,
+    ]);
+
+    Livewire::test(TagsIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('w-full overflow-hidden rounded-xl', false)
+        ->assertSee('mb-2 flex flex-wrap items-center gap-2', false)
+        ->assertSee('w-full table-fixed text-left', false)
+        ->assertSee('<col class="w-[5%]">', false)
+        ->assertSee('<col class="w-[25%]">', false)
+        ->assertSee('Action', false)
+        ->assertSee('Edit', false)
+        ->assertSee('Deactivate', false)
+        ->assertSee('Delete', false)
+        ->assertSee('wire:click="openEdit(', false)
+        ->assertSee('wire:click="toggleActive(', false)
+        ->assertSee('wire:click="delete(', false)
+        ->assertSee('wire:confirm="Delete this tag?"', false)
+        ->assertDontSee('Total Tags', false)
+        ->assertDontSee('Most Used Tags', false)
+        ->assertDontSee('Tag Health', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_280px]', false);
+});
+
+it('renders the categories datatable full width with dropdown actions without summary cards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    Category::create([
+        'name' => 'Electronics',
+        'slug' => 'electronics',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+
+    Livewire::test(CategoriesIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('mb-2 flex flex-wrap items-center gap-2', false)
+        ->assertSee('w-full table-fixed text-left', false)
+        ->assertSee('<col class="w-[27%]">', false)
+        ->assertSee('Action', false)
+        ->assertSee('Edit', false)
+        ->assertSee('Deactivate', false)
+        ->assertSee('Delete', false)
+        ->assertSee('wire:click="openEdit(', false)
+        ->assertSee('wire:click="toggleStatus(', false)
+        ->assertSee('wire:click="deleteCategory(', false)
+        ->assertSee('wire:confirm="Delete this category?"', false)
+        ->assertDontSee('Total Categories', false)
+        ->assertDontSee('Category Overview', false)
+        ->assertDontSee('Category Health', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_280px]', false);
+});
+
+it('renders the brands datatable full width with dropdown actions without side cards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    Brand::create([
+        'name' => 'Xiaomi',
+        'slug' => 'xiaomi',
+        'is_active' => true,
+    ]);
+
+    Livewire::test(BrandsIndex::class)
+        ->assertSee('<table', false)
+        ->assertSee('w-full overflow-hidden rounded-xl', false)
+        ->assertSee('<col class="w-[5%]">', false)
+        ->assertSee('Action', false)
+        ->assertSee('Edit', false)
+        ->assertSee('Deactivate', false)
+        ->assertSee('Delete', false)
+        ->assertSee('wire:click="openEdit(', false)
+        ->assertSee('wire:click="toggleActive(', false)
+        ->assertSee('wire:click="delete(', false)
+        ->assertSee('wire:confirm="Delete this brand?"', false)
+        ->assertDontSee('Total Brands', false)
+        ->assertDontSee('Most Used Brands', false)
+        ->assertDontSee('Brand Health', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_280px]', false);
+});
+
 it('opens the brand editor, updates a brand, and links to its storefront page', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
     $brand = Brand::create([
@@ -411,17 +545,45 @@ it('renders Sheaf selection controls and a readable page-size selector on the br
         ->assertDontSee('153050', false);
 });
 
-it('renders the inventory datatable with readable currency and no dead detail links', function () {
+it('renders the full-width inventory datatable while hiding summary cards', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
 
     Livewire::test(InventoryIndex::class)
         ->assertSee('<table', false)
-        ->assertSee('min-w-[980px]', false)
-        ->assertSee('&#2547;', false)
-        ->assertSee('0.00', false)
+        ->assertSee('data-slot="select-control"', false)
+        ->assertSee('aria-label="Rows per page"', false)
+        ->assertDontSee('<select wire:model.live="perPage"', false)
+        ->assertDontSee('Adjust stock', false)
+        ->assertSee('w-full min-w-[980px] table-fixed text-left', false)
+        ->assertSee('<col class="w-[34%]">', false)
+        ->assertSee('<col class="w-[14%]">', false)
+        ->assertSee('<col class="w-[10%]">', false)
+        ->assertSee('<col class="w-[12%]">', false)
+        ->assertDontSee('Total Units', false)
+        ->assertDontSee('Inventory Value', false)
+        ->assertDontSee('Inventory Alerts', false)
+        ->assertDontSee('Recent Stock Movements', false)
+        ->assertDontSee('Tracked units', false)
         ->assertDontSee('View details', false)
         ->assertDontSee('Ã', false)
         ->assertDontSee('â', false);
+});
+
+it('identifies the selected product in the inventory adjustment modal', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = app(ProductService::class)->save([
+        'name' => 'Adjustment Test Product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'regular_price_minor' => 1000,
+        'inventory_quantity' => 12,
+    ]);
+
+    Livewire::test(InventoryIndex::class)
+        ->call('openAdjust', $product->defaultVariant->inventory->id)
+        ->assertSee('Adjust stock', false)
+        ->assertSee('Adjustment Test Product', false)
+        ->assertSee('Add or remove units from this inventory item.', false);
 });
 
 it('renders every requested catalog list through the Sheaf table', function () {
@@ -455,7 +617,123 @@ it('renders every requested catalog list through the Sheaf table', function () {
         ->assertDontSee('<table class="min-w-full text-left text-sm">', false);
 });
 
-it('renders the products table with compact responsive columns and full pagination', function () {
+it('renders the variants table full width without summary cards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Variant Layout Product',
+        'slug' => 'variant-layout-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $product->variants()->create([
+        'sku' => 'VARIANT-LAYOUT-1',
+        'regular_price_minor' => 1000,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    Livewire::test(VariantsIndex::class)
+        ->assertSee('w-full min-w-[1200px] table-fixed text-left', false)
+        ->assertSee('text-sm font-semibold text-[#111827]', false)
+        ->assertSee('Options', false)
+        ->assertSee('Actions', false)
+        ->assertDontSee('<th>SKU</th>', false)
+        ->assertDontSee('<th>Default</th>', false)
+        ->assertDontSee('Total Variants', false)
+        ->assertDontSee('Variant Summary', false)
+        ->assertDontSee('Low Stock Variants', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_280px]', false);
+});
+
+it('renders variant actions and opens the selected variant details modal', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Variant Actions Product',
+        'slug' => 'variant-actions-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $variant = $product->variants()->create([
+        'sku' => 'VARIANT-ACTIONS-1',
+        'name' => 'Large / Blue',
+        'regular_price_minor' => 249900,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    $component = Livewire::test(VariantsIndex::class)
+        ->assertSee('Actions for Variant Actions Product', false)
+        ->assertSee('View', false)
+        ->assertSee('Edit', false)
+        ->assertSee('Delete', false)
+        ->assertSee('wire:confirm="Delete this variant?"', false)
+        ->assertSee(route('admin.catalog.products.variants', ['product' => $product->id]), false)
+        ->call('showVariant', $variant->id);
+
+    $component
+        ->assertSee('Variant details', false)
+        ->assertSee('VARIANT-ACTIONS-1', false)
+        ->assertSee('Available stock', false)
+        ->assertDispatched('open-modal', id: 'variant-details');
+});
+
+it('soft deletes a variant and promotes a replacement default', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Variant Deletion Product',
+        'slug' => 'variant-deletion-product',
+        'product_type' => 'variable',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $defaultVariant = $product->variants()->create([
+        'sku' => 'VARIANT-DELETE-1',
+        'combination_key' => 'delete-default',
+        'regular_price_minor' => 1000,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+    $replacementVariant = $product->variants()->create([
+        'sku' => 'VARIANT-DELETE-2',
+        'combination_key' => 'delete-replacement',
+        'regular_price_minor' => 1200,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    Livewire::test(VariantsIndex::class)
+        ->call('delete', $defaultVariant->id);
+
+    expect(ProductVariant::withTrashed()->findOrFail($defaultVariant->id)->trashed())->toBeTrue()
+        ->and($replacementVariant->fresh()->is_default)->toBeTrue();
+});
+
+it('keeps the last variant when deletion would leave a product without a variant', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Last Variant Product',
+        'slug' => 'last-variant-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]);
+    $variant = $product->variants()->create([
+        'sku' => 'VARIANT-LAST-1',
+        'regular_price_minor' => 1000,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    Livewire::test(VariantsIndex::class)
+        ->call('delete', $variant->id)
+        ->assertHasErrors(['variant' => 'A product must retain at least one variant.']);
+
+    expect(ProductVariant::query()->whereKey($variant->id)->exists())->toBeTrue();
+});
+
+it('renders the products table with compact responsive columns and no summary cards', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
 
     foreach (range(1, 16) as $index) {
@@ -482,7 +760,12 @@ it('renders the products table with compact responsive columns and full paginati
         ->assertSee('Price', false)
         ->assertSee('Stock', false)
         ->assertSee('Status', false)
-        ->assertSee('Actions', false);
+        ->assertSee('Actions', false)
+        ->assertDontSee('mb-4 bg-white shadow-sm p-', false)
+        ->assertDontSee('Total Products', false)
+        ->assertDontSee('Active Products', false)
+        ->assertDontSee('Low Stock Products', false)
+        ->assertDontSee('Draft Products', false);
 });
 
 it('filters products by name, slug, and variant SKU through the catalog table state', function () {
@@ -581,14 +864,14 @@ it('renders readable catalog controls and symbols without mojibake', function ()
     Livewire::test(ProductsIndex::class)
         ->assertSee('&#2547;', false)
         ->assertSee(html_entity_decode('&mdash;'), false)
-        ->assertSee('&rarr;', false)
+        ->assertDontSee('&rarr;', false)
         ->assertDontSee('Ã', false)
         ->assertDontSee('Â', false)
         ->assertDontSee('â', false);
 
 });
 
-it('renders related products in a five-card carousel without dots', function () {
+it('lazy loads related products in a five-card carousel without dots', function () {
     Cache::flush();
     $category = Category::create(['name' => 'Related Products', 'slug' => 'related-products', 'is_active' => true]);
 
@@ -628,11 +911,95 @@ it('renders related products in a five-card carousel without dots', function () 
     $response = $this->get(route('store.product', ['slug' => $product->slug]))->assertSuccessful();
     $content = $response->getContent();
 
-    expect(substr_count($content, 'aria-roledescription="carousel"'))->toBe(1)
-        ->and($content)->toContain('aria-label="Related products"')
-        ->and($content)->toContain('xl:basis-[calc((100%-3rem)/5)]')
-        ->and($content)->toContain('Related Product 1')
-        ->and($content)->toContain(html_entity_decode('&#2547;').'10.01')
-        ->and($content)->toContain('View All')
-        ->and($content)->not->toContain('role="tablist"');
+    expect($content)->toContain('aria-label="Loading related products"')
+        ->and($content)->not->toContain('Related Product 1')
+        ->and($content)->toContain('View All');
+
+    Livewire::withoutLazyLoading();
+
+    Livewire::test(RelatedProducts::class, [
+        'productId' => $product->id,
+        'categorySlug' => $category->slug,
+    ])
+        ->assertSee('aria-roledescription="carousel"', false)
+        ->assertSee('aria-label="Related products"', false)
+        ->assertSee('xl:basis-[calc((100%-3rem)/5)]', false)
+        ->assertSee('Related Product 1', false)
+        ->assertSee(html_entity_decode('&#2547;').'10.01', false)
+        ->assertDontSee('role="tablist"', false);
+});
+
+it('processes catalog seed images into idempotent webp assets', function () {
+    Storage::fake('public');
+
+    $this->seed([CatalogSeeder::class, ProductSeeder::class]);
+
+    $asset = MediaAsset::query()
+        ->where('path', 'seeded/catalog/products/sony-wh-ch720n.webp')
+        ->firstOrFail();
+    $sonyWfC700n = Product::query()
+        ->where('slug', 'sony-wf-c700n')
+        ->with('primaryCategory')
+        ->firstOrFail();
+    $discountedProduct = Product::query()
+        ->where('slug', 'redmi-watch-5-active')
+        ->with('defaultVariant')
+        ->firstOrFail();
+    $fullPriceProduct = Product::query()
+        ->where('slug', 'sony-wh-ch720n')
+        ->with('defaultVariant')
+        ->firstOrFail();
+    $sonyGallery = $sonyWfC700n->media()
+        ->whereNull('product_variant_id')
+        ->orderBy('sort_order')
+        ->get();
+    $xiaomiPowerBank = Product::query()
+        ->where('slug', 'xiaomi-power-bank-4i-20000mah')
+        ->firstOrFail();
+    $xiaomiGallery = $xiaomiPowerBank->media()
+        ->whereNull('product_variant_id')
+        ->orderBy('sort_order')
+        ->get();
+    $initialSeededAssetCount = MediaAsset::query()
+        ->where('path', 'like', 'seeded/catalog/%')
+        ->count();
+
+    expect($asset->original_filename)->toBe('sony-wh-ch720n.png')
+        ->and($asset->extension)->toBe('webp')
+        ->and($asset->mime_type)->toBe('image/webp')
+        ->and($asset->width)->toBeGreaterThan(0)
+        ->and($asset->height)->toBeGreaterThan(0)
+        ->and(Storage::disk('public')->exists($asset->path))->toBeTrue()
+        ->and($sonyWfC700n->primaryCategory->slug)->toBe('audio')
+        ->and(Product::query()->whereNull('primary_category_id')->exists())->toBeFalse()
+        ->and($discountedProduct->defaultVariant->sale_price_minor)->toBe(499900)
+        ->and($discountedProduct->defaultVariant->compare_at_price_minor)->toBe(549900)
+        ->and($fullPriceProduct->defaultVariant->sale_price_minor)->toBeNull()
+        ->and($fullPriceProduct->defaultVariant->compare_at_price_minor)->toBeNull()
+        ->and($sonyGallery->pluck('role')->all())->toBe(['primary', 'gallery', 'gallery'])
+        ->and($sonyGallery->pluck('path')->all())->toBe([
+            'seeded/catalog/products/sony-wf-c700n-2.webp',
+            'seeded/catalog/products/sony-wf-c700n-22.webp',
+            'seeded/catalog/products/sony-wf-c700n.webp',
+        ])
+        ->and($xiaomiGallery->pluck('role')->all())->toBe(['primary', 'gallery'])
+        ->and($xiaomiGallery->pluck('path')->all())->toBe([
+            'seeded/catalog/products/xiaomi-power-bank-4i.webp',
+            'seeded/catalog/products/xiaomi-power-bank-4i-20000mah.webp',
+        ]);
+
+    $fullPriceProduct->defaultVariant->update([
+        'sale_price_minor' => 1299000,
+        'compare_at_price_minor' => 1499000,
+    ]);
+
+    $this->seed([CatalogSeeder::class, ProductSeeder::class]);
+
+    $refreshedFullPriceProduct = $fullPriceProduct->fresh('defaultVariant');
+
+    expect(MediaAsset::query()->where('path', 'like', 'seeded/catalog/%')->count())
+        ->toBe($initialSeededAssetCount)
+        ->and(MediaAsset::query()->where('path', $asset->path)->count())->toBe(1)
+        ->and($refreshedFullPriceProduct->defaultVariant->sale_price_minor)->toBeNull()
+        ->and($refreshedFullPriceProduct->defaultVariant->compare_at_price_minor)->toBeNull();
 });

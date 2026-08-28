@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Admin\Catalog\Variants;
 use App\Livewire\Concerns\WithCatalogTable;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class Index extends Component
@@ -12,6 +13,8 @@ class Index extends Component
     use WithCatalogTable;
 
     public string $status = 'all';
+
+    public ?ProductVariant $viewingVariant = null;
 
     public function mount(): void
     {
@@ -35,6 +38,51 @@ class Index extends Component
         $this->reset(['searchQuery', 'status']);
         $this->clearSelection();
         $this->resetPage();
+    }
+
+    public function showVariant(int $variantId): void
+    {
+        $variant = ProductVariant::query()
+            ->with(['product', 'inventory', 'optionValues'])
+            ->findOrFail($variantId);
+
+        Gate::authorize('view', $variant);
+
+        $this->viewingVariant = $variant;
+        $this->dispatch('open-modal', id: 'variant-details');
+    }
+
+    public function delete(int $variantId): void
+    {
+        $variant = ProductVariant::query()->with('product')->findOrFail($variantId);
+        Gate::authorize('delete', $variant);
+
+        $product = $variant->product;
+        $hasOtherVariant = $product?->variants()
+            ->where('id', '!=', $variant->id)
+            ->exists();
+
+        if (! $hasOtherVariant) {
+            $this->addError('variant', 'A product must retain at least one variant.');
+
+            return;
+        }
+
+        if ($variant->is_default) {
+            $replacement = $product->variants()
+                ->where('id', '!=', $variant->id)
+                ->orderByDesc('is_active')
+                ->orderBy('sort_order')
+                ->first();
+
+            $replacement?->update(['is_default' => true]);
+        }
+
+        $variant->delete();
+        $this->viewingVariant = null;
+        $this->clearSelection();
+        $this->resetPage();
+        session()->flash('status', 'Variant deleted.');
     }
 
     /** @return array<int, string> */

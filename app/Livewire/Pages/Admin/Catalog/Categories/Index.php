@@ -234,18 +234,6 @@ class Index extends ResourceIndex
             'mediaAssets' => MediaAsset::latest()->limit(18)->get(),
             'selectedMedia' => $this->media_asset_id ? MediaAsset::find($this->media_asset_id) : null,
             'depths' => $depths,
-            'stats' => [
-                'total' => Category::count(),
-                'active' => Category::where('is_active', true)->count(),
-                'top_level' => Category::whereNull('parent_id')->count(),
-                'assigned' => Category::withCount('products')->get()->sum('products_count'),
-            ],
-            'overview' => Category::withCount('products')->orderByDesc('products_count')->orderBy('name')->limit(5)->get(),
-            'health' => [
-                'without_products' => Category::whereDoesntHave('products')->count(),
-                'without_image' => Category::whereNull('media_asset_id')->whereNull('image_url')->count(),
-                'inactive' => Category::where('is_active', false)->count(),
-            ],
         ]);
     }
 }

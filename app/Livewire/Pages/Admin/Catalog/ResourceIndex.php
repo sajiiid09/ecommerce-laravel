@@ -206,6 +206,11 @@ abstract class ResourceIndex extends Component
         return $this->model() === Tag::class;
     }
 
+    public function isCompactResource(): bool
+    {
+        return $this->isBrandResource() || $this->isTagResource();
+    }
+
     private function resetEditor(): void
     {
         $this->reset([

@@ -24,6 +24,8 @@
             </button>
         </div>
 
+        {{-- Product summary cards are intentionally hidden so the catalog table remains the primary view. --}}
+        {{--
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach([
                 ['Total Products', number_format($stats['total']), '#2563eb', 'm21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9'],
@@ -51,6 +53,7 @@
                 </div>
             @endforeach
         </div>
+        --}}
 
         <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-[#e5e7eb]">
             @foreach([''=>'All Products','published'=>'Published','draft'=>'Draft','archived'=>'Archived'] as $value=>$label)
@@ -66,7 +69,7 @@
             </div>
         @endif
 
-        <x-ui.table.container border class="mb-4 bg-white shadow-sm">
+        <div class="w-full">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search products by name, SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
                     <select wire:model.live="perPage" aria-label="Rows per page" class="h-10 w-24 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm"><option value="15">15</option><option value="30">30</option><option value="50">50</option></select>
@@ -125,6 +128,6 @@
                                 @endforelse
                             </x-ui.table.rows>
                 </x-ui.table>
-        </x-ui.table.container>
+        </div>
     </div>
 </div>

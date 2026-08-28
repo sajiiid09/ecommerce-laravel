@@ -6,13 +6,15 @@
                 <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">Inventory</h1>
                 <p class="mt-1 text-sm text-slate-500">Monitor stock levels and manage product variant inventory.</p>
             </div>
-            <button type="button" wire:click="openAdjust({{ $rows->first()?->id ?? 0 }})" @disabled(! $rows->first()) wire:loading.attr="disabled" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50">Adjust stock</button>
+            {{-- The row-level Adjust action identifies the product being changed. --}}
         </div>
 
         @if (session('status'))
             <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('status') }}</div>
         @endif
 
+        {{-- Inventory summary cards are intentionally hidden while the table is the primary view. --}}
+        {{--
         <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach ([
                 ['label' => 'Total Units', 'value' => number_format($stats['total_units']), 'tone' => 'blue'],
@@ -26,6 +28,7 @@
                 </div>
             @endforeach
         </div>
+        --}}
 
         <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-slate-200">
             @foreach (['all' => 'All Inventory', 'in_stock' => 'In Stock', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock', 'backorder' => 'Backorder', 'not_tracked' => 'Not Tracked'] as $key => $label)
@@ -33,18 +36,36 @@
             @endforeach
         </div>
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
+        <div class="w-full">
+            <div class="w-full">
                 <div class="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:flex-row md:items-center">
                     <x-ui.input wire:model.live.debounce.300ms="searchQuery" type="search" placeholder="Search product or SKU..." leftIcon="magnifying-glass" class="min-w-0 flex-1" />
-                    <select wire:model.live="perPage" class="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="20">20</option><option value="50">50</option></select>
+                    <x-ui.select wire:model.live="perPage" aria-label="Rows per page" class="w-20 shrink-0" triggerClass="!rounded-lg !border-slate-200 !bg-white">
+                        <x-ui.select.option value="20">20</x-ui.select.option>
+                        <x-ui.select.option value="50">50</x-ui.select.option>
+                    </x-ui.select>
                     <button type="button" wire:click="resetFilters" class="text-sm font-semibold text-slate-500 hover:text-slate-900">Reset</button>
                 </div>
 
-                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" table:class="min-w-[980px] text-left" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <x-ui.table :paginator="$rows" wire:loading loadOn="pagination, search, sorting" table:class="w-full min-w-[980px] table-fixed text-left" class="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <colgroup>
+                        <col class="w-[34%]">
+                        <col class="w-[14%]">
+                        <col class="w-[10%]">
+                        <col class="w-[10%]">
+                        <col class="w-[10%]">
+                        <col class="w-[12%]">
+                        <col class="w-[10%]">
+                    </colgroup>
                     <x-ui.table.header class="bg-slate-50 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                         <x-ui.table.columns>
-                            <x-ui.table.head>Product / Variant</x-ui.table.head><x-ui.table.head>SKU</x-ui.table.head><x-ui.table.head column="quantity_on_hand" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">On Hand</x-ui.table.head><x-ui.table.head column="quantity_reserved" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Reserved</x-ui.table.head><x-ui.table.head>Available</x-ui.table.head><x-ui.table.head>Status</x-ui.table.head><x-ui.table.head>Actions</x-ui.table.head>
+                            <x-ui.table.head class="w-[34%]">Product / Variant</x-ui.table.head>
+                            <x-ui.table.head class="w-[14%]">SKU</x-ui.table.head>
+                            <x-ui.table.head class="w-[10%]" column="quantity_on_hand" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">On Hand</x-ui.table.head>
+                            <x-ui.table.head class="w-[10%]" column="quantity_reserved" sortable :currentSortBy="$sortBy" :currentSortDir="$sortDir">Reserved</x-ui.table.head>
+                            <x-ui.table.head class="w-[10%]">Available</x-ui.table.head>
+                            <x-ui.table.head class="w-[12%]">Status</x-ui.table.head>
+                            <x-ui.table.head class="w-[10%]">Actions</x-ui.table.head>
                         </x-ui.table.columns>
                     </x-ui.table.header>
                     <x-ui.table.rows>
@@ -52,7 +73,7 @@
                             @php($available = $row->availableQuantity())
                             @php($rowStatus = $available <= 0 ? 'Out of Stock' : ($row->isLowStock() ? 'Low Stock' : 'In Stock'))
                             <x-ui.table.row :key="$row->id" class="text-slate-700 hover:bg-slate-50">
-                                <x-ui.table.cell class="px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? html_entity_decode('&mdash;') }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></x-ui.table.cell>
+                                <x-ui.table.cell class="w-[34%] whitespace-normal break-words px-5 py-4"><p class="font-bold text-slate-950">{{ $row->variant?->product?->name ?? html_entity_decode('&mdash;') }}</p><p class="text-xs text-slate-400">{{ $row->variant?->name ?: 'Default variant' }}</p></x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 text-xs font-medium text-slate-500">{{ $row->variant?->sku ?? html_entity_decode('&mdash;') }}</x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 font-semibold text-slate-950">{{ $row->quantity_on_hand }}</x-ui.table.cell>
                                 <x-ui.table.cell class="px-4 py-4 text-slate-500">{{ $row->quantity_reserved }}</x-ui.table.cell>
@@ -67,17 +88,21 @@
                 </x-ui.table>
             </div>
 
+            {{-- Inventory summary cards are intentionally hidden; the table now uses the full content width. --}}
+            {{--
             <div class="space-y-5">
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="text-sm font-bold text-slate-950">Inventory Alerts</h3><div class="mt-4 space-y-3">@foreach ($alerts as $label => $count)<div wire:key="inventory-alert-{{ $label }}" class="flex items-center justify-between text-sm"><span class="text-slate-600">{{ $label }}</span><span class="font-bold text-slate-950">{{ $count }}</span></div>@endforeach</div></div>
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="text-sm font-bold text-slate-950">Recent Stock Movements</h3><div class="mt-4 space-y-3">@forelse ($recentMovements as $movement)<div wire:key="recent-movement-{{ $movement->id }}" class="flex items-center justify-between gap-3"><div><p class="text-xs font-bold text-slate-950">{{ ucfirst($movement->type?->value ?? $movement->type) }}</p><p class="text-[10px] text-slate-400">{{ $movement->variant?->product?->name ?? 'Product' }}</p></div><span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold {{ $movement->quantity_delta >= 0 ? 'text-emerald-700' : 'text-red-700' }}">{{ $movement->quantity_delta > 0 ? '+' : '' }}{{ $movement->quantity_delta }}</span></div>@empty<p class="text-xs text-slate-500">No stock movements yet.</p>@endforelse</div></div>
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs text-slate-500">Tracked units</p><p class="mt-1 text-lg font-extrabold text-slate-950">{{ number_format($stats['total_units']) }}</p><p class="mt-1 text-xs text-slate-500">{{ $stats['not_tracked'] }} item(s) are not tracking quantity.</p></div>
             </div>
+            --}}
         </div>
     </div>
 
     @if ($adjustingItemId)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true">
             <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                <p class="mb-3 text-sm font-semibold text-slate-700">{{ $adjustingItem?->variant?->product?->name ?? 'Selected inventory item' }}</p>
                 <div class="flex items-start justify-between gap-4"><div><h2 class="text-lg font-bold text-slate-950">Adjust stock</h2><p class="mt-1 text-sm text-slate-500">Add or remove units from this inventory item.</p></div><button type="button" wire:click="closeAdjust" class="text-2xl leading-none text-slate-400">×</button></div>
                 <div class="mt-5 space-y-4"><label class="block text-sm font-semibold text-slate-700">Adjustment<input type="number" wire:model="adjustment" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"></label><label class="block text-sm font-semibold text-slate-700">Movement type<select wire:model="movementType" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"><option value="restock">Restock</option><option value="adjustment">Adjustment</option><option value="damage">Damage</option><option value="return">Return</option><option value="correction">Correction</option></select></label><label class="block text-sm font-semibold text-slate-700">Note<textarea wire:model="note" rows="3" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5"></textarea></label></div>
                 <div class="mt-6 flex justify-end gap-2"><button type="button" wire:click="closeAdjust" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="button" wire:click="adjust" wire:loading.attr="disabled" wire:target="adjust" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><span wire:loading.remove wire:target="adjust">Save adjustment</span><span wire:loading wire:target="adjust">Saving...</span></button></div>
