@@ -2,8 +2,10 @@ FROM php:8.5-fpm-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip libpq-dev libzip-dev libicu-dev libonig-dev \
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
     build-essential autoconf \
-    && docker-php-ext-install bcmath intl mbstring pdo_pgsql zip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install bcmath gd intl mbstring pdo_pgsql zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*

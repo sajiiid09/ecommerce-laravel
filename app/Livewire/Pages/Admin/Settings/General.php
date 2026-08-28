@@ -2,18 +2,23 @@
 
 namespace App\Livewire\Pages\Admin\Settings;
 
+use App\Enums\ImagePreset;
 use App\Models\MediaAsset;
 use App\Models\SiteSetting;
+use App\Services\MediaService;
 use App\Services\SiteSettingsService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.admin')]
 class General extends Component
 {
+    use WithFileUploads;
+
     public string $storeName = 'StoreZ';
 
     public string $tagline = 'Shop smarter every day.';
@@ -21,6 +26,10 @@ class General extends Component
     public ?int $logoMediaId = null;
 
     public ?int $faviconMediaId = null;
+
+    public $logoFile;
+
+    public $faviconFile;
 
     public string $supportEmail = '';
 
@@ -32,9 +41,12 @@ class General extends Component
 
     protected SiteSettingsService $settings;
 
-    public function boot(SiteSettingsService $settings): void
+    protected MediaService $media;
+
+    public function boot(SiteSettingsService $settings, MediaService $media): void
     {
         $this->settings = $settings;
+        $this->media = $media;
     }
 
     public function mount(): void
@@ -66,6 +78,32 @@ class General extends Component
         } else {
             $this->faviconMediaId = $asset->id;
         }
+    }
+
+    public function uploadStoreLogo(): void
+    {
+        $this->authorize('create', MediaAsset::class);
+        $this->validate([
+            'logoFile' => ['required', 'image', 'max:10240'],
+        ]);
+
+        $asset = $this->media->upload($this->logoFile, 'general', ImagePreset::Logo);
+        $this->logoMediaId = $asset->id;
+        $this->reset('logoFile');
+        $this->dispatch('notify', content: 'Store logo uploaded and selected. Save settings to apply it.', type: 'success');
+    }
+
+    public function uploadStoreFavicon(): void
+    {
+        $this->authorize('create', MediaAsset::class);
+        $this->validate([
+            'faviconFile' => ['required', 'image', 'max:10240'],
+        ]);
+
+        $asset = $this->media->upload($this->faviconFile, 'general', ImagePreset::Favicon);
+        $this->faviconMediaId = $asset->id;
+        $this->reset('faviconFile');
+        $this->dispatch('notify', content: 'Store favicon uploaded and selected. Save settings to apply it.', type: 'success');
     }
 
     public function save(): void

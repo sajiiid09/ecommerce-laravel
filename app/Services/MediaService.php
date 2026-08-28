@@ -2,39 +2,49 @@
 
 namespace App\Services;
 
+use App\Enums\ImagePreset;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
+use App\Traits\ImageHandler;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class MediaService
 {
-    public function upload(UploadedFile $file, string $folder = 'general', ?int $folderId = null): MediaAsset
+    use ImageHandler;
+
+    public function upload(UploadedFile $file, string $folder, ImagePreset $preset, ?int $folderId = null): MediaAsset
     {
         $folderId ??= MediaFolder::where('slug', $folder)->value('id');
-        $path = $file->store('media/'.$folder.'/'.now()->format('Y/m'), 'public');
-        $dimensions = @getimagesize($file->getRealPath()) ?: [];
+        $path = 'media/'.$folder.'/'.now()->format('Y/m').'/'.Str::uuid()->toString().'.webp';
+        $processed = $this->processAndStoreImage($file, $path, $preset);
 
-        $asset = MediaAsset::create([
-            'folder_id' => $folderId,
-            'disk' => 'public',
-            'path' => $path,
-            'filename' => $file->getClientOriginalName(),
-            'original_filename' => $file->getClientOriginalName(),
-            'extension' => $file->getClientOriginalExtension(),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'width' => $dimensions[0] ?? null,
-            'height' => $dimensions[1] ?? null,
-            'checksum' => hash_file('sha256', $file->getRealPath()),
-        ]);
+        try {
+            $asset = MediaAsset::create([
+                'folder_id' => $folderId,
+                'disk' => 'public',
+                'path' => $processed['path'],
+                'filename' => $processed['filename'],
+                'original_filename' => $processed['original_filename'],
+                'extension' => $processed['extension'],
+                'mime_type' => $processed['mime_type'],
+                'size' => $processed['size'],
+                'width' => $processed['width'],
+                'height' => $processed['height'],
+                'checksum' => $processed['checksum'],
+            ]);
 
-        $asset->forceFill(['uploaded_by' => auth()->id()])->save();
+            $asset->forceFill(['uploaded_by' => auth()->id()])->save();
 
-        return $asset;
+            return $asset;
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($processed['path']);
+            throw $exception;
+        }
     }
 
     public function attach(MediaAsset $asset, object $model, ?string $role = null): MediaUsage

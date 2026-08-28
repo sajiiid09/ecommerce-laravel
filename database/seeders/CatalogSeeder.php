@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ImagePreset;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Brand;
@@ -35,7 +36,6 @@ class CatalogSeeder extends Seeder
             ['name' => 'Xiaomi', 'slug' => 'xiaomi', 'is_featured' => true, 'logo' => 'brands/xiaomi.png'],
             ['name' => 'Nivea', 'slug' => 'nivea', 'is_featured' => false, 'logo' => 'brands/nivea.png'],
             ['name' => 'Miyako', 'slug' => 'miyako', 'is_featured' => false, 'logo' => 'brands/miyako.png'],
-            ['name' => 'Aarong', 'slug' => 'aarong', 'is_featured' => true, 'logo' => 'brands/aarong.png'],
             ['name' => 'Samsung', 'slug' => 'samsung', 'is_featured' => true, 'logo' => 'brands/samsung.png'],
             ['name' => 'Walton', 'slug' => 'walton', 'is_featured' => true, 'logo' => 'brands/walton.png'],
             ['name' => 'Apex', 'slug' => 'apex', 'is_featured' => true, 'logo' => 'brands/apex.png'],
@@ -48,7 +48,7 @@ class CatalogSeeder extends Seeder
             unset($data['logo']);
 
             $brand = Brand::updateOrCreate(['slug' => $data['slug']], $data);
-            $media = $this->seedLocalImage($logo);
+            $media = $this->seedLocalImage($logo, ImagePreset::Logo);
 
             if ($media) {
                 $brand->forceFill(['logo_media_id' => $media['id']])->save();
@@ -121,7 +121,7 @@ class CatalogSeeder extends Seeder
 
     private function attachCategoryImage(Category $category, string $relativePath): void
     {
-        $media = $this->seedLocalImage($relativePath);
+        $media = $this->seedLocalImage($relativePath, ImagePreset::Category);
 
         if (! $media) {
             return;

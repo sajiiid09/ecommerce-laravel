@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Catalog\Products;
 
+use App\Enums\ImagePreset;
 use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
@@ -63,13 +64,13 @@ class Edit extends Component
 
     public bool $taxable = true;
 
-    public int $regular_price_minor = 0;
+    public string $regular_price = '0.00';
 
-    public ?int $sale_price_minor = null;
+    public ?string $sale_price = null;
 
-    public ?int $cost_price_minor = null;
+    public ?string $cost_price = null;
 
-    public ?int $compare_at_price_minor = null;
+    public ?string $compare_at_price = null;
 
     public int $inventory_quantity = 0;
 
@@ -130,10 +131,10 @@ class Edit extends Component
         $this->status = $product->status?->value ?? 'draft';
         $this->visibility = $product->visibility?->value ?? 'visible';
         $this->description_json = $product->description_json ?? ['type' => 'doc', 'content' => []];
-        $this->regular_price_minor = (int) ($product->defaultVariant?->regular_price_minor ?? 0);
-        $this->sale_price_minor = $product->defaultVariant?->sale_price_minor;
-        $this->cost_price_minor = $product->defaultVariant?->cost_price_minor;
-        $this->compare_at_price_minor = $product->defaultVariant?->compare_at_price_minor;
+        $this->regular_price = $this->formatPrice($product->defaultVariant?->regular_price_minor ?? 0);
+        $this->sale_price = $this->formatNullablePrice($product->defaultVariant?->sale_price_minor);
+        $this->cost_price = $this->formatNullablePrice($product->defaultVariant?->cost_price_minor);
+        $this->compare_at_price = $this->formatNullablePrice($product->defaultVariant?->compare_at_price_minor);
         $inventory = $product->defaultVariant?->inventory;
         $this->inventory_quantity = (int) ($inventory?->quantity_on_hand ?? 0);
         $this->low_stock_threshold = (int) ($inventory?->low_stock_threshold ?? 10);
@@ -148,23 +149,28 @@ class Edit extends Component
             'name' => 'required|string|max:255', 'slug' => 'nullable|string|max:255', 'product_type' => 'required|in:simple,variable',
             'status' => 'required|in:draft,published,archived', 'visibility' => 'required|in:visible,catalog_search,catalog_only,search_only,hidden', 'brand_id' => 'nullable|exists:brands,id',
             'primary_category_id' => 'nullable|exists:categories,id', 'category_ids' => 'array', 'category_ids.*' => 'integer|exists:categories,id',
-            'tag_ids' => 'array', 'tag_ids.*' => 'integer|exists:tags,id', 'regular_price_minor' => 'required|integer|min:0', 'sale_price_minor' => 'nullable|integer|min:0',
+            'tag_ids' => 'array', 'tag_ids.*' => 'integer|exists:tags,id', 'regular_price' => 'required|numeric|min:0|decimal:0,2', 'sale_price' => 'nullable|numeric|min:0|decimal:0,2',
             'attribute_values' => 'array',
-            'compare_at_price_minor' => 'nullable|integer|min:0', 'cost_price_minor' => 'nullable|integer|min:0', 'inventory_quantity' => 'required|integer|min:0',
+            'compare_at_price' => 'nullable|numeric|min:0|decimal:0,2', 'cost_price' => 'nullable|numeric|min:0|decimal:0,2', 'inventory_quantity' => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0', 'track_quantity' => 'boolean', 'allow_backorders' => 'boolean',
             'is_indexable' => 'boolean', 'taxable' => 'boolean', 'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500', 'canonical_url' => 'nullable|url|max:255',
             'image' => 'nullable|image|max:5120',
         ]);
 
+        foreach (['regular_price', 'sale_price', 'compare_at_price', 'cost_price'] as $priceField) {
+            $data[$priceField.'_minor'] = $this->priceToMinor($data[$priceField] ?? null);
+            unset($data[$priceField]);
+        }
+
         if ($data['sale_price_minor'] !== null && $data['sale_price_minor'] > $data['regular_price_minor']) {
-            $this->addError('sale_price_minor', 'Sale price must not exceed the regular price.');
+            $this->addError('sale_price', 'Sale price must not exceed the regular price.');
 
             return;
         }
 
         if ($data['compare_at_price_minor'] !== null && $data['compare_at_price_minor'] < $data['regular_price_minor']) {
-            $this->addError('compare_at_price_minor', 'Compare-at price must be at least the regular price.');
+            $this->addError('compare_at_price', 'Compare-at price must be at least the regular price.');
 
             return;
         }
@@ -182,7 +188,7 @@ class Edit extends Component
         $data['attribute_values'] = $this->attribute_values;
         $mediaIds = $this->selectedMediaIds;
         if ($this->image) {
-            $mediaIds[] = $this->media->upload($this->image, 'products')->id;
+            $mediaIds[] = $this->media->upload($this->image, 'products', ImagePreset::Product)->id;
         }
         $data['media_ids'] = array_values(array_unique(array_map('intval', $mediaIds)));
         $this->product = $this->products->save($data, $this->product);
@@ -248,6 +254,27 @@ class Edit extends Component
                 'role' => $sortOrder === 0 ? 'main' : 'gallery',
             ]);
         }
+    }
+
+    private function formatPrice(int $minor): string
+    {
+        return number_format($minor / 100, 2, '.', '');
+    }
+
+    private function formatNullablePrice(?int $minor): ?string
+    {
+        return $minor === null ? null : $this->formatPrice($minor);
+    }
+
+    private function priceToMinor(?string $price): ?int
+    {
+        if ($price === null || trim($price) === '') {
+            return null;
+        }
+
+        [$whole, $fraction] = array_pad(explode('.', trim($price), 2), 2, '');
+
+        return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
     }
 
     public function render()

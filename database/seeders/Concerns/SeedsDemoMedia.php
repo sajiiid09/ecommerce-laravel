@@ -2,12 +2,17 @@
 
 namespace Database\Seeders\Concerns;
 
+use App\Enums\ImagePreset;
+use App\Traits\ImageHandler;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 trait SeedsDemoMedia
 {
+    use ImageHandler;
+
     /**
      * Copy an image from database/seeders/images to the public disk and
      * create/reuse the corresponding media_assets row.
@@ -17,6 +22,7 @@ trait SeedsDemoMedia
      */
     protected function seedLocalImage(
         string $relativeSourcePath,
+        ImagePreset $preset,
         ?string $targetPath = null
     ): ?array {
         $relativeSourcePath = ltrim(str_replace('\\', '/', $relativeSourcePath), '/');
@@ -34,35 +40,39 @@ trait SeedsDemoMedia
             return null;
         }
 
-        $targetPath ??= 'seeded/catalog/'.$relativeSourcePath;
-        $targetPath = ltrim(str_replace('\\', '/', $targetPath), '/');
+        $legacyPath = ltrim(str_replace('\\', '/', $targetPath ?? 'seeded/catalog/'.$relativeSourcePath), '/');
+        $targetPath = $this->webpTargetPath($legacyPath);
 
-        Storage::disk('public')->put($targetPath, file_get_contents($sourcePath));
+        try {
+            $processed = $this->processAndStoreImage($sourcePath, $targetPath, $preset, basename($relativeSourcePath));
+        } catch (Throwable $exception) {
+            $this->command?->warn("Seed image processing failed: {$relativeSourcePath} ({$exception->getMessage()})");
 
-        $imageInfo = @getimagesize($sourcePath);
-        $mimeType = $imageInfo['mime'] ?? $this->detectMimeType($sourcePath);
-        $width = $imageInfo[0] ?? null;
-        $height = $imageInfo[1] ?? null;
+            return null;
+        }
 
         $existing = DB::table('media_assets')
             ->where('disk', 'public')
-            ->where('path', $targetPath)
+            ->whereIn('path', array_values(array_unique([$targetPath, $legacyPath])))
             ->first();
 
         $payload = [
             'folder_id' => null,
-            'filename' => basename($targetPath),
-            'mime_type' => $mimeType,
-            'size' => filesize($sourcePath) ?: null,
-            'width' => $width,
-            'height' => $height,
+            'filename' => $processed['filename'],
+            'original_filename' => $processed['original_filename'],
+            'extension' => $processed['extension'],
+            'mime_type' => $processed['mime_type'],
+            'size' => $processed['size'],
+            'width' => $processed['width'],
+            'height' => $processed['height'],
+            'checksum' => $processed['checksum'],
             'updated_at' => now(),
         ];
 
         if ($existing) {
             DB::table('media_assets')
                 ->where('id', $existing->id)
-                ->update($payload);
+                ->update([...$payload, 'path' => $targetPath]);
 
             $id = (int) $existing->id;
         } else {
@@ -74,18 +84,21 @@ trait SeedsDemoMedia
             ]);
         }
 
+        if ($legacyPath !== $targetPath) {
+            Storage::disk('public')->delete($legacyPath);
+        }
+
         return [
             'id' => $id,
             'path' => $targetPath,
         ];
     }
 
-    private function detectMimeType(string $path): ?string
+    private function webpTargetPath(string $path): string
     {
-        if (function_exists('mime_content_type')) {
-            return mime_content_type($path) ?: null;
-        }
+        $directory = dirname($path);
+        $filename = pathinfo($path, PATHINFO_FILENAME).'.webp';
 
-        return null;
+        return ($directory === '.' ? '' : $directory.'/').$filename;
     }
 }

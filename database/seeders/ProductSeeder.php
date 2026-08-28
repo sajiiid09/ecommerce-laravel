@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ImagePreset;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Brand;
@@ -65,11 +66,14 @@ class ProductSeeder extends Seeder
     private function seedProducts(): void
     {
         foreach ($this->getProducts() as $data) {
+            $primaryCategorySlug = $data['primary_category'] ?? collect($data['categories'] ?? [])->last();
+
             $product = Product::updateOrCreate(
                 ['slug' => $data['slug']],
                 [
                     'name' => $data['name'],
                     'brand_id' => $this->brandCache[$data['brand']] ?? null,
+                    'primary_category_id' => $this->categoryCache[$primaryCategorySlug] ?? null,
                     'product_type' => $data['type'],
                     'short_description' => $data['short_description'] ?? null,
                     'status' => 'published',
@@ -90,14 +94,20 @@ class ProductSeeder extends Seeder
                 $this->createVariableProduct($product, $data);
             }
 
-            $this->syncProductImage($product, $data['image'] ?? null);
+            $this->syncProductImages(
+                $product,
+                $data['images'] ?? ($data['image'] ?? null),
+            );
         }
     }
 
     private function createSimpleVariant(Product $product, array $data): void
     {
         $priceMinor = $data['price'] * 100;
-        $oldPriceMinor = isset($data['old_price']) ? $data['old_price'] * 100 : null;
+        $hasDiscount = in_array('on-sale', $data['tags'] ?? [], true)
+            && isset($data['old_price'])
+            && $data['old_price'] > $data['price'];
+        $compareAtPriceMinor = $hasDiscount ? $data['old_price'] * 100 : null;
 
         $variant = ProductVariant::updateOrCreate(
             ['sku' => "STZ-{$product->id}"],
@@ -106,8 +116,8 @@ class ProductSeeder extends Seeder
                 'name' => $product->name,
                 'combination_key' => 'default',
                 'regular_price_minor' => $priceMinor,
-                'sale_price_minor' => $oldPriceMinor && $oldPriceMinor > $priceMinor ? $priceMinor : null,
-                'compare_at_price_minor' => $oldPriceMinor,
+                'sale_price_minor' => $hasDiscount ? $priceMinor : null,
+                'compare_at_price_minor' => $compareAtPriceMinor,
                 'is_active' => true,
                 'is_default' => true,
                 'sort_order' => 0,
@@ -232,31 +242,60 @@ class ProductSeeder extends Seeder
         }
     }
 
-    private function syncProductImage(Product $product, ?string $relativePath): void
+    private function syncProductImages(Product $product, string|array|null $relativePaths): void
     {
-        if (! $relativePath) {
+        $relativePaths = is_array($relativePaths) ? $relativePaths : [$relativePaths];
+        $relativePaths = array_values(array_filter($relativePaths));
+
+        if ($relativePaths === []) {
             return;
         }
 
-        $media = $this->seedLocalImage($relativePath);
+        $processedMedia = [];
 
-        if (! $media) {
-            return;
+        foreach ($relativePaths as $sortOrder => $relativePath) {
+            $media = $this->seedLocalImage($relativePath, ImagePreset::Product);
+
+            if (! $media) {
+                return;
+            }
+
+            $processedMedia[$sortOrder] = $media;
         }
 
-        ProductMedia::updateOrCreate(
-            [
-                'product_id' => $product->id,
-                'role' => 'primary',
-                'sort_order' => 0,
-            ],
-            [
-                'product_variant_id' => null,
-                'media_asset_id' => $media['id'],
-                'path' => $media['path'],
-                'alt_text' => $product->name,
-            ]
-        );
+        foreach ($processedMedia as $sortOrder => $media) {
+            ProductMedia::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'role' => $sortOrder === 0 ? 'primary' : 'gallery',
+                    'sort_order' => $sortOrder,
+                ],
+                [
+                    'product_variant_id' => null,
+                    'media_asset_id' => $media['id'],
+                    'path' => $media['path'],
+                    'alt_text' => $product->name,
+                ]
+            );
+        }
+
+        $desiredMediaKeys = collect($processedMedia)
+            ->keys()
+            ->map(fn (int $sortOrder): string => ($sortOrder === 0 ? 'primary' : 'gallery').':'.$sortOrder)
+            ->all();
+
+        ProductMedia::query()
+            ->where('product_id', $product->id)
+            ->whereNull('product_variant_id')
+            ->whereIn('role', ['primary', 'gallery'])
+            ->get()
+            ->each(function (ProductMedia $productMedia) use ($desiredMediaKeys): void {
+                $mediaKey = $productMedia->role.':'.$productMedia->sort_order;
+
+                if (! in_array($mediaKey, $desiredMediaKeys, true)) {
+                    $productMedia->delete();
+                }
+            });
     }
 
     private function getProducts(): array
@@ -268,7 +307,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'sony',
                 'type' => 'simple',
                 'price' => 12990,
-                'old_price' => 14990,
                 'stock' => 85,
                 'is_featured' => true,
                 'categories' => ['electronics', 'audio'],
@@ -296,7 +334,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'fresh',
                 'type' => 'simple',
                 'price' => 120,
-                'old_price' => 135,
                 'stock' => 200,
                 'is_featured' => true,
                 'categories' => ['groceries'],
@@ -310,7 +347,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'teer',
                 'type' => 'simple',
                 'price' => 650,
-                'old_price' => 690,
                 'stock' => 120,
                 'is_featured' => false,
                 'categories' => ['groceries'],
@@ -352,7 +388,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'xiaomi',
                 'type' => 'variable',
                 'price' => 20999,
-                'old_price' => 24999,
                 'stock' => 0,
                 'is_featured' => true,
                 'categories' => ['electronics', 'phones'],
@@ -392,20 +427,6 @@ class ProductSeeder extends Seeder
                 'tags' => ['on-sale'],
                 'attributes' => ['warranty' => '1-year', 'material' => 'steel'],
                 'image' => 'products/miyako-mjk-805-kettle.webp',
-            ],
-            [
-                'slug' => 'aarong-blue-cotton-waistcoat',
-                'name' => 'Aarong Blue Cotton Waistcoat',
-                'brand' => 'aarong',
-                'type' => 'simple',
-                'price' => 2777,
-                'old_price' => 3100,
-                'stock' => 75,
-                'is_featured' => false,
-                'categories' => ['fashion', 'mens-fashion'],
-                'tags' => ['premium'],
-                'attributes' => ['material' => 'cotton', 'color' => 'blue'],
-                'image' => 'products/aarong-blue-cotton-waistcoat.jpg',
             ],
             [
                 'slug' => 'samsung-galaxy-a15-5g',
@@ -455,7 +476,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'pran',
                 'type' => 'simple',
                 'price' => 335,
-                'old_price' => 360,
                 'stock' => 200,
                 'is_featured' => false,
                 'categories' => ['groceries'],
@@ -483,7 +503,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'sony',
                 'type' => 'simple',
                 'price' => 5990,
-                'old_price' => 6490,
                 'stock' => 70,
                 'is_featured' => false,
                 'categories' => ['electronics', 'audio'],
@@ -497,7 +516,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'sony',
                 'type' => 'simple',
                 'price' => 6490,
-                'old_price' => 6990,
                 'stock' => 55,
                 'is_featured' => true,
                 'categories' => ['electronics', 'audio'],
@@ -511,13 +529,12 @@ class ProductSeeder extends Seeder
                 'brand' => 'samsung',
                 'type' => 'simple',
                 'price' => 32999,
-                'old_price' => 35999,
                 'stock' => 48,
                 'is_featured' => true,
                 'categories' => ['electronics', 'phones'],
                 'tags' => ['new-arrival'],
                 'attributes' => ['warranty' => '1-year'],
-                'image' => 'products/samsung-galaxy-a25-5g.jpg',
+                'image' => 'products/samsung-galaxy-a25-5g.webp',
             ],
             [
                 'slug' => 'redmi-buds-5',
@@ -539,13 +556,12 @@ class ProductSeeder extends Seeder
                 'brand' => 'xiaomi',
                 'type' => 'simple',
                 'price' => 25999,
-                'old_price' => 28999,
                 'stock' => 52,
                 'is_featured' => true,
                 'categories' => ['electronics', 'phones'],
                 'tags' => ['new-arrival'],
                 'attributes' => ['warranty' => '1-year'],
-                'image' => 'products/redmi-note-14.jpg',
+                'image' => 'products/redmi-note-14.webp',
             ],
             [
                 'slug' => 'wiz-smart-plug',
@@ -553,7 +569,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'wiz',
                 'type' => 'simple',
                 'price' => 1890,
-                'old_price' => 2190,
                 'stock' => 110,
                 'is_featured' => false,
                 'categories' => ['electronics', 'home-living'],
@@ -567,7 +582,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'nivea',
                 'type' => 'simple',
                 'price' => 450,
-                'old_price' => 520,
                 'stock' => 130,
                 'is_featured' => false,
                 'categories' => ['beauty'],
@@ -581,7 +595,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'nivea',
                 'type' => 'simple',
                 'price' => 520,
-                'old_price' => 590,
                 'stock' => 145,
                 'is_featured' => false,
                 'categories' => ['beauty'],
@@ -609,7 +622,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'walton',
                 'type' => 'simple',
                 'price' => 3190,
-                'old_price' => 3490,
                 'stock' => 58,
                 'is_featured' => false,
                 'categories' => ['home-living'],
@@ -623,7 +635,6 @@ class ProductSeeder extends Seeder
                 'brand' => 'ikea',
                 'type' => 'simple',
                 'price' => 8990,
-                'old_price' => 9490,
                 'stock' => 32,
                 'is_featured' => true,
                 'categories' => ['home-living'],
@@ -632,26 +643,11 @@ class ProductSeeder extends Seeder
                 'image' => 'products/ikea-kallax-shelf-unit.jpg',
             ],
             [
-                'slug' => 'aarong-navy-cotton-panjabi',
-                'name' => 'Aarong Navy Blue Cotton Panjabi',
-                'brand' => 'aarong',
-                'type' => 'simple',
-                'price' => 2450,
-                'old_price' => 2750,
-                'stock' => 68,
-                'is_featured' => true,
-                'categories' => ['fashion', 'mens-fashion'],
-                'tags' => ['new-arrival', 'premium'],
-                'attributes' => ['material' => 'cotton', 'color' => 'blue'],
-                'image' => 'products/aarong-navy-cotton-panjabi.jpg',
-            ],
-            [
                 'slug' => 'apex-mens-sports-shoe',
                 'name' => 'Apex Men\'s Sports Shoe',
                 'brand' => 'apex',
                 'type' => 'simple',
                 'price' => 3290,
-                'old_price' => 3690,
                 'stock' => 82,
                 'is_featured' => false,
                 'categories' => ['fashion', 'mens-fashion'],
@@ -665,13 +661,12 @@ class ProductSeeder extends Seeder
                 'brand' => 'fresh',
                 'type' => 'simple',
                 'price' => 145,
-                'old_price' => 155,
                 'stock' => 190,
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['budget-friendly'],
                 'attributes' => ['weight' => '1kg'],
-                'image' => 'products/fresh-refined-sugar-1kg.jpg',
+                'image' => 'products/fresh-refined-sugar-1kg.webp',
             ],
             [
                 'slug' => 'pran-chanachur-300g',
@@ -679,13 +674,139 @@ class ProductSeeder extends Seeder
                 'brand' => 'pran',
                 'type' => 'simple',
                 'price' => 120,
-                'old_price' => 135,
                 'stock' => 170,
                 'is_featured' => false,
                 'categories' => ['groceries'],
                 'tags' => ['best-seller', 'budget-friendly'],
                 'attributes' => [],
-                'image' => 'products/pran-chanachur-300g.jpg',
+                'image' => 'products/pran-chanachur-300g.webp',
+            ],
+            [
+                'slug' => 'samsung-galaxy-buds-fe',
+                'name' => 'Samsung Galaxy Buds FE',
+                'brand' => 'samsung',
+                'type' => 'simple',
+                'price' => 8999,
+                'stock' => 74,
+                'is_featured' => true,
+                'categories' => ['electronics', 'audio'],
+                'tags' => ['best-seller'],
+                'attributes' => ['warranty' => '1-year', 'color' => 'white'],
+                'image' => 'products/samsung-galaxy-buds-fe.jpg',
+            ],
+            [
+                'slug' => 'sony-wf-c700n',
+                'name' => 'Sony WF-C700N Wireless Noise Cancelling Earbuds',
+                'brand' => 'sony',
+                'type' => 'simple',
+                'price' => 10990,
+                'stock' => 61,
+                'is_featured' => false,
+                'categories' => ['electronics', 'audio'],
+                'tags' => ['new-arrival'],
+                'attributes' => ['warranty' => '1-year', 'color' => 'black'],
+                'images' => [
+                    'products/sony-wf-c700n-2.jpg',
+                    'products/sony-wf-c700n-22.jpg',
+                    'products/sony-wf-c700n.jpg',
+                ],
+            ],
+            [
+                'slug' => 'redmi-watch-5-active',
+                'name' => 'Redmi Watch 5 Active',
+                'brand' => 'xiaomi',
+                'type' => 'simple',
+                'price' => 4999,
+                'old_price' => 5499,
+                'stock' => 88,
+                'is_featured' => true,
+                'categories' => ['electronics'],
+                'tags' => ['new-arrival', 'on-sale'],
+                'attributes' => ['warranty' => '1-year', 'color' => 'black'],
+                'image' => 'products/redmi-watch-5-active.jpg',
+            ],
+            [
+                'slug' => 'xiaomi-power-bank-4i-20000mah',
+                'name' => 'Xiaomi Power Bank 4i 20000mAh 33W',
+                'brand' => 'xiaomi',
+                'type' => 'simple',
+                'price' => 3999,
+                'stock' => 96,
+                'is_featured' => false,
+                'categories' => ['electronics'],
+                'tags' => ['best-seller'],
+                'attributes' => ['warranty' => '6-months', 'color' => 'black'],
+                'images' => [
+                    'products/xiaomi-power-bank-4i.jpg',
+                    'products/xiaomi-power-bank-4i-20000mah.jpg',
+                ],
+            ],
+            [
+                'slug' => 'nivea-men-creme-75ml',
+                'name' => 'NIVEA Men Creme 75ml',
+                'brand' => 'nivea',
+                'type' => 'simple',
+                'price' => 430,
+                'old_price' => 490,
+                'stock' => 138,
+                'is_featured' => false,
+                'categories' => ['beauty'],
+                'tags' => ['on-sale'],
+                'attributes' => [],
+                'image' => 'products/nivea-men-creme.jpg',
+            ],
+            [
+                'slug' => 'ikea-lack-side-table',
+                'name' => 'IKEA LACK Side Table 55x55cm',
+                'brand' => 'ikea',
+                'type' => 'simple',
+                'price' => 2490,
+                'stock' => 44,
+                'is_featured' => false,
+                'categories' => ['home-living'],
+                'tags' => ['budget-friendly'],
+                'attributes' => ['color' => 'white'],
+                'image' => 'products/ikea-lack-side-table.jpg',
+            ],
+            [
+                'slug' => 'apex-mens-black-leather-sandal-92212a60',
+                'name' => 'Apex Men\'s Black Leather Sandal 92212A60',
+                'brand' => 'apex',
+                'type' => 'simple',
+                'price' => 1290,
+                'stock' => 77,
+                'is_featured' => false,
+                'categories' => ['fashion', 'mens-fashion'],
+                'tags' => ['best-seller'],
+                'attributes' => ['color' => 'black'],
+                'image' => 'products/apex-mens-black-leather-sandal-92212a60.jpg',
+            ],
+            [
+                'slug' => 'fresh-mustard-oil-1l',
+                'name' => 'Fresh Mustard Oil 1L',
+                'brand' => 'fresh',
+                'type' => 'simple',
+                'price' => 330,
+                'stock' => 165,
+                'is_featured' => false,
+                'categories' => ['groceries'],
+                'tags' => ['best-seller'],
+                'attributes' => [],
+                'image' => 'products/fresh-mustard-oil.webp',
+            ],
+            [
+                'slug' => 'pran-frooto-mango-drink-1l',
+                'name' => 'PRAN Frooto Mango Fruit Drink 1L',
+                'brand' => 'pran',
+                'type' => 'simple',
+                'price' => 80,
+                'old_price' => 90,
+                'stock' => 190,
+                'is_featured' => false,
+                'categories' => ['groceries'],
+                'tags' => ['budget-friendly', 'on-sale'],
+                'attributes' => [],
+                'image' => 'products/pran-frooto-mango-drink-1l.jpg',
             ],
         ];
     }

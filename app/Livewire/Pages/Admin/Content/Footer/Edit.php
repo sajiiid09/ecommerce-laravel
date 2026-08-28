@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Content\Footer;
 
+use App\Enums\ImagePreset;
 use App\Models\MediaAsset;
 use App\Models\Menu;
 use App\Models\SiteSetting;
@@ -97,7 +98,7 @@ class Edit extends Component
             'footer_logo_file' => ['required', 'image', 'max:10240'],
         ]);
 
-        $asset = $this->media->upload($this->footer_logo_file, 'footer');
+        $asset = $this->media->upload($this->footer_logo_file, 'footer', ImagePreset::Logo);
         $this->logo_media_id = $asset->id;
         $this->reset('footer_logo_file');
         $this->dispatch('notify', content: 'Footer logo uploaded and selected. Save footer to apply it.', type: 'success');

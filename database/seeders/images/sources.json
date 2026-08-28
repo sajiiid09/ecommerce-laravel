@@ -61,12 +61,6 @@
       "image_url": "https://smartview.com.bd/uploads/products/1728299871.webp"
     },
     {
-      "path": "products/aarong-blue-cotton-waistcoat.jpg",
-      "name": "Aarong Blue Cotton Waistcoat",
-      "source_url": "https://www.aarong.com/catalog/product/view/id/1882495/s/blue-cotton-waistcoat-31h232007001/category/371/",
-      "image_url": "https://mcprod.aarong.com/media/catalog/product/1/2/1200000020245.jpg"
-    },
-    {
       "path": "products/samsung-galaxy-a15-5g.jpg",
       "name": "Samsung Galaxy A15 5G",
       "source_url": "https://www.samsung.com/us/smartphones/galaxy-a15-5g/",
@@ -109,7 +103,7 @@
       "image_url": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1000&q=85"
     },
     {
-      "path": "products/samsung-galaxy-a25-5g.jpg",
+      "path": "products/samsung-galaxy-a25-5g.webp",
       "name": "Samsung Galaxy A25 5G",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1000&q=85"
@@ -121,7 +115,7 @@
       "image_url": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=1000&q=85"
     },
     {
-      "path": "products/redmi-note-14.jpg",
+      "path": "products/redmi-note-14.webp",
       "name": "Redmi Note 14",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1000&q=85"
@@ -163,25 +157,19 @@
       "image_url": "https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&w=1000&q=85"
     },
     {
-      "path": "products/aarong-navy-cotton-panjabi.jpg",
-      "name": "Aarong Navy Blue Cotton Panjabi",
-      "source_url": "https://unsplash.com/",
-      "image_url": "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?auto=format&fit=crop&w=1000&q=85"
-    },
-    {
       "path": "products/apex-mens-sports-shoe.jpg",
       "name": "Apex Men's Sports Shoe",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1000&q=85"
     },
     {
-      "path": "products/fresh-refined-sugar-1kg.jpg",
+      "path": "products/fresh-refined-sugar-1kg.webp",
       "name": "Fresh Refined Sugar 1kg",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=1000&q=85"
     },
     {
-      "path": "products/pran-chanachur-300g.jpg",
+      "path": "products/pran-chanachur-300g.webp",
       "name": "PRAN Chanachur 300g",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85"
@@ -242,13 +230,6 @@
       "name": "Miyako",
       "source_url": "https://miyako.com.bd",
       "image_url": "https://www.google.com/s2/favicons?domain=miyako.com.bd&sz=256",
-      "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
-    },
-    {
-      "path": "brands/aarong.png",
-      "name": "Aarong",
-      "source_url": "https://aarong.com",
-      "image_url": "https://www.google.com/s2/favicons?domain=aarong.com&sz=256",
       "note": "Favicon/logo-style seed asset. Replace with an approved full logo if desired."
     },
     {

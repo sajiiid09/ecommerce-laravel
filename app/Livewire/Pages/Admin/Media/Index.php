@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Admin\Media;
 
+use App\Enums\ImagePreset;
 use App\Livewire\Concerns\WithAdminTable;
 use App\Models\MediaAsset;
 use App\Models\MediaFolder;
@@ -45,7 +46,7 @@ class Index extends Component
     {
         $this->validate(['file' => 'required|image|max:10240']);
         $this->authorize('create', MediaAsset::class);
-        $this->media->upload($this->file);
+        $this->media->upload($this->file, 'general', ImagePreset::General);
         $this->reset('file');
         session()->flash('status', 'Media uploaded successfully.');
     }
