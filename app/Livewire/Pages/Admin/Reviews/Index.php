@@ -14,11 +14,29 @@ class Index extends Component
 {
     use WithPagination;
 
-    public string $status = 'pending';
+    public string $status = 'all';
+
+    public int $perPage = 15;
+
+    public ?ProductReview $viewingReview = null;
 
     public function updatedStatus(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
+    public function view(int $reviewId): void
+    {
+        $review = ProductReview::with('product')->findOrFail($reviewId);
+        Gate::authorize('view', $review);
+
+        $this->viewingReview = $review;
+        $this->dispatch('open-modal', id: 'review-details');
     }
 
     public function approve(int $reviewId, ReviewService $reviews): void
@@ -44,6 +62,6 @@ class Index extends Component
 
     public function render()
     {
-        return view('livewire.pages.admin.reviews.index', ['reviews' => ProductReview::with('product')->when($this->status, fn ($query) => $query->where('status', $this->status))->latest()->paginate(15)]);
+        return view('livewire.pages.admin.reviews.index', ['reviews' => ProductReview::with('product')->when($this->status !== 'all', fn ($query) => $query->where('status', $this->status))->latest()->paginate($this->perPage)]);
     }
 }

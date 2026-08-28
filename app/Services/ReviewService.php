@@ -35,7 +35,8 @@ class ReviewService
             'rating' => (int) $data['rating'],
             'title' => $data['title'] ?? null,
             'review' => $data['review'],
-            'status' => 'pending',
+            'status' => 'approved',
+            'approved_at' => now(),
             'is_verified_purchase' => $orderItem !== null,
         ]);
 
@@ -81,11 +82,13 @@ class ReviewService
 
     public function approved(Product $product): Collection
     {
-        return $product->reviews()->where('status', 'approved')->latest('approved_at')->get();
+        return Cache::remember($this->cache->approvedReviews($product->id), 600, function () use ($product): Collection {
+            return $product->reviews()->where('status', 'approved')->latest('approved_at')->get();
+        });
     }
 
     private function forget(Product $product): void
     {
-        Cache::forget($this->cache->reviewSummary($product->id));
+        $this->cache->forgetProduct($product->slug, $product->id);
     }
 }
