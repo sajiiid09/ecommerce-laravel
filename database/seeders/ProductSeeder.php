@@ -67,6 +67,7 @@ class ProductSeeder extends Seeder
     {
         foreach ($this->getProducts() as $data) {
             $primaryCategorySlug = $data['primary_category'] ?? collect($data['categories'] ?? [])->last();
+            $description = $this->buildRichDescription($data['slug'], $data['name']);
 
             $product = Product::updateOrCreate(
                 ['slug' => $data['slug']],
@@ -75,7 +76,9 @@ class ProductSeeder extends Seeder
                     'brand_id' => $this->brandCache[$data['brand']] ?? null,
                     'primary_category_id' => $this->categoryCache[$primaryCategorySlug] ?? null,
                     'product_type' => $data['type'],
-                    'short_description' => $data['short_description'] ?? null,
+                    'short_description' => $data['short_description'] ?? $description['short'],
+                    'description_json' => $description['json'],
+                    'description_html' => $description['html'],
                     'status' => 'published',
                     'visibility' => 'visible',
                     'is_featured' => $data['is_featured'] ?? false,
@@ -296,6 +299,492 @@ class ProductSeeder extends Seeder
                     $productMedia->delete();
                 }
             });
+    }
+
+    /**
+     * Build both Tiptap JSON and display HTML from the same product copy.
+     *
+     * description_json remains the editable source of truth. The generated HTML
+     * intentionally uses only conservative structural tags that are expected to
+     * survive the same sanitizer used by the normal product editing flow.
+     */
+    private function buildRichDescription(string $slug, string $name): array
+    {
+        $copy = $this->productDescriptionCatalog()[$slug] ?? [
+            'short' => $name.' for dependable everyday use.',
+            'overview' => $name.' is selected for the StoreZ demo catalog as a practical everyday product.',
+            'highlights' => [
+                'Suitable for routine everyday use.',
+                'Product details are presented in a clean, easy-to-scan format.',
+                'Designed to fit naturally into the StoreZ demo shopping experience.',
+            ],
+            'note' => 'Review the product label, dimensions, compatibility or care instructions before purchase where applicable.',
+        ];
+
+        $json = [
+            'type' => 'doc',
+            'content' => [
+                $this->headingNode(2, 'Overview'),
+                [
+                    'type' => 'paragraph',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'marks' => [['type' => 'bold']],
+                            'text' => $name,
+                        ],
+                        [
+                            'type' => 'text',
+                            'text' => ' — '.$copy['overview'],
+                        ],
+                    ],
+                ],
+                $this->headingNode(3, 'Highlights'),
+                [
+                    'type' => 'bulletList',
+                    'content' => array_map(
+                        fn (string $item): array => [
+                            'type' => 'listItem',
+                            'content' => [[
+                                'type' => 'paragraph',
+                                'content' => [[
+                                    'type' => 'text',
+                                    'text' => $item,
+                                ]],
+                            ]],
+                        ],
+                        $copy['highlights'],
+                    ),
+                ],
+                $this->headingNode(3, 'Good to know'),
+                $this->paragraphNode($copy['note']),
+            ],
+        ];
+
+        return [
+            'short' => $copy['short'],
+            'json' => $json,
+            'html' => $this->descriptionHtml($name, $copy),
+        ];
+    }
+
+    private function headingNode(int $level, string $text): array
+    {
+        return [
+            'type' => 'heading',
+            'attrs' => ['level' => $level],
+            'content' => [[
+                'type' => 'text',
+                'text' => $text,
+            ]],
+        ];
+    }
+
+    private function paragraphNode(string $text): array
+    {
+        return [
+            'type' => 'paragraph',
+            'content' => [[
+                'type' => 'text',
+                'text' => $text,
+            ]],
+        ];
+    }
+
+    private function descriptionHtml(string $name, array $copy): string
+    {
+        $escape = fn (string $value): string => htmlspecialchars(
+            $value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8',
+        );
+
+        $items = collect($copy['highlights'])
+            ->map(fn (string $item): string => '<li>'.$escape($item).'</li>')
+            ->implode('');
+
+        return '<h2>Overview</h2>'
+            .'<p><strong>'.$escape($name).'</strong> — '.$escape($copy['overview']).'</p>'
+            .'<h3>Highlights</h3>'
+            .'<ul>'.$items.'</ul>'
+            .'<h3>Good to know</h3>'
+            .'<p>'.$escape($copy['note']).'</p>';
+    }
+
+    private function productDescriptionCatalog(): array
+    {
+        return [
+            'sony-wh-ch720n' => [
+                'short' => 'Lightweight wireless noise-cancelling headphones designed for comfortable everyday listening, calls and commuting.',
+                'overview' => 'Sony WH-CH720N combines wireless convenience with active noise cancellation in a lightweight over-ear design suited to music, calls and long listening sessions.',
+                'highlights' => [
+                    'Noise-cancelling over-ear design helps reduce everyday background distractions.',
+                    'Lightweight fit is practical for commuting, study sessions and office use.',
+                    'Wireless connectivity keeps daily listening simple across compatible devices.',
+                ],
+                'note' => 'For the best comfort and sound, adjust the headband so the earcups sit evenly around your ears. Actual battery life and noise reduction vary with volume, settings and environment.',
+            ],
+            'wiz-a60-e27-smart-bulb' => [
+                'short' => 'A connected E27 LED bulb for app-controlled lighting, schedules and flexible everyday ambience.',
+                'overview' => 'WiZ A60 E27 Smart LED Bulb is an easy way to add connected lighting to a compatible lamp or fixture without replacing the whole fitting.',
+                'highlights' => [
+                    'Control compatible lighting functions from the WiZ app.',
+                    'Useful for schedules, routines and changing the room ambience through the day.',
+                    'Standard E27 format makes it suitable for many common household fittings.',
+                ],
+                'note' => 'Check that your lamp uses an E27 socket and supports the bulb size before ordering. Smart features depend on your home network and compatible app setup.',
+            ],
+            'fresh-atta-2kg' => [
+                'short' => 'A practical 2kg pack of atta for everyday roti, chapati and home cooking.',
+                'overview' => 'Fresh Atta 2kg is a convenient pantry staple for households that prepare roti, chapati and other wheat-based dishes regularly.',
+                'highlights' => [
+                    '2kg pack is easy to store and suitable for routine household use.',
+                    'Useful for soft flatbreads and a range of everyday recipes.',
+                    'Sealed retail packaging helps keep the flour protected before opening.',
+                ],
+                'note' => 'After opening, transfer the flour to a clean airtight container and store it in a cool, dry place away from moisture.',
+            ],
+            'teer-nazirshail-rice-5kg' => [
+                'short' => 'A 5kg pack of Nazirshail rice for aromatic everyday meals and traditional Bangladeshi dishes.',
+                'overview' => 'Teer Nazirshail Rice 5kg is suited to families looking for a fragrant rice option for regular meals, pulao-style dishes and special occasions.',
+                'highlights' => [
+                    'Nazirshail-style rice is valued for its familiar aroma and fine grain.',
+                    '5kg pack is practical for family kitchens.',
+                    'Works well with curries, vegetables, fish and meat dishes.',
+                ],
+                'note' => 'Rinse before cooking and adjust the water ratio to your preferred grain softness. Store the opened rice in a dry, covered container.',
+            ],
+            'fresh-soyabean-oil-2l' => [
+                'short' => 'A 2L bottle of soybean oil for frying, sautéing and everyday home cooking.',
+                'overview' => 'Fresh Soyabean Oil 2L provides a convenient everyday cooking-oil size for family kitchens and routine meal preparation.',
+                'highlights' => [
+                    'Suitable for common cooking methods including frying and sautéing.',
+                    '2L bottle balances household capacity with manageable storage.',
+                    'Sealed bottle format helps make pantry handling straightforward.',
+                ],
+                'note' => 'Keep the bottle capped and store it away from direct sunlight and excessive heat. Follow the label guidance for storage and best-before information.',
+            ],
+            'orix-crystal-detergent-powder-2kg' => [
+                'short' => 'A family-size 2kg detergent powder for routine washing and everyday laundry care.',
+                'overview' => 'Orix Crystal Detergent Powder 2kg is intended for regular household laundry, giving you a larger pack for frequent washing.',
+                'highlights' => [
+                    '2kg pack is convenient for households with recurring laundry loads.',
+                    'Suitable for everyday garments and general washing routines.',
+                    'Powder format makes it easy to measure the amount needed for each load.',
+                ],
+                'note' => 'Use the amount recommended on the package and follow garment care labels. Keep detergent dry, sealed and out of reach of children.',
+            ],
+            'redmi-note-13' => [
+                'short' => 'A versatile Redmi smartphone with storage options for everyday apps, media, photography and communication.',
+                'overview' => 'Redmi Note 13 is a practical all-round smartphone for users who want a modern display experience, dependable daily performance and a choice of storage configurations.',
+                'highlights' => [
+                    'Available in seeded 6/128GB and 8/256GB configurations.',
+                    'Well suited to messaging, social media, streaming and everyday photography.',
+                    'Large-screen smartphone format is useful for reading, video and general productivity.',
+                ],
+                'note' => 'Choose the storage variant that best matches how many apps, photos and videos you keep locally. Network support, battery life and camera results vary by usage and environment.',
+            ],
+            'nivea-soft-300ml' => [
+                'short' => 'A light 300ml moisturizer for everyday face, hand and body care.',
+                'overview' => 'NIVEA Soft Light Moisturizer 300ml is a versatile daily moisturizer with a lighter texture for regular skin-care routines.',
+                'highlights' => [
+                    'Large 300ml format is convenient for shared or frequent use.',
+                    'Suitable for moisturizing common dry areas such as hands, arms and face depending on your skin routine.',
+                    'Soft cream texture spreads easily, so a small amount can cover a wider area.',
+                ],
+                'note' => 'Skin needs differ from person to person. Patch test if you are sensitive to fragranced skin-care products and discontinue use if irritation occurs.',
+            ],
+            'miyako-mjk-805-kettle' => [
+                'short' => 'A 1.8L electric kettle with a steel body for quick everyday hot-water preparation.',
+                'overview' => 'Miyako MJK-805 Electric Kettle 1.8L is a straightforward countertop appliance for preparing hot water for tea, coffee and quick kitchen tasks.',
+                'highlights' => [
+                    '1.8L capacity is practical for preparing several cups at once.',
+                    'Steel construction gives the kettle a simple, durable kitchen look.',
+                    'Electric heating is convenient when you need hot water without using the stove.',
+                ],
+                'note' => 'The kettle body can become hot during use. Always handle it by the designated handle, keep the electrical base dry and follow the manufacturer safety instructions.',
+            ],
+            'samsung-galaxy-a15-5g' => [
+                'short' => 'A Samsung 5G smartphone for everyday communication, media, apps and mobile productivity.',
+                'overview' => 'Samsung Galaxy A15 5G is positioned as an accessible everyday smartphone for users who want Samsung software, 5G connectivity and a modern large-screen experience.',
+                'highlights' => [
+                    '5G-capable model for compatible networks and plans.',
+                    'Suitable for calls, messaging, streaming, navigation and common mobile apps.',
+                    'Samsung interface provides a familiar Android experience for Galaxy users.',
+                ],
+                'note' => '5G availability depends on your carrier and location. Real-world battery life, charging speed and camera performance depend on usage conditions.',
+            ],
+            'walton-wcw-comc70-cookware-set' => [
+                'short' => 'A coordinated 7-in-1 cookware combo for everyday family cooking and kitchen setup.',
+                'overview' => 'Walton WCW-COMC70 Cookware 7-in-1 Combo brings several matching cookware pieces together in one practical set for routine meal preparation.',
+                'highlights' => [
+                    'Multiple cookware sizes help cover different recipes and portion sizes.',
+                    'Matching pieces create a consistent kitchen setup.',
+                    'Useful for new kitchens or replacing several everyday cookware items together.',
+                ],
+                'note' => 'Use utensils and heat levels appropriate for the cooking surface. Allow cookware to cool before washing and follow the care guidance supplied with the set.',
+            ],
+            'apex-95910a47-casual-shoe' => [
+                'short' => 'A casual Apex shoe designed for comfortable everyday wear, commuting and easy maintenance.',
+                'overview' => 'Apex Men\'s Washable Casual Shoe 95910A47 is a practical everyday pair for users who want a simple casual profile that works with regular outfits.',
+                'highlights' => [
+                    'Casual styling suits commuting, errands and relaxed daily wear.',
+                    'Washable design makes routine cleaning more convenient.',
+                    'Light everyday silhouette pairs easily with jeans, chinos and casual trousers.',
+                ],
+                'note' => 'Use the Apex size guide before ordering. Allow shoes to air-dry naturally after cleaning and avoid strong direct heat.',
+            ],
+            'mr-noodles-magic-masala-16-pack' => [
+                'short' => 'A family-size multipack of Magic Masala instant noodles for quick snacks and easy meals.',
+                'overview' => 'Mr Noodles Magic Masala 16 Pack is a convenient pantry option when you want several individual noodle portions ready for quick preparation.',
+                'highlights' => [
+                    '16-pack format is practical for families or stocking the pantry.',
+                    'Quick preparation makes it useful for busy evenings and simple snacks.',
+                    'Masala seasoning provides the familiar savory flavor associated with the range.',
+                ],
+                'note' => 'Follow the preparation instructions printed on the pack. You can add egg, vegetables or other ingredients to make a more complete meal.',
+            ],
+            'ikea-taernaby-table-lamp' => [
+                'short' => 'A compact vintage-inspired table lamp for warm ambient lighting on desks, shelves and bedside tables.',
+                'overview' => 'IKEA TÄRNABY Table Lamp is designed as an atmospheric accent light, combining a compact footprint with a distinctive traditional-lantern-inspired appearance.',
+                'highlights' => [
+                    'Works well as bedside, shelf or corner accent lighting.',
+                    'Decorative form adds character even when the lamp is switched off.',
+                    'Best suited to warm ambient light rather than strong room-wide illumination.',
+                ],
+                'note' => 'Choose a compatible bulb and confirm local electrical requirements. Final brightness and warmth depend heavily on the bulb used.',
+            ],
+            'sony-wh-ch520' => [
+                'short' => 'Lightweight wireless on-ear headphones for music, calls, study and everyday listening.',
+                'overview' => 'Sony WH-CH520 Wireless Headphones focus on simple cable-free listening in a compact on-ear design that is easy to use throughout the day.',
+                'highlights' => [
+                    'Lightweight on-ear format is convenient for work, study and travel.',
+                    'Wireless connectivity reduces cable clutter during everyday listening.',
+                    'Suitable for music, podcasts, online classes and voice calls.',
+                ],
+                'note' => 'This model is best for users who prioritize lightweight wireless listening rather than active noise cancellation. Comfort will vary with head and ear shape.',
+            ],
+            'sony-srs-xb100' => [
+                'short' => 'A compact portable Bluetooth speaker for personal listening, small rooms and travel.',
+                'overview' => 'Sony SRS-XB100 Portable Bluetooth Speaker packs wireless audio into a small carry-friendly format for desks, trips and casual gatherings.',
+                'highlights' => [
+                    'Compact body is easy to move between rooms or take on the go.',
+                    'Bluetooth playback works with compatible phones, tablets and computers.',
+                    'Useful for podcasts, background music and casual listening where a full-size speaker is unnecessary.',
+                ],
+                'note' => 'A compact speaker cannot deliver the same scale as a large home speaker. Keep expectations focused on portability, convenience and near-field listening.',
+            ],
+            'samsung-galaxy-a25-5g' => [
+                'short' => 'A mid-range Samsung 5G smartphone for streaming, photography, communication and daily apps.',
+                'overview' => 'Samsung Galaxy A25 5G offers a balanced Galaxy experience for users who want a modern smartphone with 5G connectivity and enough capability for everyday work and entertainment.',
+                'highlights' => [
+                    '5G connectivity for supported carriers and coverage areas.',
+                    'Well suited to video, social media, navigation and routine mobile productivity.',
+                    'Galaxy software experience is familiar to existing Samsung users.',
+                ],
+                'note' => 'Actual network speed, battery endurance and camera output depend on signal quality, app usage, brightness and other settings.',
+            ],
+            'redmi-buds-5' => [
+                'short' => 'Compact Redmi true wireless earbuds for everyday music, calls and commuting.',
+                'overview' => 'Redmi Buds 5 provides a cable-free earbud option for users who want pocketable audio for daily travel, work and casual listening.',
+                'highlights' => [
+                    'True wireless design keeps the setup compact and portable.',
+                    'Charging case makes it easy to store the earbuds between listening sessions.',
+                    'Useful for music, podcasts, calls and commuting.',
+                ],
+                'note' => 'Earbud fit has a major effect on comfort and perceived sound. Try the supplied ear-tip sizes where available and keep the charging contacts clean.',
+            ],
+            'redmi-note-14' => [
+                'short' => 'A modern Redmi Note smartphone aimed at everyday media, communication, apps and photography.',
+                'overview' => 'Redmi Note 14 is a practical daily smartphone for users who want a large-screen Redmi experience with room for social apps, media and routine productivity.',
+                'highlights' => [
+                    'Suitable for messaging, streaming, navigation and everyday photography.',
+                    'Large-screen format makes reading and video viewing comfortable.',
+                    'Designed as an all-round device rather than a single-purpose specialist phone.',
+                ],
+                'note' => 'Performance varies by regional configuration and software version. Check the exact RAM, storage, network and charger details for the unit you are purchasing.',
+            ],
+            'wiz-smart-plug' => [
+                'short' => 'A WiZ-connected smart plug for app-based control, schedules and simple home automation.',
+                'overview' => 'WiZ Smart Plug lets you add connected on/off control to a compatible appliance without replacing the appliance itself.',
+                'highlights' => [
+                    'Useful for lamps and other compatible plug-in devices.',
+                    'Schedules can automate simple daily routines.',
+                    'Remote app control adds convenience when the plug is connected to your home network.',
+                ],
+                'note' => 'Check the plug type and electrical load rating before use. Do not connect appliances that exceed the product rating or are unsuitable for unattended switching.',
+            ],
+            'nivea-men-deep-face-wash' => [
+                'short' => 'A 100g men’s face wash for routine cleansing after commuting, work and daily activity.',
+                'overview' => 'NIVEA Men Deep Face Wash 100g is intended as a straightforward cleansing step for men who want to remove everyday oil, sweat and surface dirt.',
+                'highlights' => [
+                    'Convenient tube format for bathroom or travel use.',
+                    'Suitable for a simple morning or evening cleansing routine.',
+                    'A small amount can be worked with water before rinsing thoroughly.',
+                ],
+                'note' => 'Avoid the eye area and discontinue use if irritation develops. If your skin feels dry after cleansing, follow with a moisturizer suited to your skin type.',
+            ],
+            'nivea-creme-150ml' => [
+                'short' => 'A classic rich moisturizing cream in a 150ml format for dry areas and everyday skin care.',
+                'overview' => 'NIVEA Creme 150ml is a richer moisturizer suited to users who prefer a more substantial cream for hands, elbows and other dry areas.',
+                'highlights' => [
+                    'Rich cream texture is useful where lighter lotions do not feel sufficient.',
+                    '150ml format is convenient for regular home use.',
+                    'Works well as part of a simple dry-skin care routine.',
+                ],
+                'note' => 'Because the texture is rich, start with a small amount and add more as needed. Patch test first if you have sensitive skin.',
+            ],
+            'miyako-blender-bl-152' => [
+                'short' => 'A countertop blender for smoothies, chutney, sauces and routine kitchen preparation.',
+                'overview' => 'Miyako BL-152 Blender is a practical small appliance for everyday blending jobs where hand mixing would be slower or less consistent.',
+                'highlights' => [
+                    'Useful for shakes, smoothies, sauces and similar kitchen tasks.',
+                    'Simple controls keep everyday operation straightforward.',
+                    'Countertop format is convenient for frequent home preparation.',
+                ],
+                'note' => 'Do not overfill the jar, and avoid blending ingredients that are too hard or too hot unless the manufacturer specifically allows it. Unplug before cleaning.',
+            ],
+            'walton-rice-cooker-wrc-sgae28' => [
+                'short' => 'An electric Walton rice cooker for convenient everyday rice preparation and keep-warm use.',
+                'overview' => 'Walton WRC-SGAE28 Rice Cooker simplifies routine rice preparation so you can focus on the rest of the meal while the cooker handles the main cooking cycle.',
+                'highlights' => [
+                    'Electric cooking removes the need to monitor a stovetop pot continuously.',
+                    'Useful for family meals and repeated weekly cooking.',
+                    'Keep-warm functionality is convenient when serving times vary.',
+                ],
+                'note' => 'Use the supplied measuring guidance and avoid metal utensils that may scratch the inner pot. Keep the heating plate and exterior electrical parts dry.',
+            ],
+            'ikea-kallax-shelf-unit' => [
+                'short' => 'A versatile IKEA cube-style shelf unit for books, display pieces, baskets and everyday organization.',
+                'overview' => 'IKEA KALLAX Shelf Unit is built around simple square compartments, making it easy to use for open display or combine with compatible boxes and inserts.',
+                'highlights' => [
+                    'Flexible cube layout works for books, décor and storage baskets.',
+                    'Clean design fits bedrooms, living rooms and work areas.',
+                    'Open compartments make frequently used items easy to reach.',
+                ],
+                'note' => 'Follow IKEA assembly and wall-anchoring guidance for your exact configuration. Load limits depend on placement, assembly and how the unit is secured.',
+            ],
+            'apex-mens-sports-shoe' => [
+                'short' => 'An Apex sports-style shoe for walking, commuting and light everyday activity.',
+                'overview' => 'Apex Men\'s Sports Shoe is a versatile casual athletic-style option for daily wear, walking and light activity rather than specialized performance training.',
+                'highlights' => [
+                    'Sport-inspired shape pairs well with everyday casual clothing.',
+                    'Suitable for commuting, walking and routine errands.',
+                    'Black color is practical and easy to coordinate with different outfits.',
+                ],
+                'note' => 'Choose the correct size and allow a short break-in period if needed. For serious running or sport-specific training, use footwear designed for that activity.',
+            ],
+            'fresh-refined-sugar-1kg' => [
+                'short' => 'A 1kg pack of refined sugar for tea, desserts, baking and routine household use.',
+                'overview' => 'Fresh Refined Sugar 1kg is a straightforward pantry staple for sweetening drinks, baking and everyday recipes.',
+                'highlights' => [
+                    '1kg size is easy to store and suitable for normal household use.',
+                    'Useful for tea, coffee, desserts and home baking.',
+                    'Sealed retail packaging protects the sugar before opening.',
+                ],
+                'note' => 'Keep sugar in a cool, dry place. After opening, an airtight container helps prevent moisture and clumping.',
+            ],
+            'pran-chanachur-300g' => [
+                'short' => 'A 300g pack of crunchy PRAN chanachur for tea-time snacks, sharing and casual entertaining.',
+                'overview' => 'PRAN Chanachur 300g is a ready-to-eat savory snack that works well for tea-time, small gatherings and keeping in the pantry for quick serving.',
+                'highlights' => [
+                    '300g pack is convenient for sharing.',
+                    'Crunchy mixed snack format pairs naturally with tea and soft drinks.',
+                    'Ready to serve without preparation.',
+                ],
+                'note' => 'Seal the packet tightly after opening or transfer the contents to an airtight container to help maintain crispness.',
+            ],
+            'samsung-galaxy-buds-fe' => [
+                'short' => 'Compact Samsung true wireless earbuds for music, calls and everyday Galaxy-device use.',
+                'overview' => 'Samsung Galaxy Buds FE is a compact true wireless option for users who want easy portable audio for commuting, calls and daily listening.',
+                'highlights' => [
+                    'Cord-free earbud format is convenient for travel and everyday carry.',
+                    'Charging case keeps the earbuds protected between sessions.',
+                    'Pairs naturally with compatible Galaxy devices while also serving as general Bluetooth earbuds.',
+                ],
+                'note' => 'Comfort and sound depend heavily on ear-tip fit. Keep the earbuds and case contacts clean, and confirm feature compatibility with your specific phone.',
+            ],
+            'sony-wf-c700n' => [
+                'short' => 'Compact Sony wireless noise-cancelling earbuds for commuting, calls and everyday listening.',
+                'overview' => 'Sony WF-C700N Wireless Noise Cancelling Earbuds combine a pocketable true wireless format with noise-reduction features aimed at everyday travel and personal listening.',
+                'highlights' => [
+                    'Noise-cancelling design can help reduce common background distractions.',
+                    'Compact charging case makes the set easy to carry.',
+                    'Suitable for music, spoken audio and calls throughout the day.',
+                ],
+                'note' => 'Noise cancellation is most effective with a secure ear-tip fit. Actual battery life and call quality vary with settings, signal conditions and environment.',
+            ],
+            'redmi-watch-5-active' => [
+                'short' => 'A Redmi smartwatch for notifications, activity tracking and convenient everyday wrist access.',
+                'overview' => 'Redmi Watch 5 Active is designed for users who want a larger wrist display for notifications, basic activity tracking and everyday convenience without constantly reaching for a phone.',
+                'highlights' => [
+                    'Large wearable display makes notifications and basic information easy to glance at.',
+                    'Useful for daily steps, simple workouts and routine activity awareness.',
+                    'Light smartwatch format works for everyday wear.',
+                ],
+                'note' => 'Fitness and health readings are intended for general wellness tracking, not medical diagnosis. Feature availability may depend on the paired phone and app version.',
+            ],
+            'xiaomi-power-bank-4i-20000mah' => [
+                'short' => 'A 20,000mAh Xiaomi power bank with 33W-class charging for travel and long days away from an outlet.',
+                'overview' => 'Xiaomi Power Bank 4i 20000mAh 33W provides a large portable battery reserve for phones and other compatible USB-powered devices when wall charging is inconvenient.',
+                'highlights' => [
+                    '20,000mAh rated capacity is useful for travel and extended days outside.',
+                    '33W-class charging can support faster charging with compatible devices and cables.',
+                    'Portable design lets you top up phones and accessories away from a wall outlet.',
+                ],
+                'note' => 'The power bank is heavier than low-capacity models, and usable output is lower than the raw cell rating because of conversion losses. Use compatible cables and chargers.',
+            ],
+            'nivea-men-creme-75ml' => [
+                'short' => 'A compact 75ml men’s moisturizing cream for face, hands and dry areas.',
+                'overview' => 'NIVEA Men Creme 75ml offers a compact moisturizer for men who want one small product for everyday face, hand and body care.',
+                'highlights' => [
+                    '75ml size is convenient for a desk, gym bag or travel kit.',
+                    'Useful for hands, face and common dry areas depending on your skin needs.',
+                    'Cream format is easy to apply in small amounts.',
+                ],
+                'note' => 'Apply a small amount first, especially in warm or humid weather. Stop using the product if you notice persistent irritation.',
+            ],
+            'ikea-lack-side-table' => [
+                'short' => 'A compact 55x55cm IKEA LACK side table for small rooms, bedside use and simple everyday surfaces.',
+                'overview' => 'IKEA LACK Side Table 55x55cm is a lightweight, minimal table that works well where you need a straightforward surface without visually filling the room.',
+                'highlights' => [
+                    '55x55cm footprint is useful in smaller living areas.',
+                    'Simple design works beside sofas, beds and reading chairs.',
+                    'Lightweight format makes occasional repositioning easy.',
+                ],
+                'note' => 'Follow the assembly instructions carefully and stay within the stated load limit. Use coasters or mats to help protect the surface from heat, moisture and scratches.',
+            ],
+            'apex-mens-black-leather-sandal-92212a60' => [
+                'short' => 'A black Apex men’s leather sandal for relaxed everyday wear and warm-weather comfort.',
+                'overview' => 'Apex Men\'s Black Leather Sandal 92212A60 is a simple everyday sandal designed for casual use, family visits and warm-weather routines.',
+                'highlights' => [
+                    'Black finish pairs easily with casual and traditional clothing.',
+                    'Open sandal design is convenient in warm weather.',
+                    'Leather upper gives the pair a more refined everyday appearance.',
+                ],
+                'note' => 'Check the Apex size guide before ordering. Keep leather away from prolonged soaking and allow the sandals to dry naturally if they become damp.',
+            ],
+            'fresh-mustard-oil-1l' => [
+                'short' => 'A 1L bottle of mustard oil for traditional cooking, marinades and everyday Bangladeshi recipes.',
+                'overview' => 'Fresh Mustard Oil 1L is a pantry option for cooks who want the distinctive mustard-oil character used in many traditional dishes.',
+                'highlights' => [
+                    '1L size is convenient for regular household cooking.',
+                    'Distinctive aroma works well in a variety of traditional recipes.',
+                    'Bottle format is easy to store alongside other cooking oils.',
+                ],
+                'note' => 'Mustard oil has a strong flavor, so adjust the amount to your recipe and preference. Store the bottle sealed, away from direct sunlight and excessive heat.',
+            ],
+            'pran-frooto-mango-drink-1l' => [
+                'short' => 'A 1L mango fruit drink for chilled serving at home, meals and casual gatherings.',
+                'overview' => 'PRAN Frooto Mango Fruit Drink 1L is a ready-to-serve beverage option for families and guests who enjoy a sweet mango-flavored drink.',
+                'highlights' => [
+                    '1L pack is convenient for sharing.',
+                    'Ready to serve chilled with meals or snacks.',
+                    'Mango flavor makes it an easy crowd-friendly beverage choice.',
+                ],
+                'note' => 'Shake if directed on the package, refrigerate after opening and follow the label guidance for storage and consumption.',
+            ],
+        ];
     }
 
     private function getProducts(): array
