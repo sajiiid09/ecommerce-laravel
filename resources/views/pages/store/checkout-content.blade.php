@@ -52,18 +52,18 @@
 
                         @if (! auth()->check() || $selectedAddressId === null)
                             <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                                @foreach ([['customer_name', 'Full name', 'text'], ['customer_email', 'Email', 'email'], ['customer_phone', 'Phone', 'text'], ['city', 'City / Area', 'text'], ['district', 'District', 'text'], ['postal_code', 'Postal code', 'text']] as [$field, $label, $type])
+                                @foreach ([['customer_name', 'Full name', 'text', true], ['customer_email', 'Email', 'email', false], ['customer_phone', 'Phone', 'text', true], ['city', 'City / Area', 'text', true], ['district', 'District', 'text', true], ['postal_code', 'Postal code', 'text', false]] as [$field, $label, $type, $isRequired])
                                     <label class="text-sm font-semibold text-store-ink">
-                                        {{ $label }}
-                                        <input type="{{ $type }}" wire:model="{{ $field }}" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
+                                        {{ $label }}@if ($isRequired) <span class="text-red-600" aria-hidden="true">*</span>@endif
+                                        <input type="{{ $type }}" wire:model="{{ $field }}" @if ($isRequired) required @endif class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
                                         @error($field)
                                             <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
                                         @enderror
                                     </label>
                                 @endforeach
                                 <label class="text-sm font-semibold text-store-ink sm:col-span-2">
-                                    Address
-                                    <input wire:model="address_line" class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
+                                    Address <span class="text-red-600" aria-hidden="true">*</span>
+                                    <input wire:model="address_line" required class="mt-2 h-11 w-full rounded-control border border-store-border px-3">
                                     @error('address_line')
                                         <span class="mt-1 block text-xs text-red-600">{{ $message }}</span>
                                     @enderror
@@ -142,7 +142,7 @@
                 <h2 class="text-lg font-extrabold text-store-ink">Order summary</h2>
                 <div class="mt-4 space-y-3 border-b border-store-border pb-4">
                     @foreach ($items as $item)
-                        <div wire:key="checkout-item-{{ $item['id'] }}" class="flex justify-between gap-3 text-sm"><span class="text-store-muted">{{ $item['name'] }} × {{ $item['quantity'] }}</span><span class="font-semibold text-store-ink">&#2547;{{ number_format($item['line_total'] / 100, 2) }}</span></div>
+                        <div wire:key="checkout-item-{{ $item['id'] }}" class="flex items-center justify-between gap-3 text-sm"><div class="flex min-w-0 items-center gap-3"><img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" loading="lazy" decoding="async" class="size-12 shrink-0 rounded-control border border-store-border object-contain"><span class="min-w-0 text-store-muted">{{ $item['name'] }} × {{ $item['quantity'] }}</span></div><span class="shrink-0 font-semibold text-store-ink">&#2547;{{ number_format($item['line_total'] / 100, 2) }}</span></div>
                     @endforeach
                 </div>
                 <form wire:submit="applyCoupon" class="mt-4">

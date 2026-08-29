@@ -12,11 +12,12 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class OrderSuccess extends Component
 {
-    public ?string $order = null;
+    public ?string $orderNumber = null;
 
     public function mount(?string $order = null): void
     {
-        $this->order = $order ?? session('last_order_number');
+        $queryOrder = request()->query('order');
+        $this->orderNumber = $order ?? (is_string($queryOrder) ? $queryOrder : null) ?? session('last_order_number');
     }
 
     public function render()
@@ -26,7 +27,7 @@ class OrderSuccess extends Component
         }
 
         try {
-            $order = Order::query()->with(['items', 'shippingAddress', 'payment'])->where('order_number', $this->order)->firstOrFail();
+            $order = Order::query()->with(['items', 'shippingAddress', 'payment'])->where('order_number', $this->orderNumber)->firstOrFail();
         } catch (QueryException $exception) {
             if (str_contains($exception->getMessage(), 'no such table')) {
                 return $this->demoView();

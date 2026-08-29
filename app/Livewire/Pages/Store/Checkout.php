@@ -50,6 +50,12 @@ class Checkout extends Component
 
     public function mount(): void
     {
+        if (Schema::hasTable('carts') && app(CartService::class)->current()->items->isEmpty()) {
+            $this->redirectRoute('store.home');
+
+            return;
+        }
+
         $user = auth()->user();
         $this->checkout_token = (string) Str::uuid();
         $this->customer_name = (string) ($user?->name ?? '');
@@ -136,11 +142,11 @@ class Checkout extends Component
 
         $this->validate([
             'customer_name' => ['required', 'string', 'max:255'],
-            'customer_email' => ['required', 'email', 'max:255'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:30'],
             'address_line' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:100'],
-            'district' => ['nullable', 'string', 'max:100'],
+            'district' => ['required', 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'delivery_method' => ['required', 'in:standard,express'],
             'payment_method' => ['required', Rule::in(array_keys($payments->available()))],
@@ -172,6 +178,10 @@ class Checkout extends Component
             return;
         }
 
+        session()->flash('notify', [
+            'content' => 'Order placed successfully.',
+            'type' => 'success',
+        ]);
         $this->redirect(route('store.order-success', ['order' => $order->order_number]));
     }
 
@@ -228,7 +238,7 @@ class Checkout extends Component
         }
 
         $rules = match ($this->step) {
-            1 => ['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['required', 'email', 'max:255'], 'customer_phone' => ['required', 'string', 'max:30'], 'address_line' => ['required', 'string', 'max:500'], 'city' => ['required', 'string', 'max:100']],
+            1 => ['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['nullable', 'email', 'max:255'], 'customer_phone' => ['required', 'string', 'max:30'], 'address_line' => ['required', 'string', 'max:500'], 'city' => ['required', 'string', 'max:100'], 'district' => ['required', 'string', 'max:100']],
             2 => ['delivery_method' => ['required', 'in:standard,express']],
             3 => ['payment_method' => ['required', Rule::in(array_keys($payments->available()))]],
             default => [],

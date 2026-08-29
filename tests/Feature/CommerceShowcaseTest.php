@@ -483,7 +483,11 @@ it('creates a Stripe Checkout session only when enabled and reconciles signed we
         ->and($order->fresh()->payment->status)->toBe('paid');
 
     $this->get(route('stripe.checkout.success', ['session_id' => 'cs_test_showcase']))
-        ->assertRedirect(route('store.order-success', ['order' => $order->order_number]));
+        ->assertRedirect(route('store.order-success', ['order' => $order->order_number]))
+        ->assertSessionHas('notify', [
+            'content' => 'Payment completed successfully. Order placed.',
+            'type' => 'success',
+        ]);
 });
 
 it('protects admin payment settings and stores Stripe secrets encrypted', function () {

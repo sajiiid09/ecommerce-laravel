@@ -49,7 +49,7 @@
                 variant="soft"
                 iconVariant="micro"
                 aria-label="{{ __('First page') }}"
-                wire:loading
+                wire:loading.attr="data-loading"
                 wire:target="gotoPage(1)"
                 :disabled="$paginator->onFirstPage()"
                 :aria-disabled="$paginator->onFirstPage() ? 'true' : 'false'"
@@ -63,7 +63,7 @@
                 variant="soft"
                 iconVariant="micro"
                 aria-label="{{ __('pagination.previous') }}"
-                wire:loading
+                wire:loading.attr="data-loading"
                 wire:target="previousPage"
                 :disabled="$paginator->onFirstPage()"
                 :aria-disabled="$paginator->onFirstPage() ? 'true' : 'false'"
@@ -77,7 +77,7 @@
                 variant="soft"
                 iconVariant="micro"
                 aria-label="{{ __('pagination.next') }}"
-                wire:loading
+                wire:loading.attr="data-loading"
                 wire:target="nextPage"
                 :disabled="$paginator->onLastPage()"
                 :aria-disabled="$paginator->onLastPage() ? 'true' : 'false'"
@@ -91,7 +91,7 @@
                 variant="soft"
                 iconVariant="micro"
                 aria-label="{{ __('Last page') }}"
-                wire:loading
+                wire:loading.attr="data-loading"
                 wire:target="gotoPage({{ $paginator->lastPage() }})"
                 :disabled="$paginator->onLastPage()"
                 :aria-disabled="$paginator->onLastPage() ? 'true' : 'false'"

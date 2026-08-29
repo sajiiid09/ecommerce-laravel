@@ -2,11 +2,14 @@
 
 use App\Livewire\Pages\Account\Addresses;
 use App\Livewire\Pages\Store\Checkout;
+use App\Models\MediaAsset;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Services\CartService;
+use App\Services\OrderService;
 use App\Services\ProductService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -142,6 +145,9 @@ it('rejects a saved address id that is not owned by the authenticated customer',
     $customer = User::factory()->create();
     $otherCustomer = User::factory()->create();
     $otherAddress = UserAddress::factory()->for($otherCustomer)->create();
+    $this->actingAs($customer);
+    $product = addressBookProduct();
+    app(CartService::class)->add($product->defaultVariant->id);
 
     Livewire::actingAs($customer)
         ->test(Checkout::class)
@@ -176,12 +182,132 @@ it('uses the trusted saved address when placing an authenticated order', functio
         ->and($order->fresh()->shippingAddress->address_line)->toBe('Saved House 4');
 });
 
+it('flashes a success toast after a COD checkout', function () {
+    $customer = User::factory()->create();
+    $product = addressBookProduct();
+    $this->actingAs($customer);
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    $checkout = Livewire::actingAs($customer)
+        ->test(Checkout::class)
+        ->set('customer_name', $customer->name)
+        ->set('customer_phone', '01700000000')
+        ->set('address_line', 'House 1, Road 2')
+        ->set('city', 'Dhaka')
+        ->set('district', 'Dhanmondi')
+        ->set('checkout_token', (string) Str::uuid())
+        ->call('placeOrder');
+
+    $order = Order::query()->latest('id')->firstOrFail();
+
+    $checkout->assertRedirect(route('store.order-success', ['order' => $order->order_number]));
+    expect(session('notify'))->toEqual([
+        'content' => 'Order placed successfully.',
+        'type' => 'success',
+    ]);
+});
+
 it('keeps guest checkout on manual address fields', function () {
+    $product = addressBookProduct();
+    app(CartService::class)->add($product->defaultVariant->id);
+
     $this->get(route('store.checkout'))
         ->assertSuccessful()
         ->assertSee('Customer and delivery address', false)
         ->assertDontSee('Saved addresses', false)
-        ->assertSee('Full name', false);
+        ->assertSee('Full name', false)
+        ->assertSee('class="text-red-600" aria-hidden="true">*</span>', false);
+});
+
+it('redirects to the homepage when checkout is opened with an empty cart', function () {
+    $this->get(route('store.checkout'))
+        ->assertRedirect(route('store.home'));
+});
+
+it('requires the checkout customer and address fields before continuing', function () {
+    $product = addressBookProduct();
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    Livewire::test(Checkout::class)
+        ->set('customer_email', 'checkout@example.test')
+        ->call('nextStep')
+        ->assertHasErrors(['customer_name', 'customer_phone', 'district', 'address_line'])
+        ->assertSet('step', 1);
+});
+
+it('allows checkout to continue without an email address', function () {
+    $product = addressBookProduct();
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    Livewire::test(Checkout::class)
+        ->set('customer_name', 'Checkout Customer')
+        ->set('customer_phone', '01700000000')
+        ->set('district', 'Dhanmondi')
+        ->set('address_line', 'House 1, Road 2')
+        ->call('nextStep')
+        ->assertHasNoErrors()
+        ->assertSet('step', 2);
+});
+
+it('shows the first product image in the checkout order summary', function () {
+    $product = addressBookProduct();
+    $firstImage = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'products/first.jpg',
+        'filename' => 'first.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 1,
+    ]);
+    $secondImage = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'products/second.jpg',
+        'filename' => 'second.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 1,
+    ]);
+    ProductMedia::create([
+        'product_id' => $product->id,
+        'media_asset_id' => $firstImage->id,
+        'role' => 'main',
+        'sort_order' => 0,
+    ]);
+    ProductMedia::create([
+        'product_id' => $product->id,
+        'media_asset_id' => $secondImage->id,
+        'role' => 'gallery',
+        'sort_order' => 1,
+    ]);
+
+    $this->actingAs(User::factory()->create());
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    Livewire::test(Checkout::class)
+        ->assertSee('src="'.$firstImage->url().'"', false)
+        ->assertSee('alt="Address Book Product"', false);
+});
+
+it('renders the order success page with the resolved order model', function () {
+    $customer = User::factory()->create(['name' => 'Success Customer']);
+    $product = addressBookProduct();
+    $this->actingAs($customer);
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    $order = app(OrderService::class)->place([
+        'customer_name' => $customer->name,
+        'customer_email' => $customer->email,
+        'customer_phone' => '01700000000',
+        'address_line' => 'House 1, Road 2',
+        'city' => 'Dhaka',
+        'district' => 'Dhanmondi',
+        'delivery_method' => 'standard',
+        'payment_method' => 'cod',
+        'checkout_token' => (string) Str::uuid(),
+    ], $customer);
+
+    $this->get(route('store.order-success', ['order' => $order->order_number]))
+        ->assertSuccessful()
+        ->assertSee('Thank you, Success Customer.', false)
+        ->assertSee($order->order_number, false);
 });
 test('example', function () {
     $response = $this->get('/');

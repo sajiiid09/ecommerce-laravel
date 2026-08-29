@@ -29,7 +29,6 @@
                     <x-ui.table.head>Product</x-ui.table.head>
                     <x-ui.table.head>Customer</x-ui.table.head>
                     <x-ui.table.head>Rating</x-ui.table.head>
-                    <x-ui.table.head>Review</x-ui.table.head>
                     <x-ui.table.head>Status</x-ui.table.head>
                     <x-ui.table.head>Action</x-ui.table.head>
                 </x-ui.table.columns>
@@ -51,12 +50,6 @@
                             <span class="text-amber-500" aria-label="{{ $review->rating }} out of 5 stars">
                                 {{ str_repeat('★', $review->rating) }}
                             </span>
-                        </x-ui.table.cell>
-                        <x-ui.table.cell class="max-w-[360px] whitespace-normal px-3 py-4">
-                            @if($review->title)
-                                <p class="font-bold text-slate-800">{{ $review->title }}</p>
-                            @endif
-                            <p class="mt-1 text-sm leading-6 text-slate-600">{{ $review->review }}</p>
                         </x-ui.table.cell>
                         <x-ui.table.cell class="px-3 py-4">
                             <x-ui.badge variant="solid" :color="match ($review->status) {

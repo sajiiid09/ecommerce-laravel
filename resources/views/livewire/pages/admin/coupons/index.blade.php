@@ -41,7 +41,15 @@
                         <x-ui.table.cell class="px-4 py-4">{{ $coupon->products_count || $coupon->categories_count ? 'Targeted' : 'Storewide' }}</x-ui.table.cell>
                         <x-ui.table.cell class="px-4 py-4">BDT {{ number_format($coupon->minimum_subtotal_minor / 100, 2) }}</x-ui.table.cell>
                         <x-ui.table.cell class="px-4 py-4">{{ $coupon->redeemed_count }}{{ $coupon->usage_limit ? ' / '.$coupon->usage_limit : '' }}</x-ui.table.cell>
-                        <x-ui.table.cell class="px-4 py-4 capitalize text-slate-500">{{ $couponStatus }}</x-ui.table.cell>
+                        <x-ui.table.cell class="px-4 py-4">
+                            <x-ui.badge variant="solid" :color="match ($couponStatus) {
+                                'active' => 'emerald',
+                                'scheduled' => 'amber',
+                                default => 'red',
+                            }" pill size="sm">
+                                {{ ucfirst($couponStatus) }}
+                            </x-ui.badge>
+                        </x-ui.table.cell>
                         <x-ui.table.cell class="whitespace-nowrap px-4 py-4">
                             <x-ui.dropdown position="bottom-end" portal>
                                 <x-slot:button>

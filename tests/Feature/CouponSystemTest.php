@@ -43,6 +43,7 @@ it('authorizes the admin coupon route and excludes non-admin users', function ()
 
     $admin = User::factory()->create(['is_admin' => true]);
     Coupon::factory()->create(['code' => 'UI10']);
+    Coupon::factory()->create(['code' => 'OFF10', 'is_active' => false]);
 
     $this->actingAs($admin)
         ->get(route('admin.coupons'))
@@ -55,6 +56,9 @@ it('authorizes the admin coupon route and excludes non-admin users', function ()
         ->assertSee('Global usage limit')
         ->assertSee('Per-customer usage limit')
         ->assertSee('type="number"', false)
+        ->assertSee('data-slot="badge"', false)
+        ->assertSee('bg-emerald-400', false)
+        ->assertSee('bg-red-500', false)
         ->assertSee('Edit')
         ->assertSee('x-teleport="body"', false);
 });

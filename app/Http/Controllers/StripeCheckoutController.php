@@ -22,6 +22,10 @@ class StripeCheckoutController extends Controller
         abort_unless(auth()->id() === $order->user_id || session('last_order_number') === $order->order_number, 403);
 
         session()->put('last_order_number', $order->order_number);
+        session()->flash('notify', [
+            'content' => 'Payment completed successfully. Order placed.',
+            'type' => 'success',
+        ]);
 
         return redirect()->route('store.order-success', ['order' => $order->order_number]);
     }
