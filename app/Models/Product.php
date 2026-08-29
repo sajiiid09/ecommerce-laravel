@@ -97,6 +97,13 @@ class Product extends Model
 
     public function scopeSearch(Builder $q, ?string $term): Builder
     {
-        return $term ? $q->where(fn ($q) => $q->where('products.name', 'like', "%{$term}%")->orWhere('products.slug', 'like', "%{$term}%")->orWhereHas('variants', fn ($q) => $q->where('sku', 'like', "%{$term}%"))) : $q;
+        return $term ? $q->where(function (Builder $query) use ($term): void {
+            $query->where('products.name', 'like', "%{$term}%")
+                ->orWhere('products.slug', 'like', "%{$term}%")
+                ->orWhereHas('brand', fn (Builder $brand): Builder => $brand
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhere('slug', 'like', "%{$term}%"))
+                ->orWhereHas('variants', fn (Builder $variant): Builder => $variant->where('sku', 'like', "%{$term}%"));
+        }) : $q;
     }
 }

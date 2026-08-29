@@ -50,6 +50,33 @@ class CatalogQueryService
         return $paginator->through(fn (Product $product): array => $this->toCard($product));
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function productSuggestions(?string $term, int $limit = 5): array
+    {
+        $term = trim((string) $term);
+
+        if ($term === '' || mb_strlen($term) < 2) {
+            return [];
+        }
+
+        $limit = max(1, min(10, $limit));
+
+        if (! Schema::hasTable('products')) {
+            return array_slice($this->filterDemo(StorefrontDemoData::products(), ['search' => $term]), 0, $limit);
+        }
+
+        return $this->publicProductsQuery()
+            ->search($term)
+            ->latest('products.created_at')
+            ->latest('products.id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Product $product): array => $this->toCard($product))
+            ->all();
+    }
+
     public function homepageProducts(array|string $querySettings, int $limit = 6): array
     {
         $settings = $this->normalizeHomepageProductSettings($querySettings, $limit);

@@ -24,28 +24,7 @@
             </button>
 
             @if($headerShowSearch ?? true)
-                <form class="hidden min-w-0 flex-1 md:flex" role="search" action="{{ route('store.search') }}"
-                method="get">
-                <label for="global-search" class="sr-only">Search products</label>
-                <div
-                    class="flex h-11 w-full overflow-hidden rounded-control border border-store-border bg-white transition focus-within:border-store-blue focus-within:ring-2 focus-within:ring-store-blue/10">
-                    <input id="global-search" name="q" type="search"
-                        placeholder="Search for products, brands and more"
-                        class="min-w-0 flex-1 border-0 px-4 text-sm outline-none placeholder:text-store-placeholder">
-                    <select name="category" aria-label="Product category"
-                        class="hidden min-w-44 border-x border-store-border bg-store-soft px-3 text-xs text-store-text outline-none xl:block">
-                        <option value="">All Categories</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category['slug'] }}">{{ $category['name'] }}</option>
-                        @endforeach
-                    </select>
-                    <button type="submit"
-                        class="grid w-12 shrink-0 place-items-center bg-store-blue text-white transition hover:bg-store-blue-dark"
-                        aria-label="Search">
-                        <x-ui.icon name="magnifying-glass" class="size-5 !text-white" />
-                    </button>
-                </div>
-                </form>
+                <livewire:components.store.header-search :categories="$categories" mode="desktop" />
             @endif
 
             <nav class="ml-auto flex items-center gap-2 sm:gap-4" aria-label="Account shortcuts">
@@ -101,17 +80,7 @@
         </div>
 
         @if($headerShowSearch ?? true)
-            <form class="pb-3 md:hidden" role="search" action="{{ route('store.search') }}" method="get">
-            <label for="global-search-mobile" class="sr-only">Search products</label>
-            <div
-                class="flex h-11 overflow-hidden rounded-control border border-store-border focus-within:border-store-blue focus-within:ring-2 focus-within:ring-store-blue/10">
-                <input id="global-search-mobile" name="q" type="search"
-                    placeholder="Search products, brands and more"
-                    class="min-w-0 flex-1 border-0 px-3 text-sm outline-none placeholder:text-store-placeholder">
-                <button type="submit" class="grid w-12 place-items-center bg-store-blue text-white"
-                    aria-label="Search"><x-ui.icon name="magnifying-glass" class="size-5 !text-white" /></button>
-            </div>
-            </form>
+            <livewire:components.store.header-search :categories="$categories" mode="mobile" />
         @endif
     </x-store.ui.container>
 
