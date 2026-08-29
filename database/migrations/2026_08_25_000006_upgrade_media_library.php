@@ -4,16 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         if (Schema::hasTable('media_folders')) {
             Schema::table('media_folders', function (Blueprint $table): void {
-                if (! Schema::hasColumn('media_folders', 'created_by')) {
+                if (!Schema::hasColumn('media_folders', 'created_by')) {
                     $table->foreignId('created_by')->nullable();
                 }
-                if (! Schema::hasColumn('media_folders', 'updated_by')) {
+                if (!Schema::hasColumn('media_folders', 'updated_by')) {
                     $table->foreignId('updated_by')->nullable();
                 }
             });
@@ -21,28 +20,28 @@ return new class extends Migration
 
         if (Schema::hasTable('media_assets')) {
             Schema::table('media_assets', function (Blueprint $table): void {
-                if (! Schema::hasColumn('media_assets', 'original_filename')) {
+                if (!Schema::hasColumn('media_assets', 'original_filename')) {
                     $table->string('original_filename')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'extension')) {
+                if (!Schema::hasColumn('media_assets', 'extension')) {
                     $table->string('extension')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'alt_text')) {
+                if (!Schema::hasColumn('media_assets', 'alt_text')) {
                     $table->text('alt_text')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'title')) {
+                if (!Schema::hasColumn('media_assets', 'title')) {
                     $table->string('title')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'caption')) {
+                if (!Schema::hasColumn('media_assets', 'caption')) {
                     $table->text('caption')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'checksum')) {
+                if (!Schema::hasColumn('media_assets', 'checksum')) {
                     $table->string('checksum', 64)->nullable()->index();
                 }
-                if (! Schema::hasColumn('media_assets', 'metadata')) {
+                if (!Schema::hasColumn('media_assets', 'metadata')) {
                     $table->json('metadata')->nullable();
                 }
-                if (! Schema::hasColumn('media_assets', 'deleted_at')) {
+                if (!Schema::hasColumn('media_assets', 'deleted_at')) {
                     $table->softDeletes();
                 }
             });

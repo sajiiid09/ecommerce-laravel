@@ -5,8 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         $this->failOnOrphans('pages', 'parent_id', 'pages');
@@ -88,16 +87,16 @@ return new class extends Migration
 
     private function failOnOrphans(string $table, string $column, string $referencedTable): void
     {
-        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column) || ! Schema::hasTable($referencedTable)) {
+        if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column) || !Schema::hasTable($referencedTable)) {
             return;
         }
 
         $orphan = DB::table($table)
             ->whereNotNull($column)
-            ->whereNotExists(fn ($query) => $query
+            ->whereNotExists(fn($query) => $query
                 ->select(DB::raw('1'))
                 ->from($referencedTable)
-                ->whereColumn($referencedTable.'.id', $table.'.'.$column))
+                ->whereColumn($referencedTable . '.id', $table . '.' . $column))
             ->value('id');
 
         if ($orphan !== null) {

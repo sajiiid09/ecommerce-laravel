@@ -4,14 +4,13 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        if (! Schema::hasTable('homepage_sections')) {
+        if (!Schema::hasTable('homepage_sections')) {
             return;
         }
 
@@ -51,7 +50,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (! Schema::hasTable('homepage_sections')) {
+        if (!Schema::hasTable('homepage_sections')) {
             return;
         }
 
@@ -73,7 +72,7 @@ return new class extends Migration
                     $settings = is_array($settings) ? $settings : [];
                     $source = $settings['source'] ?? null;
 
-                    if (! isset($types[$source])) {
+                    if (!isset($types[$source])) {
                         continue;
                     }
 

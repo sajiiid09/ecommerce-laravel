@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         $this->create('pages', function (Blueprint $t): void {
@@ -174,7 +173,7 @@ return new class extends Migration
 
     private function create(string $table, Closure $callback): void
     {
-        if (! Schema::hasTable($table)) {
+        if (!Schema::hasTable($table)) {
             Schema::create($table, $callback);
         }
     }
