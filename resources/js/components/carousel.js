@@ -8,9 +8,18 @@ document.addEventListener('alpine:init', () => {
         current: 0,
         embla: null,
         autoplayTimer: null,
+        autoplayResumeTimer: null,
+        autoplayPaused: false,
+        viewport: null,
 
         init() {
-            this.embla = EmblaCarousel(this.$refs.viewport, {
+            if (this.embla) return;
+
+            this.viewport = this.$refs.viewport;
+
+            if (!this.viewport) return;
+
+            this.embla = EmblaCarousel(this.viewport, {
                 align: 'start',
                 // Handle looping manually so Embla does not render cloned
                 // first/last slides at the edges of the viewport.
@@ -21,8 +30,11 @@ document.addEventListener('alpine:init', () => {
             });
 
             this.syncCurrent = this.syncCurrent.bind(this);
+            this.handleUserInteraction = this.handleUserInteraction.bind(this);
             this.embla.on('select', this.syncCurrent);
             this.embla.on('reInit', this.syncCurrent);
+            this.embla.on('pointerDown', this.handleUserInteraction);
+            this.viewport.addEventListener('wheel', this.handleUserInteraction, { passive: true });
             this.syncCurrent();
             this.startAutoplay();
         },
@@ -42,6 +54,8 @@ document.addEventListener('alpine:init', () => {
         previous() {
             if (!this.embla) return;
 
+            this.pauseAutoplayForInteraction();
+
             if (this.embla.canScrollPrev()) {
                 this.embla.scrollPrev();
             } else if (this.loop) {
@@ -52,6 +66,13 @@ document.addEventListener('alpine:init', () => {
         next() {
             if (!this.embla) return;
 
+            this.pauseAutoplayForInteraction();
+            this.advanceToNextSlide();
+        },
+
+        advanceToNextSlide() {
+            if (!this.embla) return;
+
             if (this.embla.canScrollNext()) {
                 this.embla.scrollNext();
             } else if (this.loop) {
@@ -60,7 +81,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         goTo(page) {
+            this.pauseAutoplayForInteraction();
             this.embla?.scrollTo(page);
+        },
+
+        handleUserInteraction() {
+            this.pauseAutoplayForInteraction();
         },
 
         syncCurrent() {
@@ -68,10 +94,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         startAutoplay() {
-            if (!this.autoplay || !this.embla || this.pageCount < 2) return;
+            if (!this.autoplay || this.autoplayPaused || !this.embla || this.pageCount < 2) return;
 
             this.stopAutoplay();
-            this.autoplayTimer = window.setInterval(() => this.next(), this.interval);
+            this.autoplayTimer = window.setInterval(() => this.advanceToNextSlide(), this.interval);
         },
 
         stopAutoplay() {
@@ -81,9 +107,37 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        pauseAutoplayForInteraction() {
+            if (!this.autoplay) return;
+
+            this.autoplayPaused = true;
+            this.stopAutoplay();
+
+            if (this.autoplayResumeTimer) {
+                window.clearTimeout(this.autoplayResumeTimer);
+            }
+
+            this.autoplayResumeTimer = window.setTimeout(() => {
+                this.autoplayPaused = false;
+                this.autoplayResumeTimer = null;
+                this.startAutoplay();
+            }, 5000);
+        },
+
         destroy() {
             this.stopAutoplay();
+            if (this.autoplayResumeTimer) {
+                window.clearTimeout(this.autoplayResumeTimer);
+                this.autoplayResumeTimer = null;
+            }
+
+            this.embla?.off('select', this.syncCurrent);
+            this.embla?.off('reInit', this.syncCurrent);
+            this.embla?.off('pointerDown', this.handleUserInteraction);
+            this.viewport?.removeEventListener('wheel', this.handleUserInteraction);
             this.embla?.destroy();
+            this.embla = null;
+            this.viewport = null;
         },
     }));
 });

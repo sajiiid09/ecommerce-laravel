@@ -34,7 +34,7 @@ class ReviewService
             'email' => $user->email,
             'rating' => (int) $data['rating'],
             'title' => $data['title'] ?? null,
-            'review' => $data['review'],
+            'review' => filled($data['review'] ?? null) ? $data['review'] : null,
             'status' => 'approved',
             'approved_at' => now(),
             'is_verified_purchase' => $orderItem !== null,
@@ -82,9 +82,16 @@ class ReviewService
 
     public function approved(Product $product): Collection
     {
-        return Cache::remember($this->cache->approvedReviews($product->id), 600, function () use ($product): Collection {
-            return $product->reviews()->where('status', 'approved')->latest('approved_at')->get();
+        $attributes = Cache::remember($this->cache->approvedReviews($product->id), 600, function () use ($product): array {
+            return $product->reviews()
+                ->where('status', 'approved')
+                ->latest('approved_at')
+                ->get()
+                ->map(fn (ProductReview $review): array => $review->getAttributes())
+                ->all();
         });
+
+        return ProductReview::hydrate($attributes);
     }
 
     private function forget(Product $product): void

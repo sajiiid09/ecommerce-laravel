@@ -33,6 +33,7 @@ use App\Support\StorefrontCatalog;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -843,6 +844,13 @@ it('renders the homepage newsletter input with a visible field treatment', funct
         ->assertSee('bg-white px-3 py-2.5 text-sm text-store-ink', false)
         ->assertSee('placeholder:text-store-muted', false)
         ->assertSee('Email address');
+});
+
+it('renders autoplay configuration for shared carousels', function () {
+    $content = Blade::render('<x-store.ui.carousel autoplay><article>Slide 1</article><article>Slide 2</article></x-store.ui.carousel>');
+
+    expect($content)->toContain('x-data="storeCarousel({ loop: false, autoplay: true, interval: 5000 })"')
+        ->and($content)->toContain('aria-roledescription="carousel"');
 });
 
 it('renders homepage product sections as five-card carousels without dots', function () {

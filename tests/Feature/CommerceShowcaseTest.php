@@ -9,6 +9,7 @@ use App\Livewire\Pages\Auth\Register;
 use App\Models\Cart;
 use App\Models\PaymentProviderCredential;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\User;
 use App\Services\CartService;
 use App\Services\CatalogCache;
@@ -16,6 +17,7 @@ use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Services\ProductService;
 use App\Services\ReviewService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
@@ -170,8 +172,7 @@ it('rejects unavailable cart quantities and supports authenticated reviews', fun
     $this->get(route('store.product', ['slug' => $product->slug]))
         ->assertSuccessful()
         ->assertSee('Rated 5 out of 5, 1 reviews', false)
-        ->assertSee('Loading customer reviews', false)
-        ->assertDontSee('A useful showcase review.', false);
+        ->assertSee('A useful showcase review.', false);
 
     Livewire::withoutLazyLoading();
     Livewire::actingAs($customer)
@@ -193,17 +194,73 @@ it('rejects unavailable cart quantities and supports authenticated reviews', fun
     $this->get(route('store.product', ['slug' => $product->slug]))
         ->assertSuccessful()
         ->assertSee('Rated 5 out of 5, 1 reviews', false)
-        ->assertSee('Loading customer reviews', false)
-        ->assertDontSee('A useful showcase review.', false);
+        ->assertSee('A useful showcase review.', false);
 
     $approvedReviewsKey = app(CatalogCache::class)->approvedReviews($product->id);
-    expect(Cache::has($approvedReviewsKey))->toBeFalse();
-    $reviews->approved($product->fresh());
     expect(Cache::has($approvedReviewsKey))->toBeTrue();
 
     $reviews->reject($review);
 
     expect(Cache::has($approvedReviewsKey))->toBeFalse();
+});
+
+it('renders a scrollable review list and accepts star-only reviews without titles', function () {
+    $product = commerceProduct();
+
+    foreach (range(1, 5) as $index) {
+        $reviewer = User::factory()->create(['name' => "Review Customer {$index}"]);
+        ProductReview::create([
+            'product_id' => $product->id,
+            'user_id' => $reviewer->id,
+            'name' => $reviewer->name,
+            'email' => $reviewer->email,
+            'rating' => 5,
+            'title' => "Legacy title {$index}",
+            'review' => "Review body {$index}.",
+            'status' => 'approved',
+            'approved_at' => now()->addSeconds($index),
+        ]);
+    }
+
+    $customer = User::factory()->create();
+    Livewire::withoutLazyLoading();
+    $component = Livewire::actingAs($customer)->test(ProductReviews::class, ['productId' => $product->id]);
+    $approvedReviews = app(ReviewService::class)->approved($product);
+
+    $component
+        ->assertSee('data-review-list', false)
+        ->assertSee('scrollbar-hidden', false)
+        ->assertSee('max-h-[30rem]', false)
+        ->assertSee('overflow-y-auto', false)
+        ->assertSee('data-review-item', false)
+        ->assertSee('Review body 1.', false)
+        ->assertSee('Review body 5.', false)
+        ->assertSee('Review', false)
+        ->assertSee('(optional)', false)
+        ->assertDontSee('Legacy title 1', false)
+        ->assertDontSee('wire:model="reviewTitle"', false)
+        ->assertSee('aria-label="1 out of 5 stars"', false);
+
+    expect($approvedReviews)->toBeInstanceOf(Collection::class)
+        ->and(Cache::get(app(CatalogCache::class)->approvedReviews($product->id)))->toBeArray()->toHaveCount(5);
+
+    $component
+        ->call('setReviewRating', 3)
+        ->assertSet('reviewRating', 3)
+        ->assertSee('text-store-muted', false)
+        ->assertSee('aria-pressed="true"', false)
+        ->set('reviewBody', '')
+        ->call('submitReview');
+
+    $starOnlyReview = ProductReview::query()->where('user_id', $customer->id)->firstOrFail();
+    expect($starOnlyReview->rating)->toBe(3)
+        ->and($starOnlyReview->review)->toBeNull()
+        ->and($starOnlyReview->title)->toBeNull();
+
+    Livewire::actingAs(User::factory()->create())->test(ProductReviews::class, ['productId' => $product->id])
+        ->set('reviewRating', 6)
+        ->call('submitReview')
+        ->assertHasErrors(['reviewRating']);
 });
 
 it('starts loading cart contents after storefront initialization without rendering them initially', function () {

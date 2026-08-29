@@ -33,7 +33,7 @@ class CatalogCache
 
     public function approvedReviews(string|int $product): string
     {
-        return 'catalog:product:'.$product.':approved-reviews';
+        return 'catalog:product:'.$product.':approved-reviews:v2';
     }
 
     public function forgetProduct(string|int $product, string|int|null $reviewProduct = null): void

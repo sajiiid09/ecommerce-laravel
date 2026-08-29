@@ -153,7 +153,7 @@
         </section>
 
         @if (config('features.reviews'))
-            <livewire:components.store.product-reviews :product-id="$product['id']" />
+            <livewire:components.store.product-reviews :product-id="$product['id']" :lazy="false" />
         @endif
 
         <section class="mt-8">
@@ -164,6 +164,7 @@
             <livewire:components.store.related-products
                 :product-id="$product['id']"
                 :category-slug="$product['categorySlug'] ?? null"
+                :lazy="false"
             />
         </section>
     </x-store.ui.container>

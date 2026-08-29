@@ -17,8 +17,6 @@ class ProductReviews extends Component
 
     public int $reviewRating = 5;
 
-    public string $reviewTitle = '';
-
     public string $reviewBody = '';
 
     public function mount(int $productId): void
@@ -41,19 +39,22 @@ class ProductReviews extends Component
 
         $data = $this->validate([
             'reviewRating' => ['required', 'integer', 'between:1,5'],
-            'reviewTitle' => ['nullable', 'string', 'max:255'],
-            'reviewBody' => ['required', 'string', 'min:10', 'max:5000'],
+            'reviewBody' => ['nullable', 'string', 'min:10', 'max:5000'],
         ]);
 
         $reviews->submit(ProductModel::findOrFail($this->productId), auth()->user(), [
             'rating' => $data['reviewRating'],
-            'title' => $data['reviewTitle'],
             'review' => $data['reviewBody'],
         ]);
 
-        $this->reset(['reviewTitle', 'reviewBody']);
+        $this->reset('reviewBody');
         $this->reviewRating = 5;
         session()->flash('review_status', 'Thanks! Your review has been published.');
+    }
+
+    public function setReviewRating(int $rating): void
+    {
+        $this->reviewRating = $rating;
     }
 
     public function render(): View
