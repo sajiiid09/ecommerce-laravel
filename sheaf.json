@@ -17,7 +17,7 @@
             "installationTime": 1787466063
         },
         "text": {
-            "installationTime": 1787466069
+            "installationTime": 1787990260
         },
         "checkbox": {
             "installationTime": 1787466076
@@ -63,6 +63,9 @@
         },
         "skeleton": {
             "installationTime": 1787848889
+        },
+        "combobox": {
+            "installationTime": 1787990258
         }
     }
 }

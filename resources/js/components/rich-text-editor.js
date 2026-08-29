@@ -39,15 +39,15 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
     queueSync(editor) {
         window.clearTimeout(this.syncTimer);
         this.syncTimer = window.setTimeout(() => {
-            wire.set(jsonField, editor.getJSON(), { shouldValidate: false });
-            wire.set(htmlField, editor.getHTML(), { shouldValidate: false });
+            wire.set(jsonField, editor.getJSON(), false);
+            wire.set(htmlField, editor.getHTML(), false);
         }, 350);
     },
     flushSync() {
         if (!this.editor) return;
         window.clearTimeout(this.syncTimer);
-        wire.set(jsonField, this.editor.getJSON(), { shouldValidate: false });
-        wire.set(htmlField, this.editor.getHTML(), { shouldValidate: false });
+        wire.set(jsonField, this.editor.getJSON(), false);
+        wire.set(htmlField, this.editor.getHTML(), false);
     },
     toggle(command) { this.editor?.chain().focus()[command]().run(); },
     toggleHeading(level) { this.editor?.chain().focus().toggleHeading({ level }).run(); },

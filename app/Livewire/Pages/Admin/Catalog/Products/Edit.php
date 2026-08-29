@@ -38,9 +38,9 @@ class Edit extends Component
 
     public string $visibility = 'visible';
 
-    public ?int $brand_id = null;
+    public $brand_id = null;
 
-    public ?int $primary_category_id = null;
+    public $primary_category_id = null;
 
     public array $category_ids = [];
 
@@ -157,6 +157,10 @@ class Edit extends Component
             'meta_description' => 'nullable|string|max:500', 'canonical_url' => 'nullable|url|max:255',
             'image' => 'nullable|image|max:5120',
         ]);
+
+        $data['brand_id'] = filled($data['brand_id'] ?? null) ? (int) $data['brand_id'] : null;
+        $data['primary_category_id'] = filled($data['primary_category_id'] ?? null) ? (int) $data['primary_category_id'] : null;
+        $data['slug'] = filled($data['slug'] ?? null) ? $data['slug'] : $data['name'];
 
         foreach (['regular_price', 'sale_price', 'compare_at_price', 'cost_price'] as $priceField) {
             $data[$priceField.'_minor'] = $this->priceToMinor($data[$priceField] ?? null);

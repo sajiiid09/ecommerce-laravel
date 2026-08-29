@@ -134,7 +134,7 @@ it('persists product taxonomy, SEO, attributes, and rich text', function () {
         ->and($product->attributeValues()->first()->attribute_value_id)->toBe($attributeValue->id);
 });
 
-it('renders the product edit choices with Sheaf selects', function () {
+it('renders the product edit choices with Sheaf selects and a categories combobox', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
     $category = Category::create(['name' => 'Edit Category', 'slug' => 'edit-category', 'is_active' => true]);
     $brand = Brand::create(['name' => 'Edit Brand', 'slug' => 'edit-brand', 'is_active' => true]);
@@ -157,13 +157,24 @@ it('renders the product edit choices with Sheaf selects', function () {
     ]);
 
     Livewire::test(ProductEdit::class, ['product' => $product])
-        ->assertSee('data-slot="select-control"', false)
-        ->assertSee('Select additional categories', false)
+        ->assertSee('data-slot="combobox-control"', false)
+        ->assertSee('data-slot="combobox-input"', false)
+        ->assertSee('wire:model="category_ids"', false)
+        ->assertSeeInOrder(['Product Name', 'Slug', 'Product Type', 'Categories'])
+        ->assertSee('Select categories', false)
         ->assertSee('Select tags', false)
         ->assertSee('rounded-lg', false)
         ->assertSet('regular_price', '10990.00')
         ->assertSet('sale_price', '9999.00')
-        ->assertSee('wire:model.live="regular_price"', false)
+        ->assertSee('wire:model="regular_price"', false)
+        ->assertSee('wire:model="brand_id"', false)
+        ->assertSee('wire:model="status"', false)
+        ->assertSee('wire:model="visibility"', false)
+        ->assertDontSee('wire:model.live', false)
+        ->assertSee('Slug <span class="text-xs font-normal text-[#9ca3af]">(optional)</span>', false)
+        ->assertSee('Enter product slug (optional)', false)
+        ->assertDontSee('generateSlug', false)
+        ->assertSee('x-on:submit="flushSync()"', false)
         ->assertSee('pt-1', false)
         ->assertDontSee('Search Engine Optimization', false)
         ->assertDontSee('<select', false)
@@ -174,6 +185,8 @@ it('renders the product edit choices with Sheaf selects', function () {
         ->set('sale_price', '11990.00')
         ->set('compare_at_price', '13990.00')
         ->set('cost_price', '8000.00')
+        ->set('description_json', ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Updated product content']]]]])
+        ->set('description_html', '<p>Updated product content</p>')
         ->call('saveProduct');
 
     $savedVariant = $product->fresh(['defaultVariant'])->defaultVariant;
@@ -181,7 +194,58 @@ it('renders the product edit choices with Sheaf selects', function () {
     expect($savedVariant->regular_price_minor)->toBe(1299000)
         ->and($savedVariant->sale_price_minor)->toBe(1199000)
         ->and($savedVariant->compare_at_price_minor)->toBe(1399000)
-        ->and($savedVariant->cost_price_minor)->toBe(800000);
+        ->and($savedVariant->cost_price_minor)->toBe(800000)
+        ->and($product->fresh()->description_html)->toContain('Updated product content');
+});
+
+it('generates a product slug and allows an empty brand selection', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+    Livewire::test(ProductEdit::class)
+        ->set('name', 'Auto Slug Product')
+        ->set('slug', '')
+        ->set('brand_id', '')
+        ->call('saveProduct');
+
+    $product = Product::query()->where('slug', 'auto-slug-product')->firstOrFail();
+
+    expect($product->brand_id)->toBeNull()
+        ->and($product->slug)->toBe('auto-slug-product');
+});
+
+it('persists and clears multiple product categories through the deferred combobox binding', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $firstCategory = Category::create(['name' => 'First Category', 'slug' => 'first-category', 'is_active' => true]);
+    $secondCategory = Category::create(['name' => 'Second Category', 'slug' => 'second-category', 'is_active' => true]);
+    $product = app(ProductService::class)->save([
+        'name' => 'Category Binding Product',
+        'product_type' => 'simple',
+        'status' => 'draft',
+        'visibility' => 'visible',
+        'regular_price_minor' => 1000,
+    ]);
+
+    Livewire::test(ProductEdit::class, ['product' => $product])
+        ->set('category_ids', [$firstCategory->id, $secondCategory->id])
+        ->call('saveProduct');
+
+    expect($product->fresh()->categories()->pluck('categories.id')->all())
+        ->toEqualCanonicalizing([$firstCategory->id, $secondCategory->id]);
+
+    Livewire::test(ProductEdit::class, ['product' => $product->fresh()])
+        ->set('category_ids', [])
+        ->call('saveProduct');
+
+    expect($product->fresh()->categories()->pluck('categories.id')->all())->toBe([]);
+});
+
+it('renders ampersands once in combobox option labels', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    Category::create(['name' => 'Baby & Toys', 'slug' => 'baby-toys', 'is_active' => true]);
+
+    Livewire::test(ProductEdit::class)
+        ->assertSee('data-label="Baby &amp; Toys"', false)
+        ->assertDontSee('Baby &amp;amp; Toys', false);
 });
 
 it('maps real variant options and variant media for the storefront', function () {

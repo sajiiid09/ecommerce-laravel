@@ -27,6 +27,9 @@
         ],
         "Livewire/Concerns/WithSorting.php": [
             "table"
+        ],
+        "resources/js/components/combobox.js": [
+            "combobox"
         ]
     },
     "helpers": {
@@ -43,10 +46,12 @@
             "pagination",
             "dropdown",
             "table",
-            "breadcrumbs"
+            "breadcrumbs",
+            "combobox"
         ],
         "text": [
-            "select"
+            "select",
+            "combobox"
         ],
         "button": [
             "pagination",

@@ -49,54 +49,45 @@
                         <div><h2 class="font-bold text-[#111827]">Basic Information</h2></div>
                         <span class="rounded-full bg-[#eff6ff] px-2.5 py-1 text-[11px] font-bold text-[#2563eb]">Simple products use one default variant</span>
                     </div>
-                    <label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#111827]">Additional Categories
-                        <x-ui.select wire:model.live="category_ids" multiple searchable clearable placeholder="Select additional categories" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
-                            @foreach($categories as $category)
-                                <x-ui.select.option wire:key="product-category-{{ $category->id }}" value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>
-                            @endforeach
-                        </x-ui.select>
-                        <span class="block text-xs font-normal text-[#9ca3af]">Hold Ctrl/Cmd to select multiple categories. The primary category is included automatically.</span>
-                    </label>
                     <div class="grid gap-4 md:grid-cols-3">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Product Name <span class="text-[#ef4444]">*</span>
-                            <x-ui.input wire:model.live="name" placeholder="Enter product name" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input wire:model="name" placeholder="Enter product name" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
-                            Slug <span class="text-[#ef4444]">*</span>
-                            <x-ui.input wire:model.live="slug" placeholder="Enter product slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            Slug <span class="text-xs font-normal text-[#9ca3af]">(optional)</span>
+                            <x-ui.input wire:model="slug" placeholder="Enter product slug (optional)" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Product Type <span class="text-[#ef4444]">*</span>
-                            <x-ui.select wire:model.live="product_type" placeholder="Select product type" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            <x-ui.select wire:model="product_type" placeholder="Select product type" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="simple">Simple</x-ui.select.option>
                                 <x-ui.select.option value="variable">Variable</x-ui.select.option>
                             </x-ui.select>
                         </label>
                     </div>
+                    <label class="mt-4 block space-y-1.5 text-sm font-semibold text-[#111827]">Categories
+                        <x-ui.combobox wire:model="category_ids" multiple clearable placeholder="Select categories" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            @foreach($categories as $category)
+                                <x-ui.combobox.option wire:key="product-category-{{ $category->id }}" value="{{ $category->id }}">{{ $category->name }}</x-ui.combobox.option>
+                            @endforeach
+                        </x-ui.combobox>
+                        <span class="block text-xs font-normal text-[#9ca3af]">Hold Ctrl/Cmd to select multiple categories. The primary category is included automatically.</span>
+                    </label>
                     <div class="mt-4 grid gap-4 md:grid-cols-2">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Brand
-                            <x-ui.select wire:model.live="brand_id" placeholder="Select brand" clearable class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            <x-ui.select wire:model="brand_id" placeholder="Select brand" clearable class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="">None</x-ui.select.option>
                                 @foreach($brands as $brand)
                                     <x-ui.select.option value="{{ $brand->id }}">{{ $brand->name }}</x-ui.select.option>
                                 @endforeach
                             </x-ui.select>
                         </label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
-                            Primary Category <span class="text-[#ef4444]">*</span>
-                            <x-ui.select wire:model.live="primary_category_id" placeholder="Select category" clearable class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
-                                <x-ui.select.option value="">None</x-ui.select.option>
-                                @foreach($categories as $category)
-                                    <x-ui.select.option value="{{ $category->id }}">{{ $category->name }}</x-ui.select.option>
-                                @endforeach
-                            </x-ui.select>
-                        </label>
                     </div>
                     <div class="mt-4">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">Short Description</label>
-                        <x-ui.textarea wire:model.live="short_description" rows="2" maxlength="160" resize="vertical" placeholder="Enter short description about the product..." class="!rounded-lg !border-[#e5e7eb]" />
+                        <x-ui.textarea wire:model="short_description" rows="2" maxlength="160" resize="vertical" placeholder="Enter short description about the product..." class="!rounded-lg !border-[#e5e7eb]" />
                     </div>
                     <div class="mt-4">
                         <div class="mb-1.5 text-sm font-semibold text-[#111827]">Description</div>
@@ -139,19 +130,19 @@
                     <div class="grid gap-4 sm:grid-cols-4">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Regular Price <span class="text-[#ef4444]">*</span>
-                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="regular_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model="regular_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Sale Price
-                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="sale_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model="sale_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Compare At Price
-                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="compare_at_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model="compare_at_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Cost Price
-                            <x-ui.input type="number" min="0" step="0.01" wire:model.live="cost_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input type="number" min="0" step="0.01" wire:model="cost_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                     </div>
                     <div class="mt-4 flex items-center gap-4">
@@ -159,7 +150,7 @@
                         <x-ui.select placeholder="Standard Rate" class="w-44" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                             <x-ui.select.option value="standard">Standard Rate</x-ui.select.option>
                         </x-ui.select>
-                        <x-ui.checkbox wire:model.live="track_quantity" label="Track stock quantity" size="sm" />
+                        <x-ui.checkbox wire:model="track_quantity" label="Track stock quantity" size="sm" />
                     </div>
                 </section>
 
@@ -170,15 +161,15 @@
                     <div class="grid gap-4 sm:grid-cols-3">
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Meta Title
-                            <x-ui.input wire:model.live="meta_title" placeholder="Product name - StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input wire:model="meta_title" placeholder="Product name - StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             Meta Description
-                            <x-ui.input wire:model.live="meta_description" placeholder="Buy online at StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input wire:model="meta_description" placeholder="Buy online at StoreZ" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                         <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
                             URL Key
-                            <x-ui.input wire:model.live="slug" placeholder="product-slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <x-ui.input wire:model="slug" placeholder="product-slug" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                         </label>
                     </div>
                 </section>
@@ -191,7 +182,7 @@
                     <div class="mt-4 space-y-4">
                         <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Status
-                            <x-ui.select wire:model.live="status" placeholder="Select status" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            <x-ui.select wire:model="status" placeholder="Select status" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="draft">Draft</x-ui.select.option>
                                 <x-ui.select.option value="published">Published</x-ui.select.option>
                                 <x-ui.select.option value="archived">Archived</x-ui.select.option>
@@ -199,7 +190,7 @@
                         </label>
                         <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Visibility
-                            <x-ui.select wire:model.live="visibility" placeholder="Select visibility" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
+                            <x-ui.select wire:model="visibility" placeholder="Select visibility" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
                                 <x-ui.select.option value="visible">Catalog & Search</x-ui.select.option>
                                 <x-ui.select.option value="hidden">Hidden</x-ui.select.option>
                             </x-ui.select>
@@ -211,18 +202,18 @@
                             </div>
                             <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 Quantity
-                                <x-ui.input type="number" min="0" wire:model.live="inventory_quantity" placeholder="0" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                <x-ui.input type="number" min="0" wire:model="inventory_quantity" placeholder="0" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                             </label>
                             <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 Low Stock Threshold
-                                <x-ui.input type="number" min="0" wire:model.live="low_stock_threshold" placeholder="10" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                <x-ui.input type="number" min="0" wire:model="low_stock_threshold" placeholder="10" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                             </label>
                             <div class="pt-1">
-                                <x-ui.checkbox wire:model.live="allow_backorders" label="Allow backorders" size="sm" />
+                                <x-ui.checkbox wire:model="allow_backorders" label="Allow backorders" size="sm" />
                             </div>
                         </div>
                         <div class="pt-1">
-                            <x-ui.checkbox wire:model.live="is_featured" label="Featured product" size="sm" />
+                            <x-ui.checkbox wire:model="is_featured" label="Featured product" size="sm" />
                         </div>
                     </div>
                 </section>
@@ -237,7 +228,7 @@
                             <span class="text-xs text-[#9ca3af]">No tags selected.</span>
                         @endforelse
                     </div>
-                    <x-ui.select wire:model.live="tag_ids" multiple searchable clearable placeholder="Select tags" class="mt-3 w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-[#f9fafb]">
+                    <x-ui.select wire:model="tag_ids" multiple searchable clearable placeholder="Select tags" class="mt-3 w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-[#f9fafb]">
                         @foreach($tags as $tag)
                             <x-ui.select.option wire:key="product-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</x-ui.select.option>
                         @endforeach
@@ -251,17 +242,17 @@
                             <div wire:key="product-attribute-{{ $attribute->id }}" class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                                 {{ $attribute->name }} @if($attribute->unit)<span class="text-xs font-normal text-[#9ca3af]">({{ $attribute->unit }})</span>@endif
                                 @if(in_array($attribute->type, ['select', 'multi_select'], true))
-                                    <x-ui.select wire:model.live="attribute_values.{{ $attribute->id }}" :multiple="$attribute->type === 'multi_select'" searchable clearable placeholder="Select {{ strtolower($attribute->name) }}" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white" :wire:key="'product-attribute-select-'.$attribute->id">
+                                    <x-ui.select wire:model="attribute_values.{{ $attribute->id }}" :multiple="$attribute->type === 'multi_select'" searchable clearable placeholder="Select {{ strtolower($attribute->name) }}" class="w-full" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white" :wire:key="'product-attribute-select-'.$attribute->id">
                                         @foreach($attribute->values as $value)
                                             <x-ui.select.option wire:key="product-attribute-value-{{ $value->id }}" value="{{ $value->id }}">{{ $value->value }}</x-ui.select.option>
                                         @endforeach
                                     </x-ui.select>
                                 @elseif($attribute->type === 'number')
-                                    <x-ui.input type="number" wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                    <x-ui.input type="number" wire:model="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                                 @elseif($attribute->type === 'boolean')
-                                    <x-ui.checkbox wire:model.live="attribute_values.{{ $attribute->id }}" label="Yes" size="sm" />
+                                    <x-ui.checkbox wire:model="attribute_values.{{ $attribute->id }}" label="Yes" size="sm" />
                                 @else
-                                    <x-ui.input wire:model.live="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                                    <x-ui.input wire:model="attribute_values.{{ $attribute->id }}" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
                                 @endif
                             </div>
                         @empty

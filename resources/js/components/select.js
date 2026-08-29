@@ -1,6 +1,4 @@
 
-let LIVEWIRE_ID;
-
 const selectComponent = ({
     livewire,
     placeholder,
@@ -14,8 +12,6 @@ const selectComponent = ({
     searchable,
     pillbox
 }) => {
-
-    LIVEWIRE_ID = livewireId;
 
     const $entangle = (prop, live) => {
         const binding = livewire.$entangle(prop)
@@ -34,15 +30,15 @@ const selectComponent = ({
         __maxSelection: maxSelection,
         __previousSelected: undefined,
         __usingExternalSearch: false,
-        __selectedTags: [],
+        commitCleanup: null,
 
 
         init() {
 
 
             if (window.Livewire !== undefined) {
-                window.Livewire.hook('commit', ({ component, succeed }) => {
-                    if (component.id === LIVEWIRE_ID) {
+                this.commitCleanup = window.Livewire.hook('commit', ({ component, succeed }) => {
+                    if (component.id === livewireId) {
                         succeed(() => {
                             // we need to wait until alpine finish it process then reconcile 
                             // the dom with the new coming or deleted nodes
@@ -331,18 +327,25 @@ const selectComponent = ({
         get selectedTags() {
             return this.__selectedTags
         },
+        destroy() {
+            this.commitCleanup?.();
+        },
     }
 }
 
 const CreateNewOptionActivator = () => ({
+    commitCleanup: null,
+
     init() {
         // defer until Alpine finishes bootstrapping (on the current microtask)
         //  this element's directives
         queueMicrotask(() => this.activate())
 
-        if (window.Livewire !== undefined) {
-            window.Livewire.hook('commit', ({ component, succeed }) => {
-                if (component.id === LIVEWIRE_ID) {
+        const componentId = this.$root.closest('[wire\\:id]')?.getAttribute('wire:id');
+
+        if (window.Livewire !== undefined && componentId) {
+            this.commitCleanup = window.Livewire.hook('commit', ({ component, succeed }) => {
+                if (component.id === componentId) {
                     succeed(() => {
                         // wait for Alpine's scheduler to flush 
                         // after the Livewire commit
@@ -365,6 +368,7 @@ const CreateNewOptionActivator = () => ({
         delete this.$el.dataset.active;
     },
     destroy() {
+        this.commitCleanup?.();
         this.deactivate();
     }
 });

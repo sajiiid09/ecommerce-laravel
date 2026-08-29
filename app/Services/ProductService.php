@@ -31,10 +31,10 @@ class ProductService
 
             $product->fill([
                 'name' => $data['name'],
-                'slug' => Str::slug($data['slug'] ?? $data['name']),
+                'slug' => Str::slug(filled($data['slug'] ?? null) ? $data['slug'] : $data['name']),
                 'product_type' => $data['product_type'] ?? ProductType::Simple->value,
-                'brand_id' => $data['brand_id'] ?? null,
-                'primary_category_id' => $data['primary_category_id'] ?? null,
+                'brand_id' => filled($data['brand_id'] ?? null) ? (int) $data['brand_id'] : null,
+                'primary_category_id' => filled($data['primary_category_id'] ?? null) ? (int) $data['primary_category_id'] : null,
                 'short_description' => $data['short_description'] ?? null,
                 'description_json' => $content['content_json'],
                 'description_html' => $content['content_html'],
