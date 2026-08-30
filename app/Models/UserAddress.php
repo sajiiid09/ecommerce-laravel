@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 
 #[Fillable([
-    'user_id', 'label', 'recipient_name', 'phone', 'address_line', 'city', 'district',
+    'user_id', 'label', 'recipient_name', 'phone', 'address_line', 'city', 'district', 'district_id',
     'postal_code', 'country', 'is_default',
 ])]
 class UserAddress extends Model
@@ -25,7 +25,7 @@ class UserAddress extends Model
 
     protected function casts(): array
     {
-        return ['is_default' => 'boolean'];
+        return ['district_id' => 'integer', 'is_default' => 'boolean'];
     }
 
     protected static function booted(): void
@@ -40,6 +40,40 @@ class UserAddress extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class);
+    }
+
+    public function districtName(): string
+    {
+        if ($this->district_id) {
+            $managedDistrict = $this->relationLoaded('district')
+                ? $this->getRelation('district')
+                : District::query()->find($this->district_id);
+
+            if ($managedDistrict instanceof District) {
+                return $managedDistrict->name;
+            }
+        }
+
+        $district = json_decode((string) $this->getRawOriginal('district'), true);
+
+        if (is_array($district) && filled($district['name'] ?? null)) {
+            return trim((string) $district['name']);
+        }
+
+        return trim((string) $this->getRawOriginal('district'));
+    }
+
+    public function legacyDistrictId(): ?int
+    {
+        $district = json_decode((string) $this->getRawOriginal('district'), true);
+        $districtId = is_array($district) ? filter_var($district['id'] ?? null, FILTER_VALIDATE_INT) : false;
+
+        return $districtId !== false && $districtId !== null && $districtId > 0 ? $districtId : null;
     }
 
     public function makeDefault(): void

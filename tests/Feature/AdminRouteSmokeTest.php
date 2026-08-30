@@ -28,6 +28,7 @@ class AdminRouteSmokeTest extends TestCase
             ->assertSee('lg:w-[76px]', false)
             ->assertSee('lg:pl-[76px]', false)
             ->assertSee('data-icon="sidebar-simple"', false);
+        $dashboard->assertDontSee('+ Add Product');
         $this->assertSame(1, substr_count($dashboard->getContent(), 'x-on:click="toggleSidebar()"'));
     }
 

@@ -6,6 +6,7 @@
     'searchable' => false,
     'search' => null,
     'empty' => null,
+    'preventLoading' => false,
     'multiple' => false,
     'clearable' => false,
     'disabled' => false,
@@ -77,6 +78,7 @@
         <x-ui.select.options 
             :checkIconClass="$checkIconClass"
             :checkIcon="$checkIcon"
+            :preventLoading="$preventLoading"
         >
             {{ $slot }}
         </x-ui.select.options>

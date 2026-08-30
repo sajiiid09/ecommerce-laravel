@@ -41,10 +41,14 @@ class CartDrawer extends Component
         $this->dispatch('open-cart');
     }
 
-    public function updateItem(int $itemId, int $quantity, CartService $carts): void
+    public function updateItem(int $itemId, int $quantity, string $direction, CartService $carts): void
     {
+        $currentItem = $carts->current()->items->firstWhere('id', $itemId);
+        $currentQuantity = (int) ($currentItem?->quantity ?? $quantity);
+
         $carts->updateQuantity($itemId, $quantity);
         $this->dispatchUpdated($carts);
+        $this->dispatchQuantityNotification($currentQuantity, $quantity, $direction);
     }
 
     public function removeItem(int $itemId, CartService $carts): void
@@ -86,5 +90,22 @@ class CartDrawer extends Component
         $cart = $carts->current();
         $this->items = $carts->present($cart);
         $this->subtotal = $carts->subtotal($cart);
+    }
+
+    private function dispatchQuantityNotification(int $currentQuantity, int $quantity, string $direction): void
+    {
+        if ($direction === 'decrease' && $currentQuantity === $quantity) {
+            $this->dispatch('notify', content: 'Quantity is already at the minimum of 1.', type: 'warning');
+
+            return;
+        }
+
+        $message = match ($direction) {
+            'increase' => "Quantity increased to {$quantity}.",
+            'decrease' => "Quantity decreased to {$quantity}.",
+            default => "Quantity updated to {$quantity}.",
+        };
+
+        $this->dispatch('notify', content: $message, type: $direction === 'decrease' ? 'error' : 'success');
     }
 }

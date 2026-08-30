@@ -3,21 +3,25 @@
 namespace App\Livewire\Pages\Admin\Settings;
 
 use App\Enums\ImagePreset;
+use App\Models\District;
 use App\Models\MediaAsset;
 use App\Models\SiteSetting;
+use App\Models\UserAddress;
 use App\Services\MediaService;
 use App\Services\SiteSettingsService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 #[Layout('layouts.admin')]
 class General extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public string $storeName = 'StoreZ';
 
@@ -38,6 +42,18 @@ class General extends Component
     public string $address = '';
 
     public string $timezone = 'Asia/Dhaka';
+
+    public ?int $editingDistrictId = null;
+
+    public string $districtName = '';
+
+    public string $districtFee = '0.00';
+
+    public bool $districtIsActive = true;
+
+    public int $districtSortOrder = 0;
+
+    public int $perPage = 10;
 
     protected SiteSettingsService $settings;
 
@@ -146,6 +162,89 @@ class General extends Component
         session()->flash('status', 'General settings saved.');
     }
 
+    public function openCreateDistrict(): void
+    {
+        $this->authorize('create', District::class);
+        $this->resetDistrictForm();
+        $this->resetPage();
+        $this->dispatch('open-modal', id: 'district-editor');
+    }
+
+    public function openEditDistrict(int $districtId): void
+    {
+        $district = District::query()->findOrFail($districtId);
+        $this->authorize('update', $district);
+        $this->editingDistrictId = $district->id;
+        $this->districtName = $district->name;
+        $this->districtFee = number_format($district->delivery_fee_minor / 100, 2, '.', '');
+        $this->districtIsActive = $district->is_active;
+        $this->districtSortOrder = $district->sort_order;
+        $this->resetValidation();
+        $this->dispatch('open-modal', id: 'district-editor');
+    }
+
+    public function saveDistrict(): void
+    {
+        $district = $this->editingDistrictId === null
+            ? null
+            : District::query()->findOrFail($this->editingDistrictId);
+
+        $this->authorize($district ? 'update' : 'create', $district ?? District::class);
+        $this->districtName = trim($this->districtName);
+
+        $validated = $this->validate([
+            'districtName' => ['required', 'string', 'max:100', Rule::unique('districts', 'name')->ignore($district?->id)],
+            'districtFee' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:999999999.99'],
+            'districtIsActive' => ['boolean'],
+            'districtSortOrder' => ['required', 'integer', 'min:0', 'max:2147483647'],
+        ]);
+
+        $attributes = [
+            'name' => trim($validated['districtName']),
+            'delivery_fee_minor' => $this->toMinorUnits((string) $validated['districtFee']),
+            'is_active' => (bool) $validated['districtIsActive'],
+            'sort_order' => (int) $validated['districtSortOrder'],
+        ];
+
+        DB::transaction(function () use ($district, $attributes): void {
+            $district ??= new District;
+            $oldName = $district->exists ? $district->name : null;
+            $district->fill($attributes)->save();
+
+            if ($oldName !== null && $oldName !== $district->name) {
+                UserAddress::query()->where('district_id', $district->id)->update(['district' => $district->name]);
+            }
+        });
+
+        $this->resetDistrictForm();
+        $this->dispatch('close-modal', id: 'district-editor');
+        session()->flash('status', 'Delivery district saved.');
+    }
+
+    public function toggleDistrict(int $districtId): void
+    {
+        $district = District::query()->findOrFail($districtId);
+        $this->authorize('update', $district);
+        $district->update(['is_active' => ! $district->is_active]);
+        session()->flash('status', 'Delivery district status updated.');
+    }
+
+    public function deleteDistrict(int $districtId): void
+    {
+        $district = District::query()->findOrFail($districtId);
+        $this->authorize('delete', $district);
+
+        if ($district->userAddresses()->exists()) {
+            $this->addError('districtDelete', 'This district is used by a saved address and cannot be deleted.');
+
+            return;
+        }
+
+        $district->delete();
+        $this->resetPage();
+        session()->flash('status', 'Delivery district deleted.');
+    }
+
     public function render()
     {
         return view('livewire.pages.admin.settings.general', [
@@ -154,8 +253,28 @@ class General extends Component
                 ->latest()
                 ->limit(20)
                 ->get(),
+            'logoAsset' => $this->logoMediaId ? MediaAsset::query()->find($this->logoMediaId) : null,
+            'faviconAsset' => $this->faviconMediaId ? MediaAsset::query()->find($this->faviconMediaId) : null,
             'timezones' => \DateTimeZone::listIdentifiers(),
+            'districts' => District::query()->orderBy('sort_order')->orderBy('name')->paginate($this->perPage),
         ]);
+    }
+
+    private function resetDistrictForm(): void
+    {
+        $this->editingDistrictId = null;
+        $this->districtName = '';
+        $this->districtFee = '0.00';
+        $this->districtIsActive = true;
+        $this->districtSortOrder = 0;
+        $this->resetValidation(['districtName', 'districtFee', 'districtIsActive', 'districtSortOrder', 'districtDelete']);
+    }
+
+    private function toMinorUnits(string $amount): int
+    {
+        [$whole, $fraction] = array_pad(explode('.', number_format((float) $amount, 2, '.', '')), 2, '00');
+
+        return ((int) $whole * 100) + (int) $fraction;
     }
 
     private function nullableInteger(mixed $value): ?int

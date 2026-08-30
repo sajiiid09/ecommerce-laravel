@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Pages\Admin\Content\Announcements\Index as AnnouncementsIndex;
+use App\Livewire\Pages\Admin\Content\Banners\Edit as BannerEdit;
 use App\Livewire\Pages\Admin\Content\Footer\Edit as FooterEdit;
 use App\Livewire\Pages\Admin\Content\Header\Edit as HeaderEdit;
 use App\Livewire\Pages\Admin\Content\Homepage\Builder;
@@ -1092,7 +1093,9 @@ it('renders hydrated hero banners and testimonial carousel data', function () {
     $this->get('/')->assertSuccessful()
         ->assertSee('Hero carousel slide')
         ->assertSee('A structured testimonial quote.')
-        ->assertSee('Customer testimonials');
+        ->assertSee('Customer testimonials')
+        ->assertSee('href="'.url('/offers').'"', false)
+        ->assertDontSee('href="/offers"', false);
 });
 
 it('allows administrators to add and reorder homepage testimonials', function () {
@@ -1165,7 +1168,163 @@ it('opens banner editing when optional banner fields are null', function () {
     $this->actingAs($admin)->get("/admin/content/banners/{$banner->id}/edit")
         ->assertSuccessful()
         ->assertSee('Edit banner')
-        ->assertSee('Banner with optional fields');
+        ->assertSee('Banner with optional fields')
+        ->assertSee('Update banner')
+        ->assertDontSee('Save banner')
+        ->assertSee('xl:col-span-2', false)
+        ->assertSee('!text-white', false)
+        ->assertSee('Cancel')
+        ->assertDontSee('Desktop image')
+        ->assertDontSee('Mobile image');
+});
+
+it('uses the save label when creating a banner', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Livewire::actingAs($admin)
+        ->test(BannerEdit::class)
+        ->assertSee('Save banner')
+        ->assertDontSee('Update banner');
+});
+
+it('allows administrators to configure and replace a hero side image', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $firstAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/hero-side-first.png',
+        'filename' => 'hero-side-first.png',
+        'mime_type' => 'image/png',
+        'size' => 100,
+    ]);
+    $secondAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/hero-side-second.png',
+        'filename' => 'hero-side-second.png',
+        'mime_type' => 'image/png',
+        'size' => 100,
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(BannerEdit::class)
+        ->set('name', 'Hero side image')
+        ->set('placement', 'hero')
+        ->set('title', 'Hero with product artwork')
+        ->call('selectMedia', $firstAsset->id, $firstAsset->url(), 'side')
+        ->set('side_image_mode', 'contained')
+        ->call('saveBanner')
+        ->assertHasNoErrors();
+
+    $banner = Banner::where('name', 'Hero side image')->firstOrFail();
+
+    expect($banner->side_media_id)->toBe($firstAsset->id)
+        ->and($banner->side_image_mode)->toBe('contained')
+        ->and(MediaUsage::where('media_asset_id', $firstAsset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeTrue();
+
+    $component->call('selectMedia', $secondAsset->id, $secondAsset->url(), 'side')
+        ->call('saveBanner');
+
+    expect($banner->fresh()->side_media_id)->toBe($secondAsset->id)
+        ->and(MediaUsage::where('media_asset_id', $firstAsset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeFalse()
+        ->and(MediaUsage::where('media_asset_id', $secondAsset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeTrue();
+
+    $component->call('clearSideMedia')
+        ->call('saveBanner');
+
+    expect($banner->fresh()->side_media_id)->toBeNull()
+        ->and(MediaUsage::where('media_asset_id', $secondAsset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeFalse();
+
+    $component->call('selectMedia', $secondAsset->id, $secondAsset->url(), 'side')
+        ->call('saveBanner');
+
+    $component->set('placement', 'homepage')
+        ->call('saveBanner')
+        ->assertDontSee('Hero side image');
+
+    expect($banner->fresh()->side_media_id)->toBeNull()
+        ->and($banner->fresh()->side_image_mode)->toBe('cutout')
+        ->and(MediaUsage::where('media_asset_id', $secondAsset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeFalse();
+});
+
+it('allows administrators to upload a new hero side image from the banner editor', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create(['is_admin' => true]);
+    $file = UploadedFile::fake()->image('hero-side-upload.png', 1200, 800);
+
+    $component = Livewire::actingAs($admin)
+        ->test(BannerEdit::class)
+        ->set('name', 'Uploaded hero side image')
+        ->set('placement', 'hero')
+        ->assertDontSee('Shared Media Library')
+        ->set('side_image_file', $file)
+        ->call('uploadSideImage')
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Hero side image uploaded and selected. Save banner to apply it.', type: 'success');
+
+    $asset = MediaAsset::where('original_filename', 'hero-side-upload.png')->firstOrFail();
+
+    $component->assertSet('side_media_id', $asset->id)
+        ->assertSee($asset->url(), false)
+        ->call('saveBanner')
+        ->assertRedirect(route('admin.content.banners'));
+
+    $banner = Banner::where('name', 'Uploaded hero side image')->firstOrFail();
+
+    expect($banner->side_media_id)->toBe($asset->id)
+        ->and(MediaUsage::where('media_asset_id', $asset->id)->where('usable_id', $banner->id)->where('role', 'banner.side')->exists())->toBeTrue();
+
+    Storage::disk('public')->assertExists($asset->path);
+});
+
+it('renders a configured hero side image responsively and preserves the background fallback', function () {
+    $sideAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/hero-side-artwork.png',
+        'filename' => 'hero-side-artwork.png',
+        'mime_type' => 'image/png',
+        'size' => 100,
+    ]);
+    HomepageSection::create([
+        'section_key' => 'hero',
+        'type' => 'hero',
+        'title' => 'Hero',
+        'enabled' => true,
+        'sort_order' => 0,
+        'settings' => [],
+    ]);
+    Banner::create([
+        'name' => 'Hero with side artwork',
+        'placement' => 'hero',
+        'title' => 'Shop the collection',
+        'side_media_id' => $sideAsset->id,
+        'side_image_mode' => 'contained',
+        'status' => 'published',
+        'sort_order' => 0,
+    ]);
+
+    $hero = collect(app(HomepageService::class)->sections(false))
+        ->firstWhere('type', 'hero');
+
+    expect($hero['settings']['heroBanners'][0]['sideImage'])->toContain('hero-side-artwork.png')
+        ->and($hero['settings']['heroBanners'][0]['sideImageMode'])->toBe('contained');
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('hero-side-artwork.png', false)
+        ->assertSee('sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.85fr)]', false)
+        ->assertSee('bg-white/10 p-3', false);
+
+    Banner::create([
+        'name' => 'Hero without side artwork',
+        'placement' => 'hero',
+        'title' => 'Background fallback',
+        'desktop_media_id' => $sideAsset->id,
+        'status' => 'published',
+        'sort_order' => 1,
+    ]);
+
+    Cache::forget('cms:banners:hero');
+    Cache::forget('cms:homepage');
+    $this->get('/')->assertSee('object-cover opacity-45', false);
 });
 
 it('rebuilds stale cached CMS model payloads before rendering storefront layouts', function () {

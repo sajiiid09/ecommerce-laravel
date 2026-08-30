@@ -62,11 +62,11 @@
                         <p class="mt-1 text-sm font-extrabold text-store-red">৳{{ number_format($item['price'] / 100, 2) }}</p>
                         <div class="mt-2 flex items-center justify-between">
                             <div class="inline-flex h-8 items-center rounded-control border border-store-border">
-                                <button type="button" wire:click="updateItem({{ $item['id'] }}, {{ max(1, $item['quantity'] - 1) }})" class="grid size-8 place-items-center" aria-label="Decrease quantity">−</button>
+                                <button type="button" wire:click="updateItem({{ $item['id'] }}, {{ max(1, $item['quantity'] - 1) }}, 'decrease')" class="grid size-8 place-items-center text-store-red transition hover:bg-red-50" aria-label="Decrease quantity">−</button>
                                 <span class="w-7 text-center text-sm font-semibold">{{ $item['quantity'] }}</span>
-                                <button type="button" wire:click="updateItem({{ $item['id'] }}, {{ $item['quantity'] + 1 }})" class="grid size-8 place-items-center" aria-label="Increase quantity">+</button>
+                                <button type="button" wire:click="updateItem({{ $item['id'] }}, {{ $item['quantity'] + 1 }}, 'increase')" class="grid size-8 place-items-center" aria-label="Increase quantity">+</button>
                             </div>
-                            <button type="button" wire:click="removeItem({{ $item['id'] }})" class="text-xs font-semibold text-store-error hover:underline">Remove</button>
+                            <button type="button" wire:click="removeItem({{ $item['id'] }})" class="grid size-8 place-items-center rounded-control text-store-muted transition hover:bg-red-50 hover:text-store-red focus:outline-none focus:ring-2 focus:ring-store-red/30" aria-label="Remove {{ $item['name'] }} from cart" title="Remove {{ $item['name'] }} from cart"><x-ui.icon name="ps:trash" variant="regular" class="size-5 !text-current" /></button>
                         </div>
                     </div>
                 </article>

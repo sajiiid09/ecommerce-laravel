@@ -9,7 +9,8 @@
 
 @props([
     'checkIcon' => 'check',
-    'empty' => 'no results found'
+    'empty' => 'no results found',
+    'preventLoading' => false,
 ])
 
 <div 

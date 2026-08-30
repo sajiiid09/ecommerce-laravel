@@ -7,7 +7,7 @@
                 <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">Order {{ $orderModel->order_number }}</h1>
                 <p class="mt-1 text-sm text-slate-500">{{ optional($orderModel->placed_at)->format('F j, Y g:i A') }}</p>
             </div>
-            <span class="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold capitalize text-blue-700">{{ $orderModel->status }}</span>
+            <x-store.ui.status-badge :status="$orderModel->status" class="text-sm" />
         </div>
         @if(session('status')) <p class="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{{ session('status') }}</p> @endif
         <div class="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

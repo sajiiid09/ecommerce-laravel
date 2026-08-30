@@ -2,7 +2,6 @@
     <div class="mx-auto max-w-[1480px]">
         <div class="mb-6 flex items-end justify-between gap-4">
             <div><p class="text-sm text-slate-500">StoreZ / Admin</p><h1 class="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">Admin Dashboard</h1><p class="mt-1 text-sm text-slate-500">A live overview of your commerce showcase.</p></div>
-            <a href="{{ route('admin.catalog.products.create') }}" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">+ Add Product</a>
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -16,7 +15,7 @@
                 <div class="flex items-center justify-between"><div><h2 class="text-base font-bold text-slate-900">Recent Orders</h2><p class="mt-1 text-xs text-slate-500">Latest customer activity.</p></div><a href="{{ route('admin.orders') }}" class="text-xs font-bold text-blue-600">View all orders →</a></div>
                 <div class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-2 py-3">Order</th><th class="px-2 py-3">Customer</th><th class="px-2 py-3">Total</th><th class="px-2 py-3">Status</th><th class="px-2 py-3"></th></tr></thead><tbody class="divide-y divide-slate-100">
                     @forelse($recentOrders as $order)
-                        <tr><td class="px-2 py-3 font-bold text-blue-600">{{ $order->order_number }}</td><td class="px-2 py-3">{{ $order->customer_name }}</td><td class="px-2 py-3 font-semibold">৳{{ number_format($order->total_minor / 100, 2) }}</td><td class="px-2 py-3"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold capitalize text-blue-700">{{ $order->status }}</span></td><td class="px-2 py-3 text-right"><a href="{{ route('admin.order', ['order' => $order->order_number]) }}" class="text-xs font-bold text-blue-600">View</a></td></tr>
+                        <tr><td class="px-2 py-3 font-bold text-blue-600">{{ $order->order_number }}</td><td class="px-2 py-3">{{ $order->customer_name }}</td><td class="px-2 py-3 font-semibold">৳{{ number_format($order->total_minor / 100, 2) }}</td><td class="px-2 py-3"><x-store.ui.status-badge :status="$order->status" /></td><td class="px-2 py-3 text-right"><a href="{{ route('admin.order', ['order' => $order->order_number]) }}" class="text-xs font-bold text-blue-600">View</a></td></tr>
                     @empty
                         <tr><td colspan="5" class="px-2 py-8 text-center text-sm text-slate-500">No orders yet.</td></tr>
                     @endforelse

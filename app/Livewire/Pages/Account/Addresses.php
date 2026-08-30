@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Pages\Account;
 
+use App\Models\District;
 use App\Models\User;
 use App\Models\UserAddress;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,6 +27,8 @@ class Addresses extends Component
     public string $city = '';
 
     public string $district = '';
+
+    public ?int $districtId = null;
 
     public string $postalCode = '';
 
@@ -47,7 +51,8 @@ class Addresses extends Component
         $this->phone = $address->phone;
         $this->addressLine = $address->address_line;
         $this->city = $address->city;
-        $this->district = (string) ($address->district ?? '');
+        $this->district = $address->districtName();
+        $this->districtId = $address->district_id ?? $address->legacyDistrictId();
         $this->postalCode = (string) ($address->postal_code ?? '');
         $this->country = $address->country;
         $this->isDefault = $address->is_default;
@@ -63,14 +68,26 @@ class Addresses extends Component
             'phone' => ['required', 'string', 'max:30'],
             'addressLine' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:100'],
-            'district' => ['nullable', 'string', 'max:100'],
+            'districtId' => $this->editingAddressId === null
+                ? ['required', 'integer', Rule::exists('districts', 'id')->where(fn ($query) => $query->where('is_active', true))]
+                : ['nullable', 'integer', Rule::exists('districts', 'id')],
             'postalCode' => ['nullable', 'string', 'max:20'],
             'country' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
             'isDefault' => ['boolean'],
         ]);
 
+        $district = $data['districtId'] === null ? null : District::query()->find($data['districtId']);
+        $currentDistrictId = $this->editingAddressId === null
+            ? null
+            : (int) UserAddress::query()->whereKey($this->editingAddressId)->value('district_id');
+        if ($district && ! $district->is_active && $district->id !== $currentDistrictId) {
+            $this->addError('districtId', 'Please select an active district.');
+
+            return;
+        }
+
         $user = auth()->user();
-        $address = DB::transaction(function () use ($data, $user): UserAddress {
+        $address = DB::transaction(function () use ($data, $user, $district): UserAddress {
             $user = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $address = $this->editingAddressId
                 ? $user->addresses()->findOrFail($this->editingAddressId)
@@ -84,7 +101,8 @@ class Addresses extends Component
                 'phone' => $data['phone'],
                 'address_line' => $data['addressLine'],
                 'city' => $data['city'],
-                'district' => $data['district'] ?: null,
+                'district_id' => $district?->id,
+                'district' => $district?->name ?? $address->districtName(),
                 'postal_code' => $data['postalCode'] ?: null,
                 'country' => strtoupper($data['country']),
                 'is_default' => $wasDefault,
@@ -118,12 +136,23 @@ class Addresses extends Component
 
     public function render(): View
     {
+        $districtOptions = District::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+        $selectedDistrict = $this->districtId === null ? null : District::query()->find($this->districtId);
+        if ($selectedDistrict && ! $selectedDistrict->is_active && ! $districtOptions->contains('id', $selectedDistrict->id)) {
+            $districtOptions->prepend($selectedDistrict);
+        }
+
         return view('pages.account.addresses-content', [
             'addresses' => auth()->user()->addresses()
                 ->orderByDesc('is_default')
                 ->latest('created_at')
                 ->latest('id')
                 ->get(),
+            'districts' => $districtOptions,
         ]);
     }
 
@@ -131,7 +160,7 @@ class Addresses extends Component
     {
         $this->reset([
             'editingAddressId', 'label', 'recipientName', 'phone', 'addressLine',
-            'city', 'district', 'postalCode', 'isDefault',
+            'city', 'district', 'districtId', 'postalCode', 'isDefault',
         ]);
         $this->country = 'BD';
         $this->resetValidation();

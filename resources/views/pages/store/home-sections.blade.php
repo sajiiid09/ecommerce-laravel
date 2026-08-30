@@ -9,16 +9,33 @@
             <x-store.ui.carousel loop autoplay interval="5000" label="Featured promotions" :show-controls="false">
                 @forelse($heroBanners as $heroBanner)
                     @php($heroImage = $heroBanner['image'] ?: $heroBanner['mobileImage'])
+                    @php($heroSideImage = $heroBanner['sideImage'] ?? null)
+                    @php($heroSideImageMode = $heroBanner['sideImageMode'] ?? 'cutout')
+                    @php($hasHeroSideImage = filled($heroSideImage))
                     @php($heroTheme = ['blue' => 'bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d]', 'red' => 'bg-gradient-to-br from-red-700 via-red-600 to-red-950', 'green' => 'bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-950', 'amber' => 'bg-gradient-to-br from-amber-600 via-orange-500 to-orange-900'][$heroBanner['theme'] ?? 'blue'] ?? 'bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d]')
                     <article class="relative min-h-[300px] min-w-0 basis-full shrink-0 overflow-hidden rounded-card {{ $heroTheme }} p-8 sm:min-h-[360px] sm:p-12">
-                        @if($heroImage)<picture>@if($heroBanner['mobileImage'])<source media="(max-width: 639px)" srcset="{{ $heroBanner['mobileImage'] }}">@endif<img src="{{ $heroImage }}" alt="{{ $heroBanner['title'] ?: 'StoreZ promotion' }}" loading="eager" fetchpriority="high" decoding="async" class="absolute inset-0 size-full object-cover opacity-45"></picture>@endif
+                        @if(! $hasHeroSideImage && $heroImage)<picture>@if($heroBanner['mobileImage'])<source media="(max-width: 639px)" srcset="{{ $heroBanner['mobileImage'] }}">@endif<img src="{{ $heroImage }}" alt="{{ $heroBanner['title'] ?: 'StoreZ promotion' }}" loading="eager" fetchpriority="high" decoding="async" class="absolute inset-0 size-full object-cover opacity-45"></picture>@endif
                         <div class="absolute inset-0 bg-gradient-to-r from-black/35 via-black/10 to-transparent"></div>
-                        <div class="relative z-10 max-w-2xl">
-                            @if($heroBanner['eyebrow'])<p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{{ $heroBanner['eyebrow'] }}</p>@endif
-                            <h1 class="mt-3 text-4xl font-black leading-tight sm:text-6xl">{{ $heroBanner['title'] ?: 'StoreZ promotion' }}</h1>
-                            @if($heroBanner['description'])<p class="mt-4 max-w-xl text-base text-white/85 sm:text-lg">{{ $heroBanner['description'] }}</p>@endif
-                            @if($heroBanner['ctaLabel'])<a href="{{ $heroBanner['url'] ?: route('store.offers') }}" class="mt-6 inline-flex rounded-control bg-white px-5 py-3 text-sm font-bold text-store-navy transition hover:bg-blue-50">{{ $heroBanner['ctaLabel'] }}</a>@endif
-                        </div>
+                        @if($hasHeroSideImage)
+                            <div class="relative z-10 grid min-h-[300px] items-center gap-6 sm:min-h-[360px] sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.85fr)] sm:gap-8">
+                                <div class="max-w-2xl">
+                                    @if($heroBanner['eyebrow'])<p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{{ $heroBanner['eyebrow'] }}</p>@endif
+                                    <h1 class="mt-3 text-4xl font-black leading-tight sm:text-6xl">{{ $heroBanner['title'] ?: 'StoreZ promotion' }}</h1>
+                                    @if($heroBanner['description'])<p class="mt-4 max-w-xl text-base text-white/85 sm:text-lg">{{ $heroBanner['description'] }}</p>@endif
+                                    @if($heroBanner['ctaLabel'])<a href="{{ url($heroBanner['url'] ?: route('store.offers')) }}" class="mt-6 inline-flex rounded-control bg-white px-5 py-3 text-sm font-bold text-store-navy transition hover:bg-blue-50">{{ $heroBanner['ctaLabel'] }}</a>@endif
+                                </div>
+                                <div class="flex min-h-48 items-center justify-center sm:min-h-72 {{ $heroSideImageMode === 'contained' ? 'rounded-2xl bg-white/10 p-3' : '' }}">
+                                    <img src="{{ $heroSideImage }}" alt="{{ $heroBanner['title'] ?: 'StoreZ promotion' }}" loading="eager" decoding="async" class="max-h-72 w-full object-contain sm:max-h-80">
+                                </div>
+                            </div>
+                        @else
+                            <div class="relative z-10 max-w-2xl">
+                                @if($heroBanner['eyebrow'])<p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{{ $heroBanner['eyebrow'] }}</p>@endif
+                                <h1 class="mt-3 text-4xl font-black leading-tight sm:text-6xl">{{ $heroBanner['title'] ?: 'StoreZ promotion' }}</h1>
+                                @if($heroBanner['description'])<p class="mt-4 max-w-xl text-base text-white/85 sm:text-lg">{{ $heroBanner['description'] }}</p>@endif
+                                @if($heroBanner['ctaLabel'])<a href="{{ url($heroBanner['url'] ?: route('store.offers')) }}" class="mt-6 inline-flex rounded-control bg-white px-5 py-3 text-sm font-bold text-store-navy transition hover:bg-blue-50">{{ $heroBanner['ctaLabel'] }}</a>@endif
+                            </div>
+                        @endif
                     </article>
                 @empty
                     <article class="relative min-h-[300px] min-w-0 basis-full shrink-0 overflow-hidden rounded-card bg-gradient-to-br from-[#0e55a8] via-[#063875] to-[#052b5d] p-8 sm:min-h-[360px] sm:p-12">
@@ -27,7 +44,7 @@
                             <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-200">{{ $section['eyebrow'] ?? 'StoreZ everyday value' }}</p>
                             <h1 class="mt-3 text-4xl font-black sm:text-6xl">{{ $section['title'] ?? 'Back to Better Deals Every Day!' }}</h1>
                             <p class="mt-4 max-w-xl text-blue-100">{{ $section['subtitle'] ?? 'Groceries, fashion, electronics and more at unbeatable prices.' }}</p>
-                            @if(!empty($settings['cta']))<a href="{{ $settings['url'] ?? route('store.offers') }}" class="mt-6 inline-flex rounded-control bg-store-red px-5 py-3 text-sm font-bold text-white">{{ $settings['cta'] }}</a>@endif
+                            @if(!empty($settings['cta']))<a href="{{ url($settings['url'] ?? route('store.offers')) }}" class="mt-6 inline-flex rounded-control bg-store-red px-5 py-3 text-sm font-bold text-white">{{ $settings['cta'] }}</a>@endif
                         </div>
                     </article>
                 @endforelse
@@ -51,7 +68,7 @@
     @elseif(($section['type'] ?? '') === 'brands')
         <section class="mt-8"><h2 class="mb-4 text-xl font-extrabold text-store-ink">{{ $section['title'] ?? 'Top Brands' }}</h2><div class="flex flex-wrap gap-3">@foreach($settings['brands'] ?? [] as $brand)<a href="{{ route('store.brand', ['slug' => $brand['slug'] ?? ($brand['id'] ?? '')]) }}" class="rounded-card border border-store-border bg-white px-5 py-3 text-sm font-bold text-store-blue hover:border-store-blue">{{ $brand['name'] }}</a>@endforeach</div></section>
     @elseif(($section['type'] ?? '') === 'banners')
-        <section class="mt-8 grid gap-4 md:grid-cols-2">@foreach($settings['banners'] ?? [] as $banner)<a href="{{ $banner['url'] ?: route('store.offers') }}" class="group relative min-h-56 overflow-hidden rounded-card bg-store-navy text-white"><picture>@if($banner['mobileImage'])<source media="(max-width: 639px)" srcset="{{ $banner['mobileImage'] }}">@endif@if($banner['image'])<img src="{{ $banner['image'] }}" alt="{{ $banner['title'] }}" loading="lazy" decoding="async" class="h-56 w-full object-cover opacity-70 transition group-hover:scale-105">@endif</picture><div class="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-5"><h2 class="text-xl font-black">{{ $banner['title'] ?: 'Featured promotion' }}</h2>@if($banner['description'])<p class="mt-1 text-sm text-white/80">{{ $banner['description'] }}</p>@endif@if($banner['ctaLabel'])<span class="mt-3 inline-flex w-fit rounded-control bg-white px-3 py-2 text-xs font-bold text-store-navy">{{ $banner['ctaLabel'] }}</span>@endif</div></a>@endforeach</section>
+        <section class="mt-8 grid gap-4 md:grid-cols-2">@foreach($settings['banners'] ?? [] as $banner)<a href="{{ url($banner['url'] ?: route('store.offers')) }}" class="group relative min-h-56 overflow-hidden rounded-card bg-store-navy text-white"><picture>@if($banner['mobileImage'])<source media="(max-width: 639px)" srcset="{{ $banner['mobileImage'] }}">@endif@if($banner['image'])<img src="{{ $banner['image'] }}" alt="{{ $banner['title'] }}" loading="lazy" decoding="async" class="h-56 w-full object-cover opacity-70 transition group-hover:scale-105">@endif</picture><div class="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-5"><h2 class="text-xl font-black">{{ $banner['title'] ?: 'Featured promotion' }}</h2>@if($banner['description'])<p class="mt-1 text-sm text-white/80">{{ $banner['description'] }}</p>@endif@if($banner['ctaLabel'])<span class="mt-3 inline-flex w-fit rounded-control bg-white px-3 py-2 text-xs font-bold text-store-navy">{{ $banner['ctaLabel'] }}</span>@endif</div></a>@endforeach</section>
     @elseif(($section['type'] ?? '') === 'trust')
         <section class="mt-8 grid gap-3 rounded-card bg-store-soft p-5 sm:grid-cols-3">@foreach($trustItems as $item)<div class="text-center"><p class="font-bold text-store-ink">{{ $item['title'] }}</p><p class="mt-1 text-xs text-store-muted">{{ $item['description'] }}</p></div>@endforeach</section>
     @elseif(($section['type'] ?? '') === 'newsletter')

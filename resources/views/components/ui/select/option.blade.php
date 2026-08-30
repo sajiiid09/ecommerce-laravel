@@ -17,7 +17,9 @@
 
 @php
     if (!$allowCustomSlots) {
-        $value = filled($value) ? $value : $slot->__toString();
+        // Preserve an explicitly supplied empty value so a select can expose
+        // a real reset option instead of converting it to the option label.
+        $value = $value !== null ? $value : $slot->__toString();
         $label = filled($label) ? $label : $slot->__toString();
         $searchLabel = filled($searchLabel) ? $searchLabel : $label;
     } else {

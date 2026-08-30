@@ -122,7 +122,7 @@
                                     <x-ui.table.cell class="px-3 py-3"><a href="{{ route('admin.order', ['order' => $order->order_number]) }}" class="font-bold text-blue-600 hover:underline">{{ $order->order_number }}</a></x-ui.table.cell>
                                     <x-ui.table.cell class="px-3 py-3 text-slate-500">{{ optional($order->placed_at)->format('M j, Y') ?: 'Not placed' }}</x-ui.table.cell>
                                     <x-ui.table.cell class="px-3 py-3 font-semibold">৳{{ number_format($order->total_minor / 100, 2) }}</x-ui.table.cell>
-                                    <x-ui.table.cell class="px-3 py-3"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold capitalize text-blue-700">{{ $order->status }}</span></x-ui.table.cell>
+                                    <x-ui.table.cell class="px-3 py-3"><x-store.ui.status-badge :status="$order->status" /></x-ui.table.cell>
                                 </x-ui.table.row>
                             @empty
                                 <x-ui.table.empty>No orders found for this customer.</x-ui.table.empty>

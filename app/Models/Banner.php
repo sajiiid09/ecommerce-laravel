@@ -21,6 +21,8 @@ class Banner extends Model
         'destination_value',
         'desktop_media_id',
         'mobile_media_id',
+        'side_media_id',
+        'side_image_mode',
         'status',
         'starts_at',
         'ends_at',
@@ -43,6 +45,11 @@ class Banner extends Model
     public function mobileMedia()
     {
         return $this->belongsTo(MediaAsset::class, 'mobile_media_id');
+    }
+
+    public function sideMedia()
+    {
+        return $this->belongsTo(MediaAsset::class, 'side_media_id');
     }
 
     public function scopeActive(Builder $query): Builder

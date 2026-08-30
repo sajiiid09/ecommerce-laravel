@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\District;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,10 +16,11 @@ class OrderService
         private readonly CouponService $coupons,
         private readonly InventoryService $inventory,
         private readonly PaymentManager $payments,
+        private readonly DistrictService $districts,
     ) {}
 
     /**
-     * @param  array{customer_name: string, customer_email: string, customer_phone?: string|null, address_line: string, city: string, district?: string|null, postal_code?: string|null, country?: string, delivery_method: string, payment_method: string, checkout_token: string, coupon_code?: string|null}  $data
+     * @param  array{customer_name: string, customer_email: string, customer_phone?: string|null, address_line: string, city: string, district?: string|null, district_id?: int|null, postal_code?: string|null, country?: string, delivery_method: string, payment_method: string, checkout_token: string, coupon_code?: string|null}  $data
      */
     public function place(array $data, ?User $user = null): Order
     {
@@ -33,7 +35,12 @@ class OrderService
 
         return DB::transaction(function () use ($data, $user): Order {
             $cart = $this->carts->validate();
-            $shippingMinor = $data['delivery_method'] === 'express' ? 6000 : 0;
+            $district = array_key_exists('district_id', $data)
+                ? District::query()->find($data['district_id'])
+                : null;
+            $shippingMinor = array_key_exists('district_id', $data)
+                ? $this->districts->shippingMinor($district, $data['delivery_method'])
+                : ($data['delivery_method'] === 'express' ? DistrictService::EXPRESS_SURCHARGE_MINOR : 0);
             $subtotalMinor = $this->carts->subtotal($cart);
             $customer = $user ?? auth()->user();
             $couponQuote = $this->coupons->redeem($data['coupon_code'] ?? null, $cart, $customer, $data['customer_email']);
@@ -85,7 +92,7 @@ class OrderService
                 'phone' => $data['customer_phone'] ?? '',
                 'address_line' => $data['address_line'],
                 'city' => $data['city'],
-                'district' => $data['district'] ?? null,
+                'district' => $district?->name ?? ($data['district'] ?? null),
                 'postal_code' => $data['postal_code'] ?? null,
                 'country' => $data['country'] ?? 'BD',
             ]);

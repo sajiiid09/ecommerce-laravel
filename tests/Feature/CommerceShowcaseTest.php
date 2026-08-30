@@ -6,7 +6,9 @@ use App\Livewire\Pages\Admin\Orders\Show as AdminOrderShow;
 use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
 use App\Livewire\Pages\Auth\Login;
 use App\Livewire\Pages\Auth\Register;
+use App\Livewire\Pages\Store\Cart as StoreCart;
 use App\Models\Cart;
+use App\Models\Order;
 use App\Models\PaymentProviderCredential;
 use App\Models\Product;
 use App\Models\ProductReview;
@@ -293,6 +295,8 @@ it('starts loading cart contents after storefront initialization without renderi
         ->call('loadCart')
         ->assertSet('loaded', true)
         ->assertSee($product->name, false)
+        ->assertSee('aria-label="Remove '.$product->name.' from cart"', false)
+        ->assertDontSee('>Remove<', false)
         ->call('loadCart')
         ->assertSet('loaded', true)
         ->assertSee($product->name, false);
@@ -301,10 +305,72 @@ it('starts loading cart contents after storefront initialization without renderi
 
     Livewire::test(CartDrawer::class)
         ->call('loadCart')
-        ->call('updateItem', $cartItem->id, 2)
+        ->call('updateItem', $cartItem->id, 2, 'increase')
         ->assertSet('items.0.quantity', 2)
+        ->assertDispatched('notify', content: 'Quantity increased to 2.', type: 'success')
+        ->call('updateItem', $cartItem->id, 1, 'decrease')
+        ->assertDispatched('notify', content: 'Quantity decreased to 1.', type: 'error')
         ->call('removeItem', $cartItem->id)
         ->assertSet('items', []);
+});
+
+it('notifies shoppers when the cart page quantity changes', function () {
+    $product = commerceProduct();
+    $variant = $product->defaultVariant;
+    session()->put('cart_token', 'cart-page-quantity-token');
+    app(CartService::class)->add($variant->id);
+
+    $cartItem = Cart::where('session_token', 'cart-page-quantity-token')->firstOrFail()->items()->firstOrFail();
+
+    Livewire::test(StoreCart::class)
+        ->call('updateItem', $cartItem->id, 2, 'increase')
+        ->assertDispatched('notify', content: 'Quantity increased to 2.', type: 'success')
+        ->call('updateItem', $cartItem->id, 1, 'decrease')
+        ->assertDispatched('notify', content: 'Quantity decreased to 1.', type: 'error')
+        ->call('updateItem', $cartItem->id, 1, 'decrease')
+        ->assertDispatched('notify', content: 'Quantity is already at the minimum of 1.', type: 'warning');
+
+    $this->get(route('store.cart'))
+        ->assertSee('aria-label="Remove '.$product->name.' from cart"', false)
+        ->assertDontSee('>Remove<', false);
+});
+
+it('uses semantic colors for order statuses in admin order views', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $statuses = [
+        'pending' => 'bg-amber-100 text-amber-700',
+        'completed' => 'bg-green-100 text-green-700',
+        'cancelled' => 'bg-red-100 text-red-700',
+    ];
+
+    foreach ($statuses as $status => $classes) {
+        Order::create([
+            'order_number' => 'SZ-STATUS-'.strtoupper($status),
+            'checkout_token' => (string) Str::uuid(),
+            'customer_name' => 'Status Customer',
+            'customer_email' => $status.'@example.test',
+            'customer_phone' => '01700000000',
+            'status' => $status,
+            'payment_status' => $status === 'completed' ? 'paid' : 'unpaid',
+            'currency' => 'BDT',
+            'subtotal_minor' => 1000,
+            'shipping_minor' => 0,
+            'discount_minor' => 0,
+            'tax_minor' => 0,
+            'total_minor' => 1000,
+            'delivery_method' => 'standard',
+            'payment_method' => 'cod',
+            'placed_at' => now(),
+        ]);
+    }
+
+    $orders = $this->actingAs($admin)->get(route('admin.orders'));
+    $dashboard = $this->actingAs($admin)->get(route('admin.dashboard'));
+
+    foreach ($statuses as $classes) {
+        $orders->assertSee($classes, false);
+        $dashboard->assertSee($classes, false);
+    }
 });
 
 it('uses native lazy loading for storefront images while prioritizing the main product image', function () {

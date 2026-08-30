@@ -30,6 +30,7 @@ const selectComponent = ({
         __maxSelection: maxSelection,
         __previousSelected: undefined,
         __usingExternalSearch: false,
+        __destroyed: false,
         commitCleanup: null,
 
 
@@ -43,6 +44,10 @@ const selectComponent = ({
                             // we need to wait until alpine finish it process then reconcile 
                             // the dom with the new coming or deleted nodes
                             this.$nextTick(() => {
+                                if (this.__destroyed || !this.$el.isConnected || !this.$rover?.options?.flush) {
+                                    return;
+                                }
+
                                 this.$rover.reconcileDom();
                                 this.ensureSelectedMarked();
                             });
@@ -246,6 +251,10 @@ const selectComponent = ({
 
         handleSelection(value) {
             if (!this.__isMultiple) {
+                if (String(this.__state ?? '') === String(value)) {
+                    return;
+                }
+
                 this.__state = this.__state === value ? null : value;
                 return
             }
@@ -328,6 +337,7 @@ const selectComponent = ({
             return this.__selectedTags
         },
         destroy() {
+            this.__destroyed = true;
             this.commitCleanup?.();
         },
     }

@@ -173,3 +173,13 @@ Livewire::test(Counter::class)
 - Unclosed component tags → syntax errors in v4
 - Using deprecated config keys or JS hooks
 - Including Alpine.js separately (already bundled in Livewire 4)
+
+## Checksum and Hydration Failures
+
+`CorruptComponentPayloadException` means the browser submitted a component snapshot whose checksum no longer matches the server. Treat the request that produced the HTTP 500 as the failure; subsequent Alpine errors and Livewire debug-modal errors are usually consequences of that rejected response.
+
+- First inspect the current Laravel log entry and the browser network timeline. Do not assume that a visible control is the only request from the component; `wire:model.live`, debounced inputs, and programmatic `$wire` calls can overlap.
+- For a rapid, purely presentational choice such as a delivery radio group, prefer deferred `wire:model` with Alpine-only preview state. Submit the selected value with the next existing Livewire action instead of issuing an update request on every click.
+- When an immediate server action is necessary, use one stable Alpine mutex shared by all controls that alter the same state. Set it before `$wire` is called, ignore repeated/current-option clicks, disable every competing control, and release it in `finally`.
+- Keep `wire:key` values stable for repeated or conditionally rendered controls. Do not modify `wire:snapshot` attributes or patch Livewire vendor code to hide checksum exceptions.
+- If a single, non-overlapping request still returns 500, inspect server configuration and logs for an independent error (for example, a missing `APP_KEY`) before changing component behavior.

@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Pages\Store;
 
+use App\Models\District;
 use App\Models\UserAddress;
 use App\Services\CartService;
 use App\Services\CouponService;
+use App\Services\DistrictService;
 use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Support\StorefrontDemoData;
@@ -31,6 +33,8 @@ class Checkout extends Component
     public string $city = 'Dhaka';
 
     public string $district = '';
+
+    public ?int $districtId = null;
 
     public string $postal_code = '';
 
@@ -76,6 +80,10 @@ class Checkout extends Component
         $address = auth()->user()?->addresses()->findOrFail($addressId);
         abort_unless($address instanceof UserAddress, 404);
 
+        if ($this->selectedAddressId === $address->id) {
+            return;
+        }
+
         $this->selectedAddressId = $address->id;
         $this->fillAddressFields($address);
         $this->resetValidation();
@@ -87,9 +95,26 @@ class Checkout extends Component
         $this->address_line = '';
         $this->city = 'Dhaka';
         $this->district = '';
+        $this->districtId = null;
         $this->postal_code = '';
         $this->country = 'BD';
         $this->resetValidation('selectedAddressId');
+    }
+
+    public function selectDeliveryMethod(string $method): void
+    {
+        if (! in_array($method, ['standard', 'express'], true)) {
+            $this->addError('delivery_method', 'Please select a valid delivery method.');
+
+            return;
+        }
+
+        if ($this->delivery_method === $method) {
+            return;
+        }
+
+        $this->delivery_method = $method;
+        $this->resetValidation('delivery_method');
     }
 
     public function nextStep(PaymentManager $payments): void
@@ -99,6 +124,23 @@ class Checkout extends Component
         }
 
         $this->step = min(4, $this->step + 1);
+    }
+
+    public function goToStep(int $targetStep, PaymentManager $payments): void
+    {
+        if ($targetStep < 1 || $targetStep > 4) {
+            return;
+        }
+
+        if ($targetStep < $this->step) {
+            $this->step = $targetStep;
+
+            return;
+        }
+
+        if ($targetStep === $this->step + 1) {
+            $this->nextStep($payments);
+        }
     }
 
     public function previousStep(): void
@@ -140,6 +182,11 @@ class Checkout extends Component
             return;
         }
 
+        $district = $this->resolveDistrictSelection();
+        if ($this->selectedAddressId === null && ! $district) {
+            return;
+        }
+
         $this->validate([
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['nullable', 'email', 'max:255'],
@@ -147,6 +194,9 @@ class Checkout extends Component
             'address_line' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:100'],
             'district' => ['required', 'string', 'max:100'],
+            'districtId' => $this->selectedAddressId === null
+                ? ['required', 'integer', Rule::exists('districts', 'id')->where(fn ($query) => $query->where('is_active', true))]
+                : ['nullable', 'integer', Rule::exists('districts', 'id')],
             'postal_code' => ['nullable', 'string', 'max:20'],
             'delivery_method' => ['required', 'in:standard,express'],
             'payment_method' => ['required', Rule::in(array_keys($payments->available()))],
@@ -159,6 +209,7 @@ class Checkout extends Component
             'address_line' => $this->address_line,
             'city' => $this->city,
             'district' => $this->district,
+            'district_id' => $district?->id,
             'postal_code' => $this->postal_code,
             'country' => $this->country,
             'delivery_method' => $this->delivery_method,
@@ -187,6 +238,10 @@ class Checkout extends Component
 
     public function render()
     {
+        $district = app(DistrictService::class)->find($this->districtId, includeInactive: $this->selectedAddressId !== null);
+        $shipping = app(DistrictService::class)->shippingMinor($district, $this->delivery_method);
+        $districts = app(DistrictService::class)->active();
+
         if (! Schema::hasTable('carts')) {
             $items = collect(StorefrontDemoData::cartItems())->map(fn (array $item): array => [
                 ...$item,
@@ -204,10 +259,12 @@ class Checkout extends Component
                 'cart' => null,
                 'items' => $items,
                 'subtotal' => collect($items)->sum('line_total'),
-                'shipping' => $this->delivery_method === 'express' ? 6000 : 0,
+                'shipping' => $shipping,
+                'districts' => $districts,
+                'districtFee' => $district?->delivery_fee_minor ?? 0,
                 'discount' => 0,
                 'couponQuote' => null,
-                'savedAddresses' => auth()->check() ? auth()->user()->addresses()->latest()->get() : collect(),
+                'savedAddresses' => auth()->check() ? auth()->user()->addresses()->with('district')->latest()->get() : collect(),
                 'paymentMethods' => app(PaymentManager::class)->available(),
             ]);
         }
@@ -222,9 +279,11 @@ class Checkout extends Component
         return view('pages.store.checkout-content', [
             'cart' => $cart,
             'items' => app(CartService::class)->present($cart),
-            'savedAddresses' => auth()->check() ? auth()->user()->addresses()->latest()->get() : collect(),
+            'savedAddresses' => auth()->check() ? auth()->user()->addresses()->with('district')->latest()->get() : collect(),
             'subtotal' => $subtotal,
-            'shipping' => $this->delivery_method === 'express' ? 6000 : 0,
+            'shipping' => $shipping,
+            'districts' => $districts,
+            'districtFee' => $district?->delivery_fee_minor ?? 0,
             'discount' => $discount,
             'couponQuote' => $couponQuote,
             'paymentMethods' => app(PaymentManager::class)->available(),
@@ -233,12 +292,16 @@ class Checkout extends Component
 
     private function validateCurrentStep(PaymentManager $payments): bool
     {
-        if ($this->step === 1 && ! $this->resolveSelectedAddress()) {
-            return false;
+        if ($this->step === 1) {
+            if (! $this->resolveSelectedAddress()) {
+                return false;
+            }
+
+            $this->resolveDistrictSelection();
         }
 
         $rules = match ($this->step) {
-            1 => ['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['nullable', 'email', 'max:255'], 'customer_phone' => ['required', 'string', 'max:30'], 'address_line' => ['required', 'string', 'max:500'], 'city' => ['required', 'string', 'max:100'], 'district' => ['required', 'string', 'max:100']],
+            1 => ['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['nullable', 'email', 'max:255'], 'customer_phone' => ['required', 'string', 'max:30'], 'address_line' => ['required', 'string', 'max:500'], 'city' => ['required', 'string', 'max:100'], 'district' => ['required', 'string', 'max:100'], 'districtId' => $this->selectedAddressId === null ? ['required', 'integer', Rule::exists('districts', 'id')->where(fn ($query) => $query->where('is_active', true))] : ['nullable', 'integer', Rule::exists('districts', 'id')]],
             2 => ['delivery_method' => ['required', 'in:standard,express']],
             3 => ['payment_method' => ['required', Rule::in(array_keys($payments->available()))]],
             default => [],
@@ -279,8 +342,27 @@ class Checkout extends Component
         $this->customer_phone = $address->phone;
         $this->address_line = $address->address_line;
         $this->city = $address->city;
-        $this->district = (string) ($address->district ?? '');
+        $this->district = $address->districtName();
+        $this->districtId = $address->district_id ?? $address->legacyDistrictId();
         $this->postal_code = (string) ($address->postal_code ?? '');
         $this->country = $address->country;
+    }
+
+    private function resolveDistrictSelection(): ?District
+    {
+        if ($this->districtId !== null) {
+            $district = District::query()->find($this->districtId);
+            if ($district && ($this->selectedAddressId !== null || $district->is_active)) {
+                $this->district = $district->name;
+
+                return $district;
+            }
+        }
+
+        if ($this->selectedAddressId === null) {
+            $this->addError('districtId', 'Please select an active district.');
+        }
+
+        return null;
     }
 }

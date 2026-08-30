@@ -33,7 +33,7 @@
                             </div>
                             <address class="mt-4 not-italic text-sm leading-6 text-store-muted">
                                 {{ $address->address_line }}<br>
-                                {{ $address->city }}{{ $address->district ? ', '.$address->district : '' }}{{ $address->postal_code ? ' '.$address->postal_code : '' }}<br>
+                                {{ $address->city }}{{ $address->districtName() ? ', '.$address->districtName() : '' }}{{ $address->postal_code ? ' '.$address->postal_code : '' }}<br>
                                 {{ $address->country }}
                             </address>
                             <div class="mt-5 flex flex-wrap gap-2 border-t border-store-border pt-4">
@@ -74,7 +74,7 @@
             <label class="block text-sm font-semibold text-store-ink">Address<x-ui.input wire:model="addressLine" placeholder="House, road, or apartment" class="mt-2" />@error('addressLine') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror</label>
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block text-sm font-semibold text-store-ink">City / Area<x-ui.input wire:model="city" class="mt-2" />@error('city') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror</label>
-                <label class="block text-sm font-semibold text-store-ink">District<x-ui.input wire:model="district" class="mt-2" />@error('district') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror</label>
+                <label class="block text-sm font-semibold text-store-ink">District<x-ui.select wire:key="address-district-select-{{ $editingAddressId ?? 'new' }}" wire:model.live="districtId" placeholder="Select district" searchable :preventLoading="true" :invalid="$errors->has('districtId')" class="mt-2 w-full"><x-ui.select.option wire:key="address-district-empty" value="">Select district</x-ui.select.option>@foreach($districts as $district)<x-ui.select.option wire:key="address-district-{{ $district->id }}" value="{{ $district->id }}" :disabled="! $district->is_active">{{ $district->name }}{{ $district->is_active ? '' : ' (inactive)' }}</x-ui.select.option>@endforeach</x-ui.select>@if($editingAddressId !== null && $districtId === null && filled($district))<span class="mt-1 block text-xs font-normal text-amber-700">Legacy district &quot;{{ $district }}&quot; is preserved until you select a managed district.</span>@endif @error('districtId') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror</label>
                 <label class="block text-sm font-semibold text-store-ink">Postal code<x-ui.input wire:model="postalCode" class="mt-2" />@error('postalCode') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror</label>
             </div>
             <x-ui.checkbox wire:model="isDefault" label="Set as default address" description="Use this address automatically during checkout." size="sm" />

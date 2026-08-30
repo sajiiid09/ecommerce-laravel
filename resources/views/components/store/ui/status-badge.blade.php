@@ -2,6 +2,8 @@
 
 @php
     $states = [
+        'pending' => ['Pending', 'bg-amber-100 text-amber-700'],
+        'completed' => ['Completed', 'bg-green-100 text-green-700'],
         'delivered' => ['Delivered', 'bg-green-100 text-green-700'],
         'processing' => ['Processing', 'bg-orange-100 text-orange-700'],
         'shipped' => ['Shipped', 'bg-blue-100 text-blue-700'],

@@ -30,6 +30,7 @@ class BannerService
             $previousMediaIds = [
                 'desktop_media_id' => $banner->desktop_media_id,
                 'mobile_media_id' => $banner->mobile_media_id,
+                'side_media_id' => $banner->side_media_id,
             ];
 
             if (! empty($data['starts_at']) && ! empty($data['ends_at']) && $data['ends_at'] < $data['starts_at']) {
@@ -44,6 +45,11 @@ class BannerService
                 throw new InvalidArgumentException('Unsafe banner destination.');
             }
 
+            if (($data['placement'] ?? $banner->placement) !== 'hero') {
+                $data['side_media_id'] = null;
+                $data['side_image_mode'] = 'cutout';
+            }
+
             $banner->fill($data);
             $banner->forceFill([
                 'created_by' => $banner->created_by ?? auth()->id(),
@@ -54,6 +60,7 @@ class BannerService
             foreach ([
                 ['desktop_media_id', 'desktopMedia', 'banner.desktop'],
                 ['mobile_media_id', 'mobileMedia', 'banner.mobile'],
+                ['side_media_id', 'sideMedia', 'banner.side'],
             ] as [$mediaId, $relation, $role]) {
                 if (! $banner->{$mediaId}) {
                     continue;
@@ -68,7 +75,12 @@ class BannerService
                 if ($previousMediaId && (int) $previousMediaId !== (int) $banner->{$mediaField}) {
                     $asset = MediaAsset::find($previousMediaId);
                     if ($asset) {
-                        $this->media->detach($asset, $banner, $mediaField === 'desktop_media_id' ? 'banner.desktop' : 'banner.mobile');
+                        $role = match ($mediaField) {
+                            'desktop_media_id' => 'banner.desktop',
+                            'mobile_media_id' => 'banner.mobile',
+                            default => 'banner.side',
+                        };
+                        $this->media->detach($asset, $banner, $role);
                     }
                 }
             }
@@ -79,7 +91,11 @@ class BannerService
                 $this->publishing->invalidate('banner', $previousPlacement);
             }
 
-            return $banner->fresh(['desktopMedia', 'mobileMedia']);
+            if ($banner->placement === 'hero' || $previousPlacement === 'hero') {
+                $this->publishing->invalidate('homepage');
+            }
+
+            return $banner->fresh(['desktopMedia', 'mobileMedia', 'sideMedia']);
         });
     }
 
@@ -98,13 +114,13 @@ class BannerService
 
         return Cache::remember($cacheKey, 300, fn (): Collection => Banner::active()
             ->where('placement', $placement)
-            ->with(['desktopMedia', 'mobileMedia'])
+            ->with(['desktopMedia', 'mobileMedia', 'sideMedia'])
             ->orderBy('sort_order')
             ->get());
     }
 
     /**
-     * @return array{id: int, eyebrow: string, title: string, description: string, ctaLabel: string, image: ?string, mobileImage: ?string, theme: string, url: ?string}
+     * @return array{id: int, eyebrow: string, title: string, description: string, ctaLabel: string, image: ?string, mobileImage: ?string, sideImage: ?string, sideImageMode: string, theme: string, url: ?string}
      */
     public function present(Banner $banner): array
     {
@@ -122,6 +138,8 @@ class BannerService
             'ctaLabel' => (string) $banner->cta_label,
             'image' => $banner->desktopMedia?->url(),
             'mobileImage' => $banner->mobileMedia?->url(),
+            'sideImage' => $banner->sideMedia?->url(),
+            'sideImageMode' => in_array($banner->side_image_mode, ['cutout', 'contained'], true) ? $banner->side_image_mode : 'cutout',
             'theme' => $theme,
             'url' => $this->destination($banner),
         ];

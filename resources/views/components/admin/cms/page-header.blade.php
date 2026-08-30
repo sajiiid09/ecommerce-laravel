@@ -14,7 +14,9 @@
             <p class="mt-1 text-sm text-slate-500">{{ $description }}</p>
         @endif
     </div>
-    @if(trim($slot))
-        <div class="flex flex-wrap items-center gap-2">{{ $slot }}</div>
+    @if(isset($actions))
+        <div class="flex flex-wrap items-center gap-3">{{ $actions }}</div>
+    @elseif(trim($slot))
+        <div class="flex flex-wrap items-center gap-3">{{ $slot }}</div>
     @endif
 </div>
