@@ -251,11 +251,13 @@ const selectComponent = ({
 
         handleSelection(value) {
             if (!this.__isMultiple) {
-                if (String(this.__state ?? '') === String(value)) {
+                const selectedValue = value === '' ? null : value;
+
+                if (String(this.__state ?? '') === String(selectedValue ?? '')) {
                     return;
                 }
 
-                this.__state = this.__state === value ? null : value;
+                this.__state = this.__state === selectedValue ? null : selectedValue;
                 return
             }
 

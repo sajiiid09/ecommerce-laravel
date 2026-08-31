@@ -127,30 +127,22 @@
 
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <h2 class="mb-4 font-bold text-[#111827]">Pricing</h2>
-                    <div class="grid gap-4 sm:grid-cols-4">
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Regular Price <span class="text-[#ef4444]">*</span>
                             <x-ui.input type="number" min="0" step="0.01" wire:model="regular_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <span class="block text-xs font-normal leading-4 text-[#9ca3af]">The standard price customers pay when no sale price applies.</span>
                         </label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                        <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Sale Price
                             <x-ui.input type="number" min="0" step="0.01" wire:model="sale_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <span class="block text-xs font-normal leading-4 text-[#9ca3af]">An optional discounted price shown to customers during a sale.</span>
                         </label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
-                            Compare At Price
-                            <x-ui.input type="number" min="0" step="0.01" wire:model="compare_at_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
-                        </label>
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">
+                        <label class="block space-y-1.5 text-sm font-semibold text-[#111827]">
                             Cost Price
                             <x-ui.input type="number" min="0" step="0.01" wire:model="cost_price" placeholder="0.00" class="!rounded-lg" controlClass="!rounded-lg !border-[#e5e7eb] !bg-white" />
+                            <span class="block text-xs font-normal leading-4 text-[#9ca3af]">Your internal purchase cost, used for margin and profit reporting.</span>
                         </label>
-                    </div>
-                    <div class="mt-4 flex items-center gap-4">
-                        <label class="space-y-1.5 text-sm font-semibold text-[#111827]">Tax Class</label>
-                        <x-ui.select placeholder="Standard Rate" class="w-44" triggerClass="!rounded-lg !border-[#e5e7eb] !bg-white">
-                            <x-ui.select.option value="standard">Standard Rate</x-ui.select.option>
-                        </x-ui.select>
-                        <x-ui.checkbox wire:model="track_quantity" label="Track stock quantity" size="sm" />
                     </div>
                 </section>
 

@@ -44,6 +44,7 @@ class Cart extends Component
                 'sku' => null,
                 'variant' => null,
                 'price' => $item['price'] * 100,
+                'old_price' => isset($item['oldPrice']) ? $item['oldPrice'] * 100 : null,
                 'quantity' => $item['quantity'],
                 'line_total' => $item['price'] * 100 * $item['quantity'],
             ])->all();

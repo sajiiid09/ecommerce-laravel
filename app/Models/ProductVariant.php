@@ -43,7 +43,20 @@ class ProductVariant extends Model
 
     public function currentPriceMinor(): int
     {
-        return (int) ($this->sale_price_minor ?? $this->regular_price_minor ?? 0);
+        $regularPrice = (int) ($this->regular_price_minor ?? 0);
+
+        return $this->sale_price_minor !== null && $this->sale_price_minor < $regularPrice
+            ? (int) $this->sale_price_minor
+            : $regularPrice;
+    }
+
+    public function compareAtPriceMinor(): ?int
+    {
+        $regularPrice = (int) ($this->regular_price_minor ?? 0);
+
+        return $this->sale_price_minor !== null && $this->sale_price_minor < $regularPrice
+            ? $regularPrice
+            : null;
     }
 
     public function availableQuantity(): int

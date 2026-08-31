@@ -7,10 +7,12 @@ use App\Livewire\Pages\Admin\Settings\Payments as AdminPaymentSettings;
 use App\Livewire\Pages\Auth\Login;
 use App\Livewire\Pages\Auth\Register;
 use App\Livewire\Pages\Store\Cart as StoreCart;
+use App\Livewire\Pages\Store\Product as StoreProduct;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\PaymentProviderCredential;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductReview;
 use App\Models\User;
 use App\Services\CartService;
@@ -18,6 +20,7 @@ use App\Services\CatalogCache;
 use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Services\ProductService;
+use App\Services\ProductVariantService;
 use App\Services\ReviewService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -333,6 +336,94 @@ it('notifies shoppers when the cart page quantity changes', function () {
     $this->get(route('store.cart'))
         ->assertSee('aria-label="Remove '.$product->name.' from cart"', false)
         ->assertDontSee('>Remove<', false);
+});
+
+it('shows the derived regular price across cart and checkout pricing', function () {
+    $product = commerceProduct([
+        'regular_price_minor' => 5000,
+        'sale_price_minor' => 3500,
+    ]);
+    session()->put('cart_token', 'discount-cart-token');
+    app(CartService::class)->add($product->defaultVariant->id);
+
+    $cart = $this->get(route('store.cart'));
+    $checkout = $this->get(route('store.checkout'));
+    $drawer = Livewire::test(CartDrawer::class)->call('loadCart');
+
+    expect(app(CartService::class)->present()[0]['old_price'])->toBe(5000)
+        ->and($cart->getContent())->toContain('৳50.00')
+        ->and($cart->getContent())->toContain('৳35.00')
+        ->and($checkout->getContent())->toContain('Sale')
+        ->and($checkout->getContent())->toContain('৳50.00')
+        ->and($drawer->html())->toContain('৳50.00');
+});
+
+it('keeps selected shirt variants distinct through cart, buy now, checkout, and order placement', function () {
+    $product = Product::create([
+        'name' => 'Commerce Shirt',
+        'slug' => 'commerce-shirt',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $color = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $size = $product->options()->create(['name' => 'Size', 'slug' => 'size']);
+    $color->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $color->values()->create(['value' => 'White', 'slug' => 'white']);
+    $size->values()->create(['value' => 'Small', 'slug' => 'small']);
+    $size->values()->create(['value' => 'Large', 'slug' => 'large']);
+
+    $variantService = app(ProductVariantService::class);
+    $generated = $variantService->generate($product);
+    foreach ($generated as $index => $variant) {
+        $variantService->save($variant, [
+            'sku' => 'COMMERCE-SHIRT-'.($index + 1),
+            'regular_price_minor' => 1000 + ($index * 100),
+            'quantity_on_hand' => 3,
+            'low_stock_threshold' => 1,
+        ]);
+    }
+    $product->update(['status' => 'published']);
+    Cache::flush();
+
+    $blackSmall = ProductVariant::query()->where('combination_key', 'color=black|size=small')->firstOrFail();
+    $blackLarge = ProductVariant::query()->where('combination_key', 'color=black|size=large')->firstOrFail();
+    $mapped = app(\App\Services\CatalogQueryService::class)->product($product->slug);
+
+    expect($mapped['options'])->toHaveCount(2)
+        ->and($mapped['variants'])->toHaveCount(4)
+        ->and(collect($mapped['variants'])->pluck('id')->all())->toContain($blackSmall->id, $blackLarge->id);
+
+    session()->put('cart_token', 'commerce-shirt-cart');
+    Livewire::test(StoreProduct::class, ['slug' => $product->slug])
+        ->call('addToCart', $blackSmall->id, 1);
+    Livewire::test(StoreProduct::class, ['slug' => $product->slug])
+        ->call('buyNow', $blackLarge->id, 2)
+        ->assertRedirect(route('store.checkout'));
+
+    $cart = app(CartService::class)->current();
+    expect($cart->items)->toHaveCount(2)
+        ->and($cart->items->pluck('product_variant_id')->all())->toContain($blackSmall->id, $blackLarge->id);
+
+    $order = app(OrderService::class)->place([
+        'customer_name' => 'Variant Customer',
+        'customer_email' => 'variant@example.test',
+        'customer_phone' => '01700000000',
+        'address_line' => 'House 1, Road 1',
+        'city' => 'Dhaka',
+        'district' => 'Dhanmondi',
+        'postal_code' => '1205',
+        'country' => 'BD',
+        'delivery_method' => 'standard',
+        'payment_method' => 'cod',
+        'checkout_token' => (string) Str::uuid(),
+    ]);
+
+    expect($order->items)->toHaveCount(2)
+        ->and($order->items->pluck('product_variant_id')->all())->toContain($blackSmall->id, $blackLarge->id)
+        ->and($order->items->pluck('variant_name')->filter()->count())->toBe(2)
+        ->and($blackSmall->fresh('inventory')->inventory->quantity_on_hand)->toBe(2)
+        ->and($blackLarge->fresh('inventory')->inventory->quantity_on_hand)->toBe(1);
 });
 
 it('uses semantic colors for order statuses in admin order views', function () {

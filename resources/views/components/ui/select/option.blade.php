@@ -45,7 +45,7 @@
 <li 
     data-search="{{ $searchLabel }}"
     data-label="{{ $label }}"
-    value="{{ $value }}"
+    x-bind:value="@js((string) $value)"
     data-slot="option"
     x-rover:option
     

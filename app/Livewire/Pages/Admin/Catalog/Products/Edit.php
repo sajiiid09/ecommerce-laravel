@@ -70,8 +70,6 @@ class Edit extends Component
 
     public ?string $cost_price = null;
 
-    public ?string $compare_at_price = null;
-
     public int $inventory_quantity = 0;
 
     public int $low_stock_threshold = 10;
@@ -134,7 +132,6 @@ class Edit extends Component
         $this->regular_price = $this->formatPrice($product->defaultVariant?->regular_price_minor ?? 0);
         $this->sale_price = $this->formatNullablePrice($product->defaultVariant?->sale_price_minor);
         $this->cost_price = $this->formatNullablePrice($product->defaultVariant?->cost_price_minor);
-        $this->compare_at_price = $this->formatNullablePrice($product->defaultVariant?->compare_at_price_minor);
         $inventory = $product->defaultVariant?->inventory;
         $this->inventory_quantity = (int) ($inventory?->quantity_on_hand ?? 0);
         $this->low_stock_threshold = (int) ($inventory?->low_stock_threshold ?? 10);
@@ -145,13 +142,18 @@ class Edit extends Component
     public function saveProduct(): void
     {
         $this->authorize($this->product?->exists ? 'update' : 'create', $this->product?->exists ? $this->product : Product::class);
+
+        if ($this->brand_id === true || blank($this->brand_id)) {
+            $this->brand_id = null;
+        }
+
         $data = $this->validate([
             'name' => 'required|string|max:255', 'slug' => 'nullable|string|max:255', 'product_type' => 'required|in:simple,variable',
             'status' => 'required|in:draft,published,archived', 'visibility' => 'required|in:visible,catalog_search,catalog_only,search_only,hidden', 'brand_id' => 'nullable|exists:brands,id',
             'primary_category_id' => 'nullable|exists:categories,id', 'category_ids' => 'array', 'category_ids.*' => 'integer|exists:categories,id',
             'tag_ids' => 'array', 'tag_ids.*' => 'integer|exists:tags,id', 'regular_price' => 'required|numeric|min:0|decimal:0,2', 'sale_price' => 'nullable|numeric|min:0|decimal:0,2',
             'attribute_values' => 'array',
-            'compare_at_price' => 'nullable|numeric|min:0|decimal:0,2', 'cost_price' => 'nullable|numeric|min:0|decimal:0,2', 'inventory_quantity' => 'required|integer|min:0',
+            'cost_price' => 'nullable|numeric|min:0|decimal:0,2', 'inventory_quantity' => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0', 'track_quantity' => 'boolean', 'allow_backorders' => 'boolean',
             'is_indexable' => 'boolean', 'taxable' => 'boolean', 'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500', 'canonical_url' => 'nullable|url|max:255',
@@ -162,19 +164,13 @@ class Edit extends Component
         $data['primary_category_id'] = filled($data['primary_category_id'] ?? null) ? (int) $data['primary_category_id'] : null;
         $data['slug'] = filled($data['slug'] ?? null) ? $data['slug'] : $data['name'];
 
-        foreach (['regular_price', 'sale_price', 'compare_at_price', 'cost_price'] as $priceField) {
+        foreach (['regular_price', 'sale_price', 'cost_price'] as $priceField) {
             $data[$priceField.'_minor'] = $this->priceToMinor($data[$priceField] ?? null);
             unset($data[$priceField]);
         }
 
         if ($data['sale_price_minor'] !== null && $data['sale_price_minor'] > $data['regular_price_minor']) {
             $this->addError('sale_price', 'Sale price must not exceed the regular price.');
-
-            return;
-        }
-
-        if ($data['compare_at_price_minor'] !== null && $data['compare_at_price_minor'] < $data['regular_price_minor']) {
-            $this->addError('compare_at_price', 'Compare-at price must be at least the regular price.');
 
             return;
         }

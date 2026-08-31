@@ -29,6 +29,7 @@ use Database\Seeders\CatalogSeeder;
 use Database\Seeders\ProductSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 it('queries homepage product sections by source, filters, sort, and limit', function () {
@@ -167,6 +168,10 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
         ->assertSet('regular_price', '10990.00')
         ->assertSet('sale_price', '9999.00')
         ->assertSee('wire:model="regular_price"', false)
+        ->assertSee('The standard price customers pay when no sale price applies.', false)
+        ->assertSee('An optional discounted price shown to customers during a sale.', false)
+        ->assertDontSee('Compare At Price', false)
+        ->assertSee('Your internal purchase cost, used for margin and profit reporting.', false)
         ->assertSee('wire:model="brand_id"', false)
         ->assertSee('wire:model="status"', false)
         ->assertSee('wire:model="visibility"', false)
@@ -174,16 +179,21 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
         ->assertSee('Slug <span class="text-xs font-normal text-[#9ca3af]">(optional)</span>', false)
         ->assertSee('Enter product slug (optional)', false)
         ->assertDontSee('generateSlug', false)
+        ->assertSee('x-bind:value=', false)
+        ->assertSee('wire:ignore', false)
+        ->assertSee('x-data="richTextEditor', false)
         ->assertSee('x-on:submit="flushSync()"', false)
+        ->assertSee('@mousedown.prevent', false)
         ->assertSee('pt-1', false)
         ->assertDontSee('Search Engine Optimization', false)
+        ->assertDontSee('Tax Class', false)
+        ->assertDontSee('Track stock quantity', false)
         ->assertDontSee('<select', false)
         ->assertSee('data-slot="option"', false);
 
     Livewire::test(ProductEdit::class, ['product' => $product])
         ->set('regular_price', '12990.00')
         ->set('sale_price', '11990.00')
-        ->set('compare_at_price', '13990.00')
         ->set('cost_price', '8000.00')
         ->set('description_json', ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Updated product content']]]]])
         ->set('description_html', '<p>Updated product content</p>')
@@ -193,7 +203,7 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
 
     expect($savedVariant->regular_price_minor)->toBe(1299000)
         ->and($savedVariant->sale_price_minor)->toBe(1199000)
-        ->and($savedVariant->compare_at_price_minor)->toBe(1399000)
+        ->and($savedVariant->compare_at_price_minor)->toBe(1299000)
         ->and($savedVariant->cost_price_minor)->toBe(800000)
         ->and($product->fresh()->description_html)->toContain('Updated product content');
 });
@@ -202,9 +212,14 @@ it('generates a product slug and allows an empty brand selection', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
 
     Livewire::test(ProductEdit::class)
+        ->assertSee('wire:ignore', false)
+        ->assertSee('x-data="richTextEditor', false)
+        ->assertSet('regular_price', '0.00')
+        ->assertSet('inventory_quantity', 0)
+        ->assertSet('low_stock_threshold', 10)
         ->set('name', 'Auto Slug Product')
         ->set('slug', '')
-        ->set('brand_id', '')
+        ->set('brand_id', true)
         ->call('saveProduct');
 
     $product = Product::query()->where('slug', 'auto-slug-product')->firstOrFail();
@@ -255,7 +270,7 @@ it('maps real variant options and variant media for the storefront', function ()
     $product = app(ProductService::class)->save([
         'name' => 'Variable Shirt',
         'product_type' => 'variable',
-        'status' => 'published',
+        'status' => 'draft',
         'visibility' => 'visible',
     ]);
     $option = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
@@ -276,6 +291,7 @@ it('maps real variant options and variant media for the storefront', function ()
         'low_stock_threshold' => 1,
         'media_ids' => [$asset->id],
     ]);
+    $product->update(['status' => 'published']);
 
     $mapped = app(CatalogQueryService::class)->product($product->slug);
 
@@ -283,6 +299,98 @@ it('maps real variant options and variant media for the storefront', function ()
         ->and($mapped['variants'][0]['gallery'])->toHaveCount(1)
         ->and($mapped['variants'][0]['sku'])->toBe('SHIRT-BLACK')
         ->and(MediaUsage::where('media_asset_id', $asset->id)->where('role', 'variant.image')->exists())->toBeTrue();
+});
+
+it('reconciles shirt variants when option values are removed and restored', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Reconciliation Shirt',
+        'slug' => 'reconciliation-shirt',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $color = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $size = $product->options()->create(['name' => 'Size', 'slug' => 'size']);
+    $black = $color->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $color->values()->create(['value' => 'White', 'slug' => 'white']);
+    $size->values()->createMany([
+        ['value' => 'Small', 'slug' => 'small'],
+        ['value' => 'Large', 'slug' => 'large'],
+    ]);
+
+    $variants = app(ProductVariantService::class)->generate($product);
+    app(ProductVariantService::class)->generate($product);
+    $blackSmall = ProductVariant::query()->where('combination_key', 'color=black|size=small')->firstOrFail();
+
+    expect($variants)->toHaveCount(4)
+        ->and($product->fresh()->variants)->toHaveCount(4);
+
+    Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->call('removeValue', $color->id, $black->id);
+
+    expect($blackSmall->fresh()->trashed())->toBeTrue()
+        ->and(ProductVariant::query()->where('product_id', $product->id)->count())->toBe(2);
+
+    $restoredBlack = $color->fresh()->values()->create(['value' => 'Black', 'slug' => 'black']);
+    Livewire::test(ProductVariantsIndex::class, ['product' => $product->fresh()])
+        ->call('generate');
+
+    expect(ProductVariant::withTrashed()->findOrFail($blackSmall->id)->trashed())->toBeFalse()
+        ->and(ProductVariant::withTrashed()->findOrFail($blackSmall->id)->optionValues()->whereKey($restoredBlack->id)->exists())->toBeTrue()
+        ->and(ProductVariant::query()->where('product_id', $product->id)->count())->toBe(4);
+});
+
+it('validates unique variant options and converts variant prices from BDT amounts', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Variant Editor Shirt',
+        'slug' => 'variant-editor-shirt',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $color = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $black = $color->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $variant = app(ProductVariantService::class)->generate($product)[0];
+    $component = Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->set('optionName', ' color ')
+        ->call('addOption')
+        ->assertHasErrors(['optionName'])
+        ->set('optionValues.'.$color->id, 'Black')
+        ->call('addValue', $color->id)
+        ->assertHasErrors(['optionValues.'.$color->id])
+        ->set('optionValues.'.$color->id, '!!!')
+        ->call('addValue', $color->id)
+        ->assertHasErrors(['optionValues.'.$color->id])
+        ->call('selectVariant', $variant->id)
+        ->set('variantRegularPrice', '1,299.00')
+        ->call('saveVariant');
+
+    $component->assertHasErrors(['variantRegularPrice']);
+
+    Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->call('selectVariant', $variant->id)
+        ->set('variantRegularPrice', '1299.00')
+        ->set('variantSalePrice', '999.00')
+        ->set('variantCostPrice', '700.00')
+        ->call('saveVariant');
+
+    $saved = $variant->fresh();
+    expect($saved->regular_price_minor)->toBe(129900)
+        ->and($saved->sale_price_minor)->toBe(99900)
+        ->and($saved->compare_at_price_minor)->toBe(129900)
+        ->and($saved->cost_price_minor)->toBe(70000)
+        ->and($black->fresh()->slug)->toBe('black');
+});
+
+it('prevents publishing a variable product without an active generated variant', function () {
+    expect(fn () => app(ProductService::class)->save([
+        'name' => 'Unconfigured Variable Product',
+        'product_type' => 'variable',
+        'status' => 'published',
+        'visibility' => 'visible',
+    ]))->toThrow(ValidationException::class);
 });
 
 it('protects inventory reservations and releases with audited movements', function () {
@@ -389,8 +497,8 @@ it('formats storefront card prices from minor units', function () {
         'sku' => 'PRICE-1',
         'name' => 'Default',
         'combination_key' => 'default',
-        'regular_price_minor' => 299000,
-        'compare_at_price_minor' => 349000,
+        'regular_price_minor' => 349000,
+        'sale_price_minor' => 299000,
         'is_active' => true,
         'is_default' => true,
     ]);
@@ -399,7 +507,7 @@ it('formats storefront card prices from minor units', function () {
 
     Livewire::test(StoreCategory::class, ['slug' => $category->slug])
         ->assertSee($currency.'2,990.00', false)
-        ->assertDontSee($currency.'299,000.00', false);
+        ->assertSee($currency.'3,490.00', false);
 });
 
 it('renders the first product image as the admin product thumbnail', function () {
@@ -700,6 +808,9 @@ it('renders the variants table full width without summary cards', function () {
     Livewire::test(VariantsIndex::class)
         ->assertSee('w-full min-w-[1200px] table-fixed text-left', false)
         ->assertSee('text-sm font-semibold text-[#111827]', false)
+        ->assertSee('min-w-0 max-w-0', false)
+        ->assertSee('block truncate text-sm font-semibold text-[#111827]', false)
+        ->assertSee('title="Variant Layout Product"', false)
         ->assertSee('Options', false)
         ->assertSee('Actions', false)
         ->assertDontSee('<th>SKU</th>', false)
@@ -1037,6 +1148,7 @@ it('processes catalog seed images into idempotent webp assets', function () {
         ->and($sonyWfC700n->primaryCategory->slug)->toBe('audio')
         ->and(Product::query()->whereNull('primary_category_id')->exists())->toBeFalse()
         ->and($discountedProduct->defaultVariant->sale_price_minor)->toBe(499900)
+        ->and($discountedProduct->defaultVariant->regular_price_minor)->toBe(549900)
         ->and($discountedProduct->defaultVariant->compare_at_price_minor)->toBe(549900)
         ->and($fullPriceProduct->defaultVariant->sale_price_minor)->toBeNull()
         ->and($fullPriceProduct->defaultVariant->compare_at_price_minor)->toBeNull()

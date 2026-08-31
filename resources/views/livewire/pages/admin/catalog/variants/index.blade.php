@@ -75,15 +75,17 @@
                             <x-ui.table.rows class="divide-y divide-[#f3f4f6]">
                                 @forelse($rows as $row)
                                     <x-ui.table.row :checkboxId="$row->id" :key="$row->id" class="text-[#374151] hover:bg-[#f9fafb]">
-                                        <td class="px-4 py-4">
+                                        <td class="min-w-0 max-w-0 px-4 py-4">
                                             <div class="flex items-center gap-3">
                                                 <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-[#f3f4f6]">
                                                     <svg class="size-5 text-[#9ca3af]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                                                 </div>
-                                                <span class="text-sm font-semibold text-[#111827]">{{ $row->product?->name ?? '—' }}</span>
+                                                <div class="min-w-0 flex-1">
+                                                    <span class="block truncate text-sm font-semibold text-[#111827]" title="{{ $row->product?->name ?? '—' }}">{{ $row->product?->name ?? '—' }}</span>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-4 text-sm text-[#6b7280]">{{ $row->product?->name ?? '—' }}</td>
+                                        <td class="min-w-0 max-w-0 px-4 py-4 text-sm text-[#6b7280]"><span class="block truncate" title="{{ $row->product?->name ?? '—' }}">{{ $row->product?->name ?? '—' }}</span></td>
                                         <td class="px-4 py-4 text-sm text-[#374151]">{{ $row->optionValues->pluck('value')->join(' / ') ?: '—' }}</td>
                                         <td class="px-4 py-4 font-semibold text-[#111827]">৳{{ number_format(($row->currentPriceMinor() ?? 0)/100,2) }}</td>
                                         <td class="px-4 py-4"><span class="font-semibold {{ $row->availableQuantity() < 5 ? 'text-[#ef4444]' : 'text-[#374151]' }}">{{ $row->availableQuantity() }}</span></td>
@@ -211,7 +213,7 @@
                         </div>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Regular price</p>
                             <p class="mt-1 text-sm text-slate-700">{{ html_entity_decode('&#2547;') }}{{ number_format(($viewingVariant->regular_price_minor ?? 0) / 100, 2) }}</p>
@@ -219,10 +221,6 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sale price</p>
                             <p class="mt-1 text-sm text-slate-700">{{ $viewingVariant->sale_price_minor !== null ? html_entity_decode('&#2547;').number_format($viewingVariant->sale_price_minor / 100, 2) : '—' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Compare-at price</p>
-                            <p class="mt-1 text-sm text-slate-700">{{ $viewingVariant->compare_at_price_minor !== null ? html_entity_decode('&#2547;').number_format($viewingVariant->compare_at_price_minor / 100, 2) : '—' }}</p>
                         </div>
                     </div>
                 </div>

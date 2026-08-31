@@ -34,6 +34,12 @@ class Product extends Component
         session()->flash('status', 'Product added to your cart.');
     }
 
+    public function buyNow(int $variantId, int $quantity = 1): void
+    {
+        app(CartService::class)->add($variantId, $quantity);
+        $this->redirect(route('store.checkout'), navigate: true);
+    }
+
     public function render()
     {
         return view('pages.store.product', ['product' => $this->product]);

@@ -59,7 +59,7 @@
                     <img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" loading="lazy" decoding="async" class="size-16 rounded-control border border-store-border object-contain">
                     <div class="min-w-0 flex-1">
                         <p class="line-clamp-2 text-sm font-bold text-store-ink">{{ $item['name'] }}</p>
-                        <p class="mt-1 text-sm font-extrabold text-store-red">৳{{ number_format($item['price'] / 100, 2) }}</p>
+                        <div class="mt-1 flex flex-wrap items-baseline gap-2"><span class="text-sm font-extrabold text-store-red">৳{{ number_format($item['price'] / 100, 2) }}</span>@if(($item['old_price'] ?? null) > $item['price'])<span class="text-xs font-medium text-store-muted line-through">৳{{ number_format($item['old_price'] / 100, 2) }}</span>@endif</div>
                         <div class="mt-2 flex items-center justify-between">
                             <div class="inline-flex h-8 items-center rounded-control border border-store-border">
                                 <button type="button" wire:click="updateItem({{ $item['id'] }}, {{ max(1, $item['quantity'] - 1) }}, 'decrease')" class="grid size-8 place-items-center text-store-red transition hover:bg-red-50" aria-label="Decrease quantity">−</button>

@@ -11,6 +11,7 @@ use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class ProductService
@@ -25,6 +26,14 @@ class ProductService
 
     public function save(array $data, ?Product $product = null): Product
     {
+        if (($data['product_type'] ?? ProductType::Simple->value) === ProductType::Variable->value
+            && ($data['status'] ?? ProductStatus::Draft->value) === ProductStatus::Published->value
+            && ! $product?->variants()->where('is_active', true)->whereHas('optionValues')->exists()) {
+            throw ValidationException::withMessages([
+                'status' => 'Variable products need at least one active generated variant before publishing.',
+            ]);
+        }
+
         $saved = DB::transaction(function () use ($data, $product): Product {
             $product ??= new Product;
             $content = $this->richText->prepare($data['description_json'] ?? null, (string) ($data['description_html'] ?? ''));
@@ -69,10 +78,14 @@ class ProductService
 
             if ($product->product_type === ProductType::Simple) {
                 $variant = $this->variants->ensureDefault($product);
+                $regularPriceMinor = $data['regular_price_minor'] ?? $variant->regular_price_minor;
+                $salePriceMinor = $data['sale_price_minor'] ?? null;
                 $variant->update([
-                    'regular_price_minor' => $data['regular_price_minor'] ?? $variant->regular_price_minor,
-                    'sale_price_minor' => $data['sale_price_minor'] ?? null,
-                    'compare_at_price_minor' => $data['compare_at_price_minor'] ?? null,
+                    'regular_price_minor' => $regularPriceMinor,
+                    'sale_price_minor' => $salePriceMinor,
+                    'compare_at_price_minor' => $salePriceMinor !== null && $salePriceMinor < $regularPriceMinor
+                        ? $regularPriceMinor
+                        : null,
                     'cost_price_minor' => $data['cost_price_minor'] ?? null,
                 ]);
 

@@ -8,19 +8,35 @@
 <main
     x-data="{
         quantity: 1,
+        gallery: @js($gallery),
         selectedImage: @js($gallery[0]),
         variants: @js($product['variants'] ?? []),
         selectedVariantId: @js($product['variantId'] ?? null),
         selectedOptions: Object.fromEntries(@js($options).map((option) => [option.name, option.values[0]?.value ?? null])),
+        init() {
+            if (this.variant.gallery?.length) {
+                this.selectedImage = this.variant.gallery[0];
+            }
+        },
         get variant() {
             const selected = this.variants.find((variant) => variant.id === this.selectedVariantId);
-            const matching = this.variants.find((variant) => variant.optionValues.every((optionValue) => this.selectedOptions[optionValue.option] === optionValue.value));
+            const optionNames = Object.keys(this.selectedOptions);
+            const matching = this.variants.find((variant) => variant.optionValues.length === optionNames.length && optionNames.every((optionName) => variant.optionValues.some((optionValue) => optionValue.option === optionName && optionValue.value === this.selectedOptions[optionName])));
             return matching || selected || this.variants[0] || { id: null, price: @js($product['price']), compareAtPrice: @js($product['oldPrice']), available: @js($product['inStock']), gallery: [] };
         },
+        isOptionValueAvailable(name, value) {
+            const selectedOptions = { ...this.selectedOptions, [name]: value };
+            const optionNames = Object.keys(selectedOptions);
+            return this.variants.some((variant) => variant.available && variant.optionValues.length === optionNames.length && optionNames.every((optionName) => variant.optionValues.some((optionValue) => optionValue.option === optionName && optionValue.value === selectedOptions[optionName])));
+        },
         selectOption(name, value) {
+            if (!this.isOptionValueAvailable(name, value)) {
+                return;
+            }
+
             this.selectedOptions[name] = value;
             this.selectedVariantId = this.variant.id;
-            if (this.variant.gallery?.length) this.selectedImage = this.variant.gallery[0];
+            this.selectedImage = this.variant.gallery?.[0] || this.gallery[0];
         },
         formatMoney(value) {
             return '৳' + new Intl.NumberFormat().format(Math.round((value || 0) / 100));
@@ -73,7 +89,7 @@
 
                 <div class="mt-5 flex flex-wrap items-center gap-3">
                     <span class="text-2xl font-black text-store-red" x-text="formatMoney(variant.price)">{{ '৳'.number_format($product['price'] / 100, 2) }}</span>
-                    <span x-show="variant.compareAtPrice" x-text="formatMoney(variant.compareAtPrice)" class="text-sm text-store-muted line-through">{{ $product['oldPrice'] ? '৳'.number_format($product['oldPrice'] / 100, 2) : '' }}</span>
+                    <span x-show="variant.compareAtPrice > variant.price" x-text="formatMoney(variant.compareAtPrice)" class="text-sm text-store-muted line-through">{{ $product['oldPrice'] ? '৳'.number_format($product['oldPrice'] / 100, 2) : '' }}</span>
                 </div>
 
                 <p x-show="variant.compareAtPrice > variant.price" class="mt-2 flex items-center gap-1 text-sm font-semibold text-store-success">
@@ -86,7 +102,7 @@
                 <p class="text-sm font-semibold text-store-ink">Availability:
                     <span class="ml-2 inline-flex items-center gap-1 font-medium" :class="variant.available ? 'text-store-success' : 'text-store-error'">
                         <span class="size-2 rounded-full" :class="variant.available ? 'bg-store-success' : 'bg-store-error'"></span>
-                        <span x-text="variant.available ? 'In Stock' : 'Out of Stock'">In Stock</span>
+                        <span x-text="variant.available ? (variant.stock > 0 ? `In Stock (${variant.stock})` : 'In Stock') : 'Out of Stock'">In Stock</span>
                     </span>
                 </p>
 
@@ -102,7 +118,8 @@
                         <div class="mt-2 flex flex-wrap gap-2">
                             @foreach ($option['values'] as $value)
                                 <button type="button" class="rounded-full border px-4 py-2 text-sm"
-                                    :class="selectedOptions['{{ $option['name'] }}'] === @js($value['value']) ? 'border-store-blue bg-store-blue-soft font-bold text-store-blue' : 'border-store-border'"
+                                    :class="{ 'border-store-blue bg-store-blue-soft font-bold text-store-blue': selectedOptions['{{ $option['name'] }}'] === @js($value['value']), 'border-store-border': selectedOptions['{{ $option['name'] }}'] !== @js($value['value']), 'cursor-not-allowed opacity-40': !isOptionValueAvailable(@js($option['name']), @js($value['value'])) }"
+                                    :disabled="!isOptionValueAvailable(@js($option['name']), @js($value['value']))"
                                     @click="selectOption(@js($option['name']), @js($value['value']))">
                                     {{ $value['label'] }}
                                 </button>
@@ -117,10 +134,10 @@
                 </div>
 
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available" x-on:click="$wire.addToCart(variant.id, quantity)">
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" :disabled="!variant.id || !variant.available || quantity < 1" x-on:click="$wire.addToCart(variant.id, quantity)">
                         <x-ui.icon name="shopping-cart" class="size-5 !text-white" />Add to Cart
                     </button>
-                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white disabled:opacity-50" :disabled="!variant.available">
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" :disabled="!variant.id || !variant.available || quantity < 1" x-on:click="$wire.buyNow(variant.id, quantity)">
                         <x-ui.icon name="bolt" variant="solid" class="size-5 !text-white" />Buy Now
                     </button>
                 </div>

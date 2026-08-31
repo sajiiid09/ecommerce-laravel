@@ -7,8 +7,10 @@
         'lg' => 'text-2xl md:text-3xl',
     ];
 
-    $formattedPrice = number_format((int) $price / 100, 2);
-    $formattedOldPrice = $oldPrice ? number_format((int) $oldPrice / 100, 2) : null;
+    $priceMinor = (int) $price;
+    $oldPriceMinor = (int) ($oldPrice ?? 0);
+    $formattedPrice = number_format($priceMinor / 100, 2);
+    $formattedOldPrice = $oldPriceMinor > $priceMinor ? number_format($oldPriceMinor / 100, 2) : null;
 @endphp
 
 <div {{ $attributes->class('flex flex-wrap items-baseline gap-x-2 gap-y-1') }}>

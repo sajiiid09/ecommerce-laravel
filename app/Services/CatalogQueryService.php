@@ -208,7 +208,7 @@ class CatalogQueryService
             ])
             ->addSelect([
                 'catalog_price' => ProductVariant::query()
-                    ->selectRaw('COALESCE(sale_price_minor, regular_price_minor, 0)')
+                    ->selectRaw('CASE WHEN sale_price_minor IS NOT NULL AND sale_price_minor < regular_price_minor THEN sale_price_minor ELSE COALESCE(regular_price_minor, 0) END')
                     ->whereColumn('product_id', 'products.id')
                     ->where('is_active', true)
                     ->orderByDesc('is_default')
@@ -280,7 +280,7 @@ class CatalogQueryService
             ->values()
             ->all();
         $price = (int) ($variant?->currentPriceMinor() ?? 0);
-        $oldPrice = (int) ($variant?->compare_at_price_minor ?? 0);
+        $oldPrice = (int) ($variant?->compareAtPriceMinor() ?? 0);
 
         return [
             'id' => $product->id,
@@ -339,7 +339,7 @@ class CatalogQueryService
             'id' => $variant->id,
             'sku' => $variant->sku,
             'price' => $variant->currentPriceMinor(),
-            'compareAtPrice' => $variant->compare_at_price_minor,
+            'compareAtPrice' => $variant->compareAtPriceMinor(),
             'stock' => $variant->availableQuantity(),
             'available' => $this->variantIsAvailable($variant),
             'optionValues' => $variant->optionValues->map(fn ($value): array => [
@@ -373,7 +373,9 @@ class CatalogQueryService
     {
         match ($settings['source']) {
             'featured' => $query->featured(),
-            'on_sale' => $query->whereHas('variants', fn (Builder $variants) => $variants->whereNotNull('sale_price_minor')),
+            'on_sale' => $query->whereHas('variants', fn (Builder $variants) => $variants
+                ->whereNotNull('sale_price_minor')
+                ->whereColumn('sale_price_minor', '<', 'regular_price_minor')),
             'category' => $query->whereHas('categories', fn (Builder $categories) => $categories
                 ->active()
                 ->where('slug', $settings['category'] ?? '')),

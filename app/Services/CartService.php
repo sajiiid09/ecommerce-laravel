@@ -175,6 +175,7 @@ class CartService
                 ?? $item->variant->product->media->first()?->asset?->url()
                 ?? asset('images/placeholders/no-image.svg'),
             'price' => $item->variant->currentPriceMinor(),
+            'old_price' => $item->variant->compareAtPriceMinor(),
             'quantity' => (int) $item->quantity,
             'line_total' => $item->variant->currentPriceMinor() * (int) $item->quantity,
         ])->all();

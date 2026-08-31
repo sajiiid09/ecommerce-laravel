@@ -32,19 +32,17 @@ class Variants extends Component
 
     public string $variantBarcode = '';
 
-    public int $variantRegularPriceMinor = 0;
+    public string $variantRegularPrice = '0.00';
 
-    public ?int $variantSalePriceMinor = null;
+    public ?string $variantSalePrice = null;
 
-    public ?int $variantCompareAtPriceMinor = null;
-
-    public ?int $variantCostPriceMinor = null;
+    public ?string $variantCostPrice = null;
 
     public ?int $variantWeightGrams = null;
 
     public int $variantQuantity = 0;
 
-    public int $variantLowStockThreshold = 0;
+    public int $variantLowStockThreshold = 10;
 
     public bool $variantTrackQuantity = true;
 
@@ -76,8 +74,29 @@ class Variants extends Component
     public function addOption(): void
     {
         $this->authorize('update', $this->product);
-        $this->validate(['optionName' => 'required|string|max:100']);
-        $this->product->options()->create(['name' => $this->optionName, 'slug' => Str::slug($this->optionName)]);
+        $this->optionName = trim($this->optionName);
+        $data = $this->validate([
+            'optionName' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+        ]);
+        $slug = Str::slug($data['optionName']);
+
+        if ($slug === '') {
+            $this->addError('optionName', 'Enter an option name containing letters or numbers.');
+
+            return;
+        }
+
+        if ($this->product->options()->where('slug', $slug)->exists()) {
+            $this->addError('optionName', 'That option already exists for this product.');
+
+            return;
+        }
+
+        $this->product->options()->create(['name' => $data['optionName'], 'slug' => $slug]);
         $this->reset('optionName');
         $this->product->refresh();
     }
@@ -93,7 +112,29 @@ class Variants extends Component
         }
 
         $option = ProductOption::whereBelongsTo($this->product)->findOrFail($optionId);
-        $option->values()->create(['value' => $value, 'slug' => Str::slug($value)]);
+        $slug = Str::slug($value);
+
+        if ($slug === '') {
+            $this->addError('optionValues.'.$optionId, 'Enter an option value containing letters or numbers.');
+
+            return;
+        }
+
+        $this->validate([
+            'optionValues.'.$optionId => [
+                'required',
+                'string',
+                'max:100',
+            ],
+        ]);
+
+        if ($option->values()->where('slug', $slug)->exists()) {
+            $this->addError('optionValues.'.$optionId, 'That value already exists for this option.');
+
+            return;
+        }
+
+        $option->values()->create(['value' => $value, 'slug' => $slug]);
         $this->optionValues[$optionId] = '';
         $this->product->refresh();
     }
@@ -102,7 +143,9 @@ class Variants extends Component
     {
         $this->authorize('update', $this->product);
         ProductOption::whereBelongsTo($this->product)->findOrFail($optionId)->delete();
+        $this->variants->generate($this->product);
         $this->product->refresh();
+        $this->refreshVariantSelection();
     }
 
     public function removeValue(int $optionId, int $valueId): void
@@ -110,7 +153,9 @@ class Variants extends Component
         $this->authorize('update', $this->product);
         $option = ProductOption::whereBelongsTo($this->product)->findOrFail($optionId);
         $option->values()->findOrFail($valueId)->delete();
+        $this->variants->generate($this->product);
         $this->product->refresh();
+        $this->refreshVariantSelection();
     }
 
     public function generate(): void
@@ -127,13 +172,12 @@ class Variants extends Component
         $this->selectedVariantId = $variant->id;
         $this->variantSku = (string) $variant->sku;
         $this->variantBarcode = (string) ($variant->barcode ?? '');
-        $this->variantRegularPriceMinor = (int) ($variant->regular_price_minor ?? 0);
-        $this->variantSalePriceMinor = $variant->sale_price_minor;
-        $this->variantCompareAtPriceMinor = $variant->compare_at_price_minor;
-        $this->variantCostPriceMinor = $variant->cost_price_minor;
+        $this->variantRegularPrice = $this->formatPrice((int) ($variant->regular_price_minor ?? 0));
+        $this->variantSalePrice = $this->formatNullablePrice($variant->sale_price_minor);
+        $this->variantCostPrice = $this->formatNullablePrice($variant->cost_price_minor);
         $this->variantWeightGrams = $variant->weight_grams;
         $this->variantQuantity = (int) ($variant->inventory?->quantity_on_hand ?? 0);
-        $this->variantLowStockThreshold = (int) ($variant->inventory?->low_stock_threshold ?? 0);
+        $this->variantLowStockThreshold = (int) ($variant->inventory?->low_stock_threshold ?? 10);
         $this->variantTrackQuantity = (bool) ($variant->inventory?->track_quantity ?? true);
         $this->variantAllowBackorders = (bool) ($variant->inventory?->allow_backorders ?? false);
         $this->variantIsActive = (bool) $variant->is_active;
@@ -150,21 +194,47 @@ class Variants extends Component
     {
         $this->authorize('update', $this->product);
         $variant = $this->product->variants()->findOrFail($this->selectedVariantId);
-        $data = $this->validate(['variantSku' => ['required', 'string', 'max:100', Rule::unique('product_variants', 'sku')->ignore($variant->id)], 'variantBarcode' => ['nullable', 'string', 'max:100'], 'variantRegularPriceMinor' => ['required', 'integer', 'min:0'], 'variantSalePriceMinor' => ['nullable', 'integer', 'min:0'], 'variantCompareAtPriceMinor' => ['nullable', 'integer', 'min:0'], 'variantCostPriceMinor' => ['nullable', 'integer', 'min:0'], 'variantWeightGrams' => ['nullable', 'integer', 'min:0'], 'variantQuantity' => ['required', 'integer', 'min:0'], 'variantLowStockThreshold' => ['required', 'integer', 'min:0'], 'variantTrackQuantity' => ['boolean'], 'variantAllowBackorders' => ['boolean'], 'variantIsActive' => ['boolean'], 'variantIsDefault' => ['boolean'], 'selectedVariantMediaIds' => ['array'], 'selectedVariantMediaIds.*' => ['integer', 'exists:media_assets,id']]);
+        $data = $this->validate([
+            'variantSku' => ['required', 'string', 'max:100', Rule::unique('product_variants', 'sku')->ignore($variant->id)],
+            'variantBarcode' => ['nullable', 'string', 'max:100'],
+            'variantRegularPrice' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
+            'variantSalePrice' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'variantCostPrice' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'variantWeightGrams' => ['nullable', 'integer', 'min:0'],
+            'variantQuantity' => ['required', 'integer', 'min:0'],
+            'variantLowStockThreshold' => ['required', 'integer', 'min:0'],
+            'variantTrackQuantity' => ['boolean'],
+            'variantAllowBackorders' => ['boolean'],
+            'variantIsActive' => ['boolean'],
+            'variantIsDefault' => ['boolean'],
+            'selectedVariantMediaIds' => ['array'],
+            'selectedVariantMediaIds.*' => ['integer', 'exists:media_assets,id'],
+        ]);
+        $regularPriceMinor = $this->priceToMinor($data['variantRegularPrice']) ?? 0;
+        $salePriceMinor = $this->priceToMinor($data['variantSalePrice'] ?? null);
+        $costPriceMinor = $this->priceToMinor($data['variantCostPrice'] ?? null);
 
-        if ($data['variantSalePriceMinor'] !== null && $data['variantSalePriceMinor'] > $data['variantRegularPriceMinor']) {
-            $this->addError('variantSalePriceMinor', 'Sale price must not exceed the regular price.');
+        if ($salePriceMinor !== null && $salePriceMinor > $regularPriceMinor) {
+            $this->addError('variantSalePrice', 'Sale price must not exceed the regular price.');
 
             return;
         }
 
-        if ($data['variantCompareAtPriceMinor'] !== null && $data['variantCompareAtPriceMinor'] < $data['variantRegularPriceMinor']) {
-            $this->addError('variantCompareAtPriceMinor', 'Compare-at price must be at least the regular price.');
-
-            return;
-        }
-
-        $this->variants->save($variant, ['sku' => $data['variantSku'], 'barcode' => $data['variantBarcode'], 'regular_price_minor' => $data['variantRegularPriceMinor'], 'sale_price_minor' => $data['variantSalePriceMinor'], 'compare_at_price_minor' => $data['variantCompareAtPriceMinor'], 'cost_price_minor' => $data['variantCostPriceMinor'], 'weight_grams' => $data['variantWeightGrams'], 'quantity_on_hand' => $data['variantQuantity'], 'low_stock_threshold' => $data['variantLowStockThreshold'], 'track_quantity' => $data['variantTrackQuantity'], 'allow_backorders' => $data['variantAllowBackorders'], 'is_active' => $data['variantIsActive'], 'is_default' => $data['variantIsDefault'], 'media_ids' => $data['selectedVariantMediaIds']]);
+        $this->variants->save($variant, [
+            'sku' => $data['variantSku'],
+            'barcode' => $data['variantBarcode'],
+            'regular_price_minor' => $regularPriceMinor,
+            'sale_price_minor' => $salePriceMinor,
+            'cost_price_minor' => $costPriceMinor,
+            'weight_grams' => $data['variantWeightGrams'],
+            'quantity_on_hand' => $data['variantQuantity'],
+            'low_stock_threshold' => $data['variantLowStockThreshold'],
+            'track_quantity' => $data['variantTrackQuantity'],
+            'allow_backorders' => $data['variantAllowBackorders'],
+            'is_active' => $data['variantIsActive'],
+            'is_default' => $data['variantIsDefault'],
+            'media_ids' => $data['selectedVariantMediaIds'],
+        ]);
         $this->product->refresh();
         $this->selectVariant($variant->id);
         session()->flash('status', 'Variant saved.');
@@ -262,5 +332,37 @@ class Variants extends Component
                 ->sortBy(fn (MediaAsset $asset): int => array_search($asset->id, $this->selectedVariantMediaIds, true))
                 ->values(),
         ]);
+    }
+
+    private function refreshVariantSelection(): void
+    {
+        if ($this->selectedVariantId && $this->product->variants()->whereKey($this->selectedVariantId)->exists()) {
+            $this->selectVariant($this->selectedVariantId);
+
+            return;
+        }
+
+        $this->selectedVariantId = null;
+    }
+
+    private function formatPrice(int $minor): string
+    {
+        return number_format($minor / 100, 2, '.', '');
+    }
+
+    private function formatNullablePrice(?int $minor): ?string
+    {
+        return $minor === null ? null : $this->formatPrice($minor);
+    }
+
+    private function priceToMinor(?string $price): ?int
+    {
+        if ($price === null || trim($price) === '') {
+            return null;
+        }
+
+        [$whole, $fraction] = array_pad(explode('.', trim($price), 2), 2, '');
+
+        return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
     }
 }

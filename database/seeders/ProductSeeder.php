@@ -110,7 +110,8 @@ class ProductSeeder extends Seeder
         $hasDiscount = in_array('on-sale', $data['tags'] ?? [], true)
             && isset($data['old_price'])
             && $data['old_price'] > $data['price'];
-        $compareAtPriceMinor = $hasDiscount ? $data['old_price'] * 100 : null;
+        $regularPriceMinor = $hasDiscount ? $data['old_price'] * 100 : $priceMinor;
+        $salePriceMinor = $hasDiscount ? $priceMinor : null;
 
         $variant = ProductVariant::updateOrCreate(
             ['sku' => "STZ-{$product->id}"],
@@ -118,9 +119,9 @@ class ProductSeeder extends Seeder
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'combination_key' => 'default',
-                'regular_price_minor' => $priceMinor,
-                'sale_price_minor' => $hasDiscount ? $priceMinor : null,
-                'compare_at_price_minor' => $compareAtPriceMinor,
+                'regular_price_minor' => $regularPriceMinor,
+                'sale_price_minor' => $salePriceMinor,
+                'compare_at_price_minor' => $hasDiscount ? $regularPriceMinor : null,
                 'is_active' => true,
                 'is_default' => true,
                 'sort_order' => 0,
