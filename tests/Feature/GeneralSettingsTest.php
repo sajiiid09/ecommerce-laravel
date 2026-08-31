@@ -7,6 +7,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\UserAddress;
 use App\Services\SiteSettingsService;
+use Database\Seeders\ContentSeeder;
 use Database\Seeders\DistrictSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -181,6 +182,84 @@ it('allows administrators to upload and select a store logo and favicon', functi
         ->and($favicon->height)->toBe(64);
     Storage::disk('public')->assertExists($logo->path);
     Storage::disk('public')->assertExists($favicon->path);
+});
+
+it('seeds packaged brand media and exposes it across general settings and the storefront', function () {
+    Storage::fake('public');
+
+    $this->seed(ContentSeeder::class);
+
+    $logo = MediaAsset::where('path', 'seeded/app-brand/storez-logo.webp')->firstOrFail();
+    $favicon = MediaAsset::where('path', 'seeded/app-brand/favicon.webp')->firstOrFail();
+
+    expect($logo->original_filename)->toBe('storez-logo.png')
+        ->and($logo->extension)->toBe('webp')
+        ->and($logo->mime_type)->toBe('image/webp')
+        ->and($logo->width)->toBe(1600)
+        ->and($logo->height)->toBe(533)
+        ->and($favicon->original_filename)->toBe('favicon.png')
+        ->and($favicon->extension)->toBe('webp')
+        ->and($favicon->mime_type)->toBe('image/webp')
+        ->and($favicon->width)->toBe(64)
+        ->and($favicon->height)->toBe(64)
+        ->and(SiteSetting::where(['group' => 'general', 'key' => 'logo_media_id'])->firstOrFail()->value)->toBe($logo->id)
+        ->and(SiteSetting::where(['group' => 'general', 'key' => 'favicon_media_id'])->firstOrFail()->value)->toBe($favicon->id);
+
+    Storage::disk('public')->assertExists($logo->path);
+    Storage::disk('public')->assertExists($favicon->path);
+
+    Livewire::actingAs(User::factory()->create(['is_admin' => true]))
+        ->test(General::class)
+        ->assertSet('logoMediaId', $logo->id)
+        ->assertSet('faviconMediaId', $favicon->id)
+        ->assertSee($logo->url(), false)
+        ->assertSee($favicon->url(), false);
+
+    $this->get('/')->assertSuccessful()
+        ->assertSee($logo->url(), false)
+        ->assertSee($favicon->url(), false);
+
+    $this->seed(ContentSeeder::class);
+
+    expect(MediaAsset::whereIn('path', [$logo->path, $favicon->path])->count())->toBe(2);
+});
+
+it('fills null packaged brand settings without overwriting custom media selections', function () {
+    Storage::fake('public');
+    $this->seed(ContentSeeder::class);
+
+    $logo = MediaAsset::where('path', 'seeded/app-brand/storez-logo.webp')->firstOrFail();
+    $favicon = MediaAsset::where('path', 'seeded/app-brand/favicon.webp')->firstOrFail();
+    $settings = app(SiteSettingsService::class);
+    $settings->set('general', 'logo_media_id', null);
+    $settings->set('general', 'favicon_media_id', null);
+
+    $this->seed(ContentSeeder::class);
+
+    expect($settings->get('general', 'logo_media_id'))->toBe($logo->id)
+        ->and($settings->get('general', 'favicon_media_id'))->toBe($favicon->id);
+
+    $customLogo = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/custom-store-logo.webp',
+        'filename' => 'custom-store-logo.webp',
+        'mime_type' => 'image/webp',
+        'size' => 100,
+    ]);
+    $customFavicon = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/custom-store-favicon.webp',
+        'filename' => 'custom-store-favicon.webp',
+        'mime_type' => 'image/webp',
+        'size' => 100,
+    ]);
+    $settings->set('general', 'logo_media_id', $customLogo->id);
+    $settings->set('general', 'favicon_media_id', $customFavicon->id);
+
+    $this->seed(ContentSeeder::class);
+
+    expect($settings->get('general', 'logo_media_id'))->toBe($customLogo->id)
+        ->and($settings->get('general', 'favicon_media_id'))->toBe($customFavicon->id);
 });
 
 it('rejects non-image files for store branding uploads', function () {

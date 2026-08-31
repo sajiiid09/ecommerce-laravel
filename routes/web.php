@@ -112,7 +112,9 @@ Route::prefix('admin/catalog')->middleware(['auth', 'admin'])->group(function ()
     })->name('admin.catalog.categories.export.download');
     Route::livewire('/brands', new App\Livewire\Pages\Admin\Catalog\Brands\Index)->name('admin.catalog.brands');
     Route::livewire('/tags', new App\Livewire\Pages\Admin\Catalog\Tags\Index)->name('admin.catalog.tags');
+    /*
     Route::livewire('/attributes', new App\Livewire\Pages\Admin\Catalog\Attributes\Index)->name('admin.catalog.attributes');
+    */
     Route::livewire('/variants', new App\Livewire\Pages\Admin\Catalog\Variants\Index)->name('admin.catalog.variants');
     Route::livewire('/inventory', new App\Livewire\Pages\Admin\Catalog\Inventory\Index)->name('admin.catalog.inventory');
     Route::livewire('/inventory/{variant}/history', new History)->name('admin.catalog.inventory.history');

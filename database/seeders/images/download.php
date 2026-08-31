@@ -22,7 +22,7 @@ if (! is_file($manifestPath)) {
 $manifest = json_decode(file_get_contents($manifestPath), true, 512, JSON_THROW_ON_ERROR);
 
 $items = [];
-foreach (['products', 'brands', 'categories'] as $group) {
+foreach (['products', 'variants', 'brands', 'categories'] as $group) {
     foreach ($manifest[$group] ?? [] as $item) {
         $item['group'] = $group;
         $items[] = $item;

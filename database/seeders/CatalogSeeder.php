@@ -41,6 +41,7 @@ class CatalogSeeder extends Seeder
             ['name' => 'Apex', 'slug' => 'apex', 'is_featured' => true, 'logo' => 'brands/apex.png'],
             ['name' => 'PRAN', 'slug' => 'pran', 'is_featured' => false, 'logo' => 'brands/pran.png'],
             ['name' => 'IKEA', 'slug' => 'ikea', 'is_featured' => true, 'logo' => 'brands/ikea.png'],
+            ['name' => 'Aarong', 'slug' => 'aarong', 'is_featured' => true, 'logo' => null],
         ];
 
         foreach ($brands as $data) {
@@ -48,6 +49,11 @@ class CatalogSeeder extends Seeder
             unset($data['logo']);
 
             $brand = Brand::updateOrCreate(['slug' => $data['slug']], $data);
+
+            if (! $logo) {
+                continue;
+            }
+
             $media = $this->seedLocalImage($logo, ImagePreset::Logo);
 
             if ($media) {

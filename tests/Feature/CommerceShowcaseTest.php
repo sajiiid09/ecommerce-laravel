@@ -12,11 +12,12 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\PaymentProviderCredential;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\ProductReview;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\CartService;
 use App\Services\CatalogCache;
+use App\Services\CatalogQueryService;
 use App\Services\OrderService;
 use App\Services\PaymentManager;
 use App\Services\ProductService;
@@ -138,6 +139,26 @@ it('persists a guest cart, places an idempotent COD order, and restores cancelle
 
     expect($variant->fresh('inventory')->inventory->quantity_on_hand)->toBe(5)
         ->and($order->fresh()->status)->toBe('cancelled');
+});
+
+it('removes cart lines for soft-deleted variants before presenting the cart', function () {
+    $product = commerceProduct();
+    $variant = $product->defaultVariant;
+    session()->put('cart_token', 'stale-variant-cart-token');
+
+    app(CartService::class)->add($variant->id);
+    $variant->delete();
+
+    $this->get(route('store.cart'))->assertSuccessful();
+
+    expect(app(CartService::class)->present())->toBe([])
+        ->and(app(CartService::class)->subtotal())->toBe(0)
+        ->and(Cart::where('session_token', 'stale-variant-cart-token')->firstOrFail()->items)->toBeEmpty();
+
+    Livewire::test(CartDrawer::class)
+        ->call('loadCart')
+        ->assertSet('items', [])
+        ->assertSet('subtotal', 0);
 });
 
 it('merges guest and customer carts by variant with stock revalidation', function () {
@@ -280,6 +301,7 @@ it('starts loading cart contents after storefront initialization without renderi
         ->assertSuccessful()
         ->assertSee('cartLoaded: false', false)
         ->assertSee("window.Livewire?.dispatch('cart-initialized')", false)
+        ->assertSee('x-on:livewire:navigated.window="initializeCart()"', false)
         ->assertSee('animate-spin', false)
         ->assertSee('role="dialog"', false)
         ->assertSee('aria-modal="true"', false)
@@ -315,6 +337,67 @@ it('starts loading cart contents after storefront initialization without renderi
         ->assertDispatched('notify', content: 'Quantity decreased to 1.', type: 'error')
         ->call('removeItem', $cartItem->id)
         ->assertSet('items', []);
+});
+
+it('refreshes the cart when a cached storefront page is restored', function () {
+    $firstProduct = commerceProduct(['name' => 'First Cached Product']);
+    $secondProduct = commerceProduct(['name' => 'Second Cached Product']);
+    session()->put('cart_token', 'cached-navigation-token');
+
+    app(CartService::class)->add($firstProduct->defaultVariant->id);
+
+    $drawer = Livewire::test(CartDrawer::class)
+        ->call('loadCart')
+        ->assertSet('loaded', true)
+        ->assertSee($firstProduct->name, false)
+        ->assertDontSee($secondProduct->name, false);
+
+    app(CartService::class)->add($secondProduct->defaultVariant->id);
+
+    $drawer
+        ->call('initializeCart')
+        ->assertSet('loaded', true)
+        ->assertDispatched('cart-updated')
+        ->assertSee($firstProduct->name, false)
+        ->assertSee($secondProduct->name, false);
+});
+
+it('waits for cart confirmation before completing add feedback', function () {
+    $product = commerceProduct();
+    $variant = $product->defaultVariant;
+
+    $drawer = Livewire::test(CartDrawer::class)
+        ->call('addToCart', $variant->id, 1)
+        ->assertSet('loaded', true)
+        ->assertDispatched('cart-updated')
+        ->assertDispatched('cart-item-added', variant_id: $variant->id, quantity: 1)
+        ->assertDispatched('open-cart');
+
+    $drawer->assertSee($product->name, false);
+
+    $this->get(route('store.category'))
+        ->assertSuccessful()
+        ->assertSee('cartAddPending: false', false)
+        ->assertSee('x-show="!cartLoaded || cartAddPending"', false)
+        ->assertSee('x-show="cartLoaded && !cartAddPending"', false)
+        ->assertSee('@cart-item-added.window="completeCartAdd()"', false)
+        ->assertSee('@cart-add-failed.window="failCartAdd($event.detail.message)"', false)
+        ->assertSee('Adding item to your cart', false);
+});
+
+it('clears cart add loading and preserves the cart when adding fails', function () {
+    $product = commerceProduct(['inventory_quantity' => 1]);
+    $variant = $product->defaultVariant;
+    session()->put('cart_token', 'failed-add-token');
+    app(CartService::class)->add($variant->id);
+
+    Livewire::test(CartDrawer::class)
+        ->call('addToCart', $variant->id, 1)
+        ->assertSet('loaded', true)
+        ->assertSet('items.0.quantity', 1)
+        ->assertDispatched('cart-updated')
+        ->assertDispatched('cart-add-failed')
+        ->assertDispatched('open-cart');
 });
 
 it('notifies shoppers when the cart page quantity changes', function () {
@@ -388,7 +471,7 @@ it('keeps selected shirt variants distinct through cart, buy now, checkout, and 
 
     $blackSmall = ProductVariant::query()->where('combination_key', 'color=black|size=small')->firstOrFail();
     $blackLarge = ProductVariant::query()->where('combination_key', 'color=black|size=large')->firstOrFail();
-    $mapped = app(\App\Services\CatalogQueryService::class)->product($product->slug);
+    $mapped = app(CatalogQueryService::class)->product($product->slug);
 
     expect($mapped['options'])->toHaveCount(2)
         ->and($mapped['variants'])->toHaveCount(4)

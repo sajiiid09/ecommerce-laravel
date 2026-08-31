@@ -22,6 +22,8 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
     let syncTimer = null;
 
     return {
+        toolbarVersion: 0,
+
         init() {
             editor = new Editor({
                 element: this.$refs.editor,
@@ -29,6 +31,10 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
                 content: initial || '<p></p>',
                 onUpdate: ({ editor }) => {
                     queueSync(editor);
+                    this.refreshToolbar();
+                },
+                onSelectionUpdate: () => {
+                    this.refreshToolbar();
                 },
             });
             mediaListener = (event) => {
@@ -44,12 +50,27 @@ window.richTextEditor = (wire, initial = null, jsonField = 'description_json', h
             wire.set(jsonField, editor.getJSON(), false);
             wire.set(htmlField, editor.getHTML(), false);
         },
+
+        refreshToolbar() {
+            this.toolbarVersion += 1;
+        },
+
+        isActive(name, attributes = {}) {
+            return Boolean(editor && !editor.isDestroyed && editor.isActive(name, attributes));
+        },
+
         toggle(command) {
             if (editor && !editor.isDestroyed) editor.chain().focus()[command]().run();
         },
+
         toggleHeading(level) {
             if (editor && !editor.isDestroyed) editor.chain().focus().toggleHeading({ level }).run();
         },
+
+        setParagraph() {
+            if (editor && !editor.isDestroyed) editor.chain().focus().setParagraph().run();
+        },
+
         setLink() {
             const href = window.prompt('Enter a safe link URL');
             if (href && editor && !editor.isDestroyed) editor.chain().focus().setLink({ href }).run();

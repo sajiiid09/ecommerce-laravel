@@ -4,9 +4,12 @@ namespace App\Livewire\Components\Store;
 
 use App\Services\CartService;
 use App\Support\StorefrontDemoData;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Throwable;
 
 class CartDrawer extends Component
 {
@@ -20,6 +23,13 @@ class CartDrawer extends Component
     public int $subtotal = 0;
 
     #[On('cart-initialized')]
+    public function initializeCart(CartService $carts): void
+    {
+        $this->loaded = true;
+        $this->refreshCart($carts);
+        $this->dispatch('cart-updated', items: $this->items);
+    }
+
     #[On('cart-opened')]
     public function loadCart(CartService $carts): void
     {
@@ -27,18 +37,26 @@ class CartDrawer extends Component
             return;
         }
 
-        $this->loaded = true;
-        $this->refreshCart($carts);
-        $this->dispatch('cart-updated', items: $this->items);
+        $this->initializeCart($carts);
     }
 
     #[On('add-to-cart')]
     public function addToCart(int $variantId, int $quantity, CartService $carts): void
     {
-        $carts->add($variantId, $quantity);
-        $this->loaded = true;
-        $this->dispatchUpdated($carts);
-        $this->dispatch('open-cart');
+        try {
+            $carts->add($variantId, $quantity);
+            $this->loaded = true;
+            $this->dispatchUpdated($carts);
+            $this->dispatch('cart-item-added', variant_id: $variantId, quantity: $quantity);
+            $this->dispatch('open-cart');
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->loaded = true;
+            $this->refreshCart($carts);
+            $this->dispatch('cart-updated', items: $this->items);
+            $this->dispatch('cart-add-failed', message: $this->cartAddFailureMessage($exception));
+            $this->dispatch('open-cart');
+        }
     }
 
     public function updateItem(int $itemId, int $quantity, string $direction, CartService $carts): void
@@ -108,5 +126,22 @@ class CartDrawer extends Component
         };
 
         $this->dispatch('notify', content: $message, type: $direction === 'decrease' ? 'error' : 'success');
+    }
+
+    private function cartAddFailureMessage(Throwable $exception): string
+    {
+        if ($exception instanceof ValidationException) {
+            $message = collect($exception->errors())->flatten()->first();
+
+            if (filled($message)) {
+                return (string) $message;
+            }
+        }
+
+        if ($exception instanceof ModelNotFoundException) {
+            return 'This product is no longer available.';
+        }
+
+        return 'Unable to add this product to your cart.';
     }
 }

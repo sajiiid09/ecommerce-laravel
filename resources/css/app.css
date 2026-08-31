@@ -64,6 +64,14 @@
     box-shadow: none;
 }
 
+.storez-rich-editor .editor-toolbar-button {
+    @apply inline-flex min-h-8 items-center justify-center rounded-md px-2 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-store-blue;
+}
+
+.storez-rich-editor .editor-toolbar-button:active {
+    @apply bg-blue-100 text-blue-700;
+}
+
 .storez-rich-editor .ProseMirror {
     min-height: 10rem;
 }

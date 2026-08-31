@@ -183,12 +183,27 @@ class CartService
 
     private function load(Cart $cart): Cart
     {
-        return $cart->load([
+        $cart->load([
             'items.variant.product',
             'items.variant.inventory',
             'items.variant.media.asset',
             'items.variant.product.media.asset',
         ]);
+
+        $validItems = $cart->items
+            ->reject(fn (CartItem $item): bool => $item->variant === null)
+            ->values();
+
+        if ($validItems->count() !== $cart->items->count()) {
+            $staleItemIds = $cart->items
+                ->filter(fn (CartItem $item): bool => $item->variant === null)
+                ->modelKeys();
+
+            $cart->items()->whereKey($staleItemIds)->delete();
+            $cart->setRelation('items', $validItems);
+        }
+
+        return $cart;
     }
 
     private function availableVariant(int $variantId): ProductVariant

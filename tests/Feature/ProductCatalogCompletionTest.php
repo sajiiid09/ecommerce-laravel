@@ -14,9 +14,11 @@ use App\Livewire\Pages\Store\Category as StoreCategory;
 use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\InventoryMovement;
 use App\Models\MediaAsset;
 use App\Models\MediaUsage;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Models\User;
@@ -27,6 +29,7 @@ use App\Services\ProductService;
 use App\Services\ProductVariantService;
 use Database\Seeders\CatalogSeeder;
 use Database\Seeders\ProductSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -175,6 +178,8 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
         ->assertSee('wire:model="brand_id"', false)
         ->assertSee('wire:model="status"', false)
         ->assertSee('wire:model="visibility"', false)
+        ->assertDontSee('Product Attributes', false)
+        ->assertDontSee('attribute_values', false)
         ->assertDontSee('wire:model.live', false)
         ->assertSee('Slug <span class="text-xs font-normal text-[#9ca3af]">(optional)</span>', false)
         ->assertSee('Enter product slug (optional)', false)
@@ -183,6 +188,12 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
         ->assertSee('wire:ignore', false)
         ->assertSee('x-data="richTextEditor', false)
         ->assertSee('x-on:submit="flushSync()"', false)
+        ->assertSee('role="toolbar"', false)
+        ->assertSee('aria-label="Description formatting"', false)
+        ->assertSee('title="Heading 2"', false)
+        ->assertSee('title="Bullet list"', false)
+        ->assertSee('title="Add or edit link"', false)
+        ->assertSee('title="Insert image"', false)
         ->assertSee('@mousedown.prevent', false)
         ->assertSee('pt-1', false)
         ->assertDontSee('Search Engine Optimization', false)
@@ -208,6 +219,59 @@ it('renders the product edit choices with Sheaf selects and a categories combobo
         ->and($product->fresh()->description_html)->toContain('Updated product content');
 });
 
+it('preserves existing attribute assignments when the hidden product editor is saved', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $attribute = Attribute::create([
+        'name' => 'Material',
+        'slug' => 'material',
+        'type' => 'select',
+        'is_active' => true,
+    ]);
+    $value = $attribute->values()->create(['value' => 'Cotton', 'slug' => 'cotton']);
+    $product = app(ProductService::class)->save([
+        'name' => 'Preserved Attribute Product',
+        'product_type' => 'simple',
+        'status' => 'draft',
+        'visibility' => 'visible',
+        'regular_price_minor' => 1200,
+        'attribute_values' => [$attribute->id => $value->id],
+    ]);
+
+    Livewire::test(ProductEdit::class, ['product' => $product])
+        ->set('short_description', 'Updated without changing specifications.')
+        ->call('saveProduct');
+
+    expect($product->fresh()->attributeValues()->pluck('attribute_value_id')->all())->toBe([$value->id]);
+});
+
+it('does not expose product attributes in the public catalog or storefront page', function () {
+    Cache::flush();
+    $attribute = Attribute::create([
+        'name' => 'Material',
+        'slug' => 'material',
+        'type' => 'text',
+        'is_active' => true,
+    ]);
+    $product = app(ProductService::class)->save([
+        'name' => 'Hidden Attribute Product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'regular_price_minor' => 1500,
+        'attribute_values' => [$attribute->id => 'Cotton'],
+    ]);
+
+    $mapped = app(CatalogQueryService::class)->product($product->slug);
+
+    expect($mapped)->not->toHaveKey('attributes');
+
+    $this->get(route('store.product', ['slug' => $product->slug]))
+        ->assertOk()
+        ->assertDontSee('Product Attributes', false)
+        ->assertDontSee('Material', false)
+        ->assertDontSee('Cotton', false);
+});
+
 it('generates a product slug and allows an empty brand selection', function () {
     $this->actingAs(User::factory()->create(['is_admin' => true]));
 
@@ -220,7 +284,8 @@ it('generates a product slug and allows an empty brand selection', function () {
         ->set('name', 'Auto Slug Product')
         ->set('slug', '')
         ->set('brand_id', true)
-        ->call('saveProduct');
+        ->call('saveProduct')
+        ->assertRedirect(route('admin.catalog.products'));
 
     $product = Product::query()->where('slug', 'auto-slug-product')->firstOrFail();
 
@@ -283,22 +348,141 @@ it('maps real variant options and variant media for the storefront', function ()
         'mime_type' => 'image/jpeg',
         'size' => 100,
     ]);
+    $alternateAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/black-shirt-side.jpg',
+        'filename' => 'black-shirt-side.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
 
     app(ProductVariantService::class)->save($variant, [
         'sku' => 'SHIRT-BLACK',
         'regular_price_minor' => 2499,
         'quantity_on_hand' => 4,
         'low_stock_threshold' => 1,
-        'media_ids' => [$asset->id],
+        'media_ids' => [$asset->id, $alternateAsset->id],
     ]);
     $product->update(['status' => 'published']);
 
     $mapped = app(CatalogQueryService::class)->product($product->slug);
 
     expect($mapped['variants'][0]['optionValues'][0]['value'])->toBe($value->slug)
-        ->and($mapped['variants'][0]['gallery'])->toHaveCount(1)
+        ->and($mapped['variants'][0]['gallery'])->toHaveCount(2)
         ->and($mapped['variants'][0]['sku'])->toBe('SHIRT-BLACK')
         ->and(MediaUsage::where('media_asset_id', $asset->id)->where('role', 'variant.image')->exists())->toBeTrue();
+});
+
+it('uses variant imagery for variable storefront cards and galleries', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $category = Category::create(['name' => 'Storefront Shirts', 'slug' => 'storefront-shirts', 'is_active' => true]);
+    $product = Product::create([
+        'name' => 'Gallery Shirt',
+        'slug' => 'gallery-shirt',
+        'product_type' => 'variable',
+        'short_description' => 'A shirt with selectable options.',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'primary_category_id' => $category->id,
+        'published_at' => now(),
+    ]);
+    $product->categories()->attach($category);
+    $option = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $value = $option->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $variant = app(ProductVariantService::class)->generate($product)[0];
+    $parentAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/ambiguous-parent.jpg',
+        'filename' => 'ambiguous-parent.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
+    $variantAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/black-variant.jpg',
+        'filename' => 'black-variant.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
+    ProductMedia::create(['product_id' => $product->id, 'media_asset_id' => $parentAsset->id, 'role' => 'primary']);
+    app(ProductVariantService::class)->save($variant, [
+        'sku' => 'GALLERY-SHIRT-BLK',
+        'regular_price_minor' => 1899,
+        'quantity_on_hand' => 5,
+        'media_ids' => [$variantAsset->id],
+    ]);
+    Cache::flush();
+
+    $mapped = app(CatalogQueryService::class)->product($product->slug);
+    $detail = $this->get(route('store.product', ['slug' => $product->slug]));
+    $categoryPage = $this->get(route('store.category', ['slug' => $category->slug]));
+
+    expect($mapped['isVariable'])->toBeTrue()
+        ->and($mapped['shortDescription'])->toBe('A shirt with selectable options.')
+        ->and($mapped['image'])->toBe($variantAsset->url())
+        ->and($mapped['gallery'])->toBe([$variantAsset->url()])
+        ->and($mapped['variants'][0]['optionValues'][0]['value'])->toBe($value->slug)
+        ->and($detail->getContent())->toContain($variantAsset->url())
+        ->and($detail->getContent())->not->toContain($parentAsset->url())
+        ->and($detail->getContent())->toContain('activeGallery')
+        ->and($categoryPage->getContent())->toContain('openProductQuickAdd')
+        ->and($categoryPage->getContent())->toContain('product-quick-add');
+});
+
+it('keeps simple product galleries and uses a neutral placeholder for image-less variants', function () {
+    Storage::fake('public');
+    $simple = Product::create([
+        'name' => 'Simple Gallery Product',
+        'slug' => 'simple-gallery-product',
+        'product_type' => 'simple',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'published_at' => now(),
+    ]);
+    $simpleVariant = $simple->variants()->create([
+        'sku' => 'SIMPLE-GALLERY',
+        'combination_key' => 'default',
+        'regular_price_minor' => 1000,
+        'is_active' => true,
+        'is_default' => true,
+    ]);
+    $simpleAsset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/simple-gallery.jpg',
+        'filename' => 'simple-gallery.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
+    ProductMedia::create(['product_id' => $simple->id, 'media_asset_id' => $simpleAsset->id, 'role' => 'primary']);
+
+    $variable = Product::create([
+        'name' => 'Image-less Variable Product',
+        'slug' => 'image-less-variable-product',
+        'product_type' => 'variable',
+        'status' => 'published',
+        'visibility' => 'visible',
+        'published_at' => now(),
+    ]);
+    $variable->variants()->create([
+        'sku' => 'VARIABLE-NO-IMAGE',
+        'combination_key' => 'default',
+        'regular_price_minor' => 1000,
+        'is_active' => true,
+        'is_default' => true,
+    ]);
+    Cache::flush();
+
+    $simpleMapped = app(CatalogQueryService::class)->product($simple->slug);
+    $variableMapped = app(CatalogQueryService::class)->product($variable->slug);
+    $placeholder = asset('images/placeholders/no-image.svg');
+
+    expect($simpleVariant->exists)->toBeTrue()
+        ->and($simpleMapped['isVariable'])->toBeFalse()
+        ->and($simpleMapped['image'])->toBe($simpleAsset->url())
+        ->and($variableMapped['isVariable'])->toBeTrue()
+        ->and($variableMapped['image'])->toBe($placeholder)
+        ->and($variableMapped['gallery'])->toBe([$placeholder]);
 });
 
 it('reconciles shirt variants when option values are removed and restored', function () {
@@ -384,6 +568,147 @@ it('validates unique variant options and converts variant prices from BDT amount
         ->and($black->fresh()->slug)->toBe('black');
 });
 
+it('renders product variants as a paginated full-width table and edits them in a modal', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Modal Variant Product',
+        'slug' => 'modal-variant-product',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $color = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $size = $product->options()->create(['name' => 'Size', 'slug' => 'size']);
+    $color->values()->createMany([
+        ['value' => 'Black', 'slug' => 'black'],
+        ['value' => 'White', 'slug' => 'white'],
+    ]);
+    $size->values()->createMany([
+        ['value' => 'Small', 'slug' => 'small'],
+        ['value' => 'Medium', 'slug' => 'medium'],
+    ]);
+    $variants = app(ProductVariantService::class)->generate($product);
+
+    $component = Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->assertSee('Generated variants', false)
+        ->assertSee('Action', false)
+        ->assertSee('wire:click="openVariantEditor(', false)
+        ->assertSee('wire:click="deleteVariant(', false)
+        ->assertSee('wire:confirm="Delete this variant?"', false)
+        ->assertSee('variant-editor', false)
+        ->assertDontSee('xl:grid-cols-[minmax(0,1fr)_380px]', false)
+        ->assertDontSee('wire:click="selectVariant(', false)
+        ->assertDontSee('wire:model.live="variantSku"', false)
+        ->call('openVariantEditor', $variants[0]->id)
+        ->assertSet('selectedVariantId', $variants[0]->id)
+        ->assertSet('variantSku', $variants[0]->sku)
+        ->assertDispatched('open-modal', id: 'variant-editor')
+        ->set('variantSku', 'MODAL-VARIANT-UPDATED')
+        ->set('variantRegularPrice', '1299.00')
+        ->set('variantQuantity', 7)
+        ->call('saveVariant')
+        ->assertHasNoErrors()
+        ->assertDispatched('close-modal', id: 'variant-editor');
+
+    expect($variants[0]->fresh()->sku)->toBe('MODAL-VARIANT-UPDATED')
+        ->and($variants[0]->fresh()->regular_price_minor)->toBe(129900)
+        ->and($variants[0]->fresh()->inventory->quantity_on_hand)->toBe(7);
+});
+
+it('paginates product variants and keeps media changes pending until save', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Paginated Variant Product',
+        'slug' => 'paginated-variant-product',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $color = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $size = $product->options()->create(['name' => 'Size', 'slug' => 'size']);
+    $color->values()->createMany(collect(range(1, 4))->map(fn (int $index): array => [
+        'value' => "Color {$index}",
+        'slug' => "color-{$index}",
+    ])->all());
+    $size->values()->createMany(collect(range(1, 4))->map(fn (int $index): array => [
+        'value' => "Size {$index}",
+        'slug' => "size-{$index}",
+    ])->all());
+    $variants = app(ProductVariantService::class)->generate($product);
+    $asset = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/modal-variant.jpg',
+        'filename' => 'modal-variant.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 100,
+    ]);
+
+    $component = Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->assertSee('Pagination Navigation', false)
+        ->assertSee('Items per page', false)
+        ->call('openVariantEditor', $variants[0]->id)
+        ->assertSee('wire:loading.attr="disabled"', false)
+        ->assertSee('wire:target="variantImage"', false)
+        ->assertSee('Upload a new variant image', false)
+        ->assertSee('aria-label="Remove ', false)
+        ->call('selectMedia', $asset->id, null, 'variant-gallery')
+        ->set('variantImage', UploadedFile::fake()->image('uploaded-variant.jpg'))
+        ->assertSee('New', false)
+        ->assertSee('aria-label="Remove uploaded image"', false)
+        ->assertSet('selectedVariantMediaIds', [$asset->id]);
+
+    expect(ProductMedia::query()->where('product_variant_id', $variants[0]->id)->exists())->toBeFalse()
+        ->and(MediaAsset::query()->where('original_filename', 'uploaded-variant.jpg')->exists())->toBeFalse();
+
+    $component->call('saveVariant')->assertHasNoErrors();
+
+    expect(ProductMedia::query()->where('product_variant_id', $variants[0]->id)->where('media_asset_id', $asset->id)->exists())->toBeTrue()
+        ->and(ProductMedia::query()->where('product_variant_id', $variants[0]->id)->count())->toBe(2)
+        ->and(MediaAsset::query()->where('original_filename', 'uploaded-variant.jpg')->exists())->toBeTrue();
+});
+
+it('toggles and deletes product variants with default and last-variant safeguards', function () {
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = Product::create([
+        'name' => 'Product Variant Actions',
+        'slug' => 'product-variant-actions',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $defaultVariant = $product->variants()->create([
+        'sku' => 'PRODUCT-ACTIONS-1',
+        'combination_key' => 'color=black',
+        'regular_price_minor' => 1000,
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+    $replacementVariant = $product->variants()->create([
+        'sku' => 'PRODUCT-ACTIONS-2',
+        'combination_key' => 'color=white',
+        'regular_price_minor' => 1200,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    $component = Livewire::test(ProductVariantsIndex::class, ['product' => $product])
+        ->call('toggle', $replacementVariant->id);
+
+    expect($replacementVariant->fresh()->is_active)->toBeFalse();
+
+    $component->call('deleteVariant', $defaultVariant->id);
+
+    expect($defaultVariant->fresh()->trashed())->toBeTrue()
+        ->and($replacementVariant->fresh()->is_default)->toBeTrue();
+
+    Livewire::test(ProductVariantsIndex::class, ['product' => $product->fresh()])
+        ->call('deleteVariant', $replacementVariant->id)
+        ->assertHasErrors(['variant' => 'A product must retain at least one variant.']);
+
+    expect($replacementVariant->fresh()->trashed())->toBeFalse();
+});
+
 it('prevents publishing a variable product without an active generated variant', function () {
     expect(fn () => app(ProductService::class)->save([
         'name' => 'Unconfigured Variable Product',
@@ -432,6 +757,84 @@ it('persists product gallery order and detaches replaced media usage', function 
     expect($product->fresh()->media()->pluck('media_asset_id')->all())->toBe([$second->id])
         ->and(MediaUsage::where('media_asset_id', $first->id)->where('usable_id', $product->id)->exists())->toBeFalse()
         ->and(MediaUsage::where('media_asset_id', $second->id)->where('usable_id', $product->id)->exists())->toBeTrue();
+});
+
+it('separates shared product gallery images from multiple variant images in the editor', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+    $product = app(ProductService::class)->save([
+        'name' => 'Separated Media Shirt',
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+    ]);
+    $option = $product->options()->create(['name' => 'Color', 'slug' => 'color']);
+    $black = $option->values()->create(['value' => 'Black', 'slug' => 'black']);
+    $white = $option->values()->create(['value' => 'White', 'slug' => 'white']);
+    $variants = app(ProductVariantService::class)->generate($product);
+    $shared = MediaAsset::create(['disk' => 'public', 'path' => 'media/shared-shirt.jpg', 'filename' => 'shared-shirt.jpg', 'mime_type' => 'image/jpeg', 'size' => 100]);
+    $blackFront = MediaAsset::create(['disk' => 'public', 'path' => 'media/black-front.jpg', 'filename' => 'black-front.jpg', 'mime_type' => 'image/jpeg', 'size' => 100]);
+    $blackSide = MediaAsset::create(['disk' => 'public', 'path' => 'media/black-side.jpg', 'filename' => 'black-side.jpg', 'mime_type' => 'image/jpeg', 'size' => 100]);
+    $whiteImage = MediaAsset::create(['disk' => 'public', 'path' => 'media/white-shirt.jpg', 'filename' => 'white-shirt.jpg', 'mime_type' => 'image/jpeg', 'size' => 100]);
+
+    app(ProductService::class)->save([
+        'name' => $product->name,
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+        'media_ids' => [$shared->id],
+    ], $product);
+    app(ProductVariantService::class)->save($variants[0], [
+        'sku' => 'SEPARATED-BLACK',
+        'regular_price_minor' => 1000,
+        'quantity_on_hand' => 5,
+        'media_ids' => [$blackFront->id, $blackSide->id],
+    ]);
+    app(ProductVariantService::class)->save($variants[1], [
+        'sku' => 'SEPARATED-WHITE',
+        'regular_price_minor' => 1100,
+        'quantity_on_hand' => 4,
+        'media_ids' => [$whiteImage->id],
+    ]);
+    app(ProductService::class)->save([
+        'name' => $product->name,
+        'product_type' => 'variable',
+        'status' => 'draft',
+        'visibility' => 'visible',
+        'media_ids' => [$shared->id],
+    ], $product);
+
+    Livewire::test(ProductEdit::class, ['product' => $product->fresh()])
+        ->assertSee('Shared product gallery', false)
+        ->assertSee('Variant images', false)
+        ->assertSee('Black', false)
+        ->assertSee('White', false)
+        ->assertSee('black-front.jpg', false)
+        ->assertSee('black-side.jpg', false)
+        ->assertSee('white-shirt.jpg', false)
+        ->assertSee('Manage variant images', false);
+
+    expect($product->fresh()->media()->pluck('media_asset_id')->all())->toBe([$shared->id])
+        ->and(ProductMedia::query()->where('product_variant_id', $variants[0]->id)->pluck('media_asset_id')->all())
+        ->toBe([$blackFront->id, $blackSide->id])
+        ->and($black->slug)->toBe('black')
+        ->and($white->slug)->toBe('white');
+});
+
+it('previews and removes a pending product image upload', function () {
+    Storage::fake('public');
+    $this->actingAs(User::factory()->create(['is_admin' => true]));
+
+    Livewire::test(ProductEdit::class)
+        ->assertSee('wire:loading.attr="disabled"', false)
+        ->assertSee('wire:target="image"', false)
+        ->set('image', UploadedFile::fake()->image('product-upload.jpg'))
+        ->assertSee('New upload ready: product-upload.jpg', false)
+        ->assertSee('New', false)
+        ->assertSee('aria-label="Remove uploaded product image"', false)
+        ->call('removeImageUpload')
+        ->assertSet('image', null)
+        ->assertDontSee('New upload ready: product-upload.jpg', false);
 });
 
 it('rejects inactive and invalid attribute assignments', function () {
@@ -1124,6 +1527,26 @@ it('processes catalog seed images into idempotent webp assets', function () {
         ->where('slug', 'sony-wh-ch720n')
         ->with('defaultVariant')
         ->firstOrFail();
+    $shirt = Product::query()
+        ->where('slug', 'storez-classic-cotton-shirt')
+        ->with(['options.values', 'variants.inventory', 'variants.media.asset'])
+        ->firstOrFail();
+    $redmi = Product::query()
+        ->where('slug', 'redmi-note-13')
+        ->with(['options.values', 'variants.inventory', 'variants.media.asset'])
+        ->firstOrFail();
+    $shirtVariants = $shirt->variants->sortBy('sort_order')->values();
+    $redmiVariants = $redmi->variants->sortBy('sort_order')->values();
+    $variantMediaCount = ProductMedia::query()
+        ->whereIn('product_variant_id', $shirtVariants->merge($redmiVariants)->pluck('id'))
+        ->count();
+    $variantMovementCount = InventoryMovement::query()
+        ->whereIn('product_variant_id', $shirtVariants->merge($redmiVariants)->pluck('id'))
+        ->count();
+    $mappedShirt = app(CatalogQueryService::class)->product($shirt->slug);
+    $mappedRedmi = app(CatalogQueryService::class)->product($redmi->slug);
+    $mappedBlackShirt = collect($mappedShirt['variants'])->firstWhere('sku', 'STZ-SHIRT-BLK-S');
+    $mappedBlueRedmi = collect($mappedRedmi['variants'])->firstWhere('sku', 'STZ-REDMI13-BLU-8256');
     $sonyGallery = $sonyWfC700n->media()
         ->whereNull('product_variant_id')
         ->orderBy('sort_order')
@@ -1142,6 +1565,7 @@ it('processes catalog seed images into idempotent webp assets', function () {
     expect($asset->original_filename)->toBe('sony-wh-ch720n.png')
         ->and($asset->extension)->toBe('webp')
         ->and($asset->mime_type)->toBe('image/webp')
+        ->and(Product::query()->count())->toBe(43)
         ->and($asset->width)->toBeGreaterThan(0)
         ->and($asset->height)->toBeGreaterThan(0)
         ->and(Storage::disk('public')->exists($asset->path))->toBeTrue()
@@ -1162,7 +1586,50 @@ it('processes catalog seed images into idempotent webp assets', function () {
         ->and($xiaomiGallery->pluck('path')->all())->toBe([
             'seeded/catalog/products/xiaomi-power-bank-4i.webp',
             'seeded/catalog/products/xiaomi-power-bank-4i-20000mah.webp',
-        ]);
+        ])
+        ->and($shirt->options->pluck('slug')->all())->toBe(['size'])
+        ->and($shirt->options->first()->values->pluck('slug')->all())->toBe(['small', 'medium', 'large', 'xl'])
+        ->and($shirtVariants->pluck('combination_key')->all())->toBe([
+            'size=small',
+            'size=medium',
+            'size=large',
+            'size=xl',
+        ])
+        ->and($shirtVariants->pluck('sku')->all())->toBe([
+            'STZ-SHIRT-BLK-S',
+            'STZ-SHIRT-BLK-M',
+            'STZ-SHIRT-BLK-L',
+            'STZ-SHIRT-BLK-XL',
+        ])
+        ->and($shirtVariants->pluck('regular_price_minor')->all())->toBe([89900, 94900, 99900, 104900])
+        ->and($shirtVariants->pluck('inventory')->pluck('quantity_on_hand')->all())->toBe([18, 25, 12, 8])
+        ->and($shirtVariants->pluck('media')->map(fn ($media) => $media->first()?->asset?->path)->all())->toBe([
+            'seeded/catalog/variants/storez-classic-cotton-shirt/STZ-SHIRT-BLK-S-0.webp',
+            'seeded/catalog/variants/storez-classic-cotton-shirt/STZ-SHIRT-BLK-M-0.webp',
+            'seeded/catalog/variants/storez-classic-cotton-shirt/STZ-SHIRT-BLK-L-0.webp',
+            'seeded/catalog/variants/storez-classic-cotton-shirt/STZ-SHIRT-BLK-XL-0.webp',
+        ])
+        ->and($redmi->options->pluck('slug')->all())->toBe(['color', 'storage'])
+        ->and($redmiVariants->pluck('combination_key')->all())->toBe([
+            'color=black|storage=6-128gb',
+            'color=black|storage=8-256gb',
+            'color=blue|storage=6-128gb',
+            'color=blue|storage=8-256gb',
+        ])
+        ->and($redmiVariants->pluck('regular_price_minor')->all())->toBe([2099900, 2299900, 2149900, 2349900])
+        ->and($redmiVariants->pluck('inventory')->pluck('quantity_on_hand')->all())->toBe([14, 9, 11, 7])
+        ->and($redmiVariants->pluck('media')->map(fn ($media) => $media->first()?->asset?->path)->all())->toBe([
+            'seeded/catalog/variants/redmi-note-13/STZ-REDMI13-BLK-6128-0.webp',
+            'seeded/catalog/variants/redmi-note-13/STZ-REDMI13-BLK-8256-0.webp',
+            'seeded/catalog/variants/redmi-note-13/STZ-REDMI13-BLU-6128-0.webp',
+            'seeded/catalog/variants/redmi-note-13/STZ-REDMI13-BLU-8256-0.webp',
+        ])
+        ->and($mappedShirt['options'][0]['values'])->toHaveCount(4)
+        ->and($mappedBlackShirt['price'])->toBe(89900)
+        ->and($mappedBlueRedmi['price'])->toBe(2349900)
+        ->and($mappedBlueRedmi['available'])->toBeTrue()
+        ->and($variantMediaCount)->toBe(8)
+        ->and($variantMovementCount)->toBe(8);
 
     $fullPriceProduct->defaultVariant->update([
         'sale_price_minor' => 1299000,
@@ -1172,10 +1639,17 @@ it('processes catalog seed images into idempotent webp assets', function () {
     $this->seed([CatalogSeeder::class, ProductSeeder::class]);
 
     $refreshedFullPriceProduct = $fullPriceProduct->fresh('defaultVariant');
+    $refreshedVariantIds = ProductVariant::query()
+        ->whereIn('product_id', [$shirt->id, $redmi->id])
+        ->pluck('id');
 
     expect(MediaAsset::query()->where('path', 'like', 'seeded/catalog/%')->count())
         ->toBe($initialSeededAssetCount)
         ->and(MediaAsset::query()->where('path', $asset->path)->count())->toBe(1)
+        ->and(MediaAsset::query()->where('path', 'like', 'seeded/catalog/variants/%/%')->count())->toBe(13)
+        ->and($refreshedVariantIds->all())->toEqualCanonicalizing($shirtVariants->merge($redmiVariants)->pluck('id')->all())
+        ->and(ProductMedia::query()->whereIn('product_variant_id', $refreshedVariantIds)->count())->toBe($variantMediaCount)
+        ->and(InventoryMovement::query()->whereIn('product_variant_id', $refreshedVariantIds)->count())->toBe($variantMovementCount)
         ->and($refreshedFullPriceProduct->defaultVariant->sale_price_minor)->toBeNull()
         ->and($refreshedFullPriceProduct->defaultVariant->compare_at_price_minor)->toBeNull();
 });

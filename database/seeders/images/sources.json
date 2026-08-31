@@ -173,6 +173,80 @@
       "name": "PRAN Chanachur 300g",
       "source_url": "https://unsplash.com/",
       "image_url": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1000&q=85"
+    },
+    {
+      "path": "products/samsung-galaxy-a35-5g.jpg",
+      "name": "Samsung Galaxy A35 5G",
+      "source_url": "https://www.samsung.com/ie/business/smartphones/galaxy-a/galaxy-a35-5g-awesome-lemon-256gb-sm-a356bzygeub/",
+      "image_url": "https://telesun.nl/media/sites/3/2026/03/samsung-galaxy-a35-256gb-awesome-lemon_1747743152_0-2.png"
+    },
+    {
+      "path": "products/aarong-black-embroidered-cotton-panjabi.jpg",
+      "name": "Aarong Black Embroidered Cotton Panjabi",
+      "source_url": "https://www.aarong.com/bgd/men/panjabi/black-embroidered-cotton-panjabi-15e240360452.html",
+      "image_url": "https://mcprod.aarong.com/media/catalog/product/0/0/0040000101841.jpg?optimize=high&bg-color=255,255,255&fit=bounds&height=&width="
+    },
+    {
+      "path": "products/apex-formal-shoe-91313a15.jpg",
+      "name": "Apex Men's Formal Shoe 91313A15",
+      "source_url": "https://apex4u.com/product/the-apex-mens-formal-shoe-91313a15",
+      "image_url": "https://storage.apex4u.com/d14d1850-6e36-4c14-bf28-97be693f9d63.jpg"
+    }
+  ],
+  "variants": [
+    {
+      "path": "variants/storez-classic-shirt-black.webp",
+      "name": "StoreZ Classic Cotton Shirt - Black",
+      "source_url": "https://www.daraz.com.bd/products/black-white-cotton-formal-shirt-for-men-formal-shirt-for-men-i235748705.html",
+      "image_url": "https://img.drz.lazcdn.com/static/bd/p/c62855f2865dbdbe656a0cb47569fc6d.jpg_720x720q80.jpg_.webp"
+    },
+    {
+      "path": "variants/storez-classic-shirt-white.webp",
+      "name": "StoreZ Classic Cotton Shirt - White",
+      "source_url": "https://www.daraz.com.bd/products/white-cotton-shirt-for-men-i109322824.html",
+      "image_url": "https://img.drz.lazcdn.com/static/bd/p/5ac65b8d130650b735802242eaabad79.jpg_720x720q80.jpg_.webp"
+    },
+    {
+      "path": "variants/redmi-note-13-black.jpg",
+      "name": "Redmi Note 13 - Midnight Black",
+      "source_url": "https://www.mi.com/bd/product/redmi-note-13/",
+      "image_url": "https://i02.appmifile.com/mi-com-product/fly-birds/redmi-note-13/PC/ThreeIntenseimage3.jpg"
+    },
+    {
+      "path": "variants/redmi-note-13-blue.jpg",
+      "name": "Redmi Note 13 - Ice Blue",
+      "source_url": "https://www.mi.com/bd/product/redmi-note-13/",
+      "image_url": "https://i02.appmifile.com/mi-com-product/fly-birds/redmi-note-13/PC/ThreeIntenseimage2.jpg"
+    },
+    {
+      "path": "variants/sony-ult-wear-black.jpg",
+      "name": "Sony ULT WEAR WH-ULT900N - Black",
+      "source_url": "https://www.sony.com/ng/headphones/products/ult-wear",
+      "image_url": "https://sony.scene7.com/is/image/sonyglobalsolutions/00-12?fmt=png-alpha&wid=1200&hei=1200"
+    },
+    {
+      "path": "variants/sony-ult-wear-off-white.jpg",
+      "name": "Sony ULT WEAR WH-ULT900N - Off White",
+      "source_url": "https://www.sony.com/electronics/support/articles/00347413",
+      "image_url": "https://sony.scene7.com/is/image/sonyglobalsolutions/01-24?fmt=png-alpha&wid=1200&hei=1200"
+    },
+    {
+      "path": "variants/sony-ult-wear-forest-gray.jpg",
+      "name": "Sony ULT WEAR WH-ULT900N - Forest Gray",
+      "source_url": "https://www.sony.com/ng/headphones/products/ult-wear",
+      "image_url": "https://sony.scene7.com/is/image/sonyglobalsolutions/02-23?fmt=png-alpha&wid=1200&hei=1200"
+    },
+    {
+      "path": "variants/ikea-kallax-77x77-white.jpg",
+      "name": "IKEA KALLAX Shelf Unit 77x77cm - White",
+      "source_url": "https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20631639/",
+      "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelf-unit-white__0644753_pe702937_s5.jpg"
+    },
+    {
+      "path": "variants/ikea-kallax-77x77-black-brown.jpg",
+      "name": "IKEA KALLAX Shelf Unit 77x77cm - Black-Brown",
+      "source_url": "https://www.ikea.com/us/en/p/kallax-shelf-unit-black-brown-70637304/",
+      "image_url": "https://www.ikea.com/us/en/images/products/kallax-shelf-unit-black-brown__0644756_pe702940_s5.jpg"
     }
   ],
   "brands": [

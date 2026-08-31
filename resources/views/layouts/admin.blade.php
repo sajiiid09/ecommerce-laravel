@@ -15,7 +15,7 @@
             request()->is('admin/catalog/categories') => 'Categories',
             request()->is('admin/catalog/brands') => 'Brands',
             request()->is('admin/catalog/tags') => 'Tags',
-            request()->is('admin/catalog/attributes') => 'Attributes',
+            /* request()->is('admin/catalog/attributes') => 'Attributes', */
             request()->is('admin/catalog/variants') => 'Variants',
             request()->is('admin/catalog/inventory/*/history') => 'Inventory History',
             request()->is('admin/catalog/inventory') => 'Inventory',
@@ -136,7 +136,7 @@
                                 ['label' => 'Categories', 'href' => '/admin/catalog/categories', 'match' => 'admin/catalog/categories*'],
                                 ['label' => 'Brands', 'href' => '/admin/catalog/brands', 'match' => 'admin/catalog/brands*'],
                                 ['label' => 'Tags', 'href' => '/admin/catalog/tags', 'match' => 'admin/catalog/tags*'],
-                                ['label' => 'Attributes / Options', 'href' => '/admin/catalog/attributes', 'match' => 'admin/catalog/attributes*'],
+                                /* ['label' => 'Attributes / Options', 'href' => '/admin/catalog/attributes', 'match' => 'admin/catalog/attributes*'], */
                                 ['label' => 'Variants', 'href' => '/admin/catalog/variants', 'match' => 'admin/catalog/variants*'],
                                 ['label' => 'Inventory', 'href' => '/admin/catalog/inventory', 'match' => 'admin/catalog/inventory*'],
                             ] as $catalogItem)

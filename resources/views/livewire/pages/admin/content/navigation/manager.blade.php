@@ -45,13 +45,13 @@
                     <div class="space-y-4">
                         <label class="block text-sm font-semibold text-slate-700">Name<input wire:model.live="name" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"></label>
                         <label class="block text-sm font-semibold text-slate-700">Key<input wire:model.live="key" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"></label>
-                        <label class="block text-sm font-semibold text-slate-700">Location<select wire:model.live="location" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="header_primary">Header primary</option><option value="mobile">Mobile</option><option value="footer_shop">Footer shop</option></select></label>
+                        <label class="block text-sm font-semibold text-slate-700">Location<select wire:model.live="location" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="header_primary">Header primary</option><option value="mobile">Mobile</option></select></label>
                         <div class="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-slate-600">
                             <p class="font-bold text-slate-800">What these settings control</p>
                             <dl class="mt-2 space-y-2">
                                 <div><dt class="font-semibold text-slate-700">Name</dt><dd>Admin-facing label used to identify this menu.</dd></div>
-                                <div><dt class="font-semibold text-slate-700">Key</dt><dd>Stable identifier used by Header and Footer settings to select this menu. Change it only when you also update those assignments.</dd></div>
-                                <div><dt class="font-semibold text-slate-700">Location</dt><dd>Controls where the menu is rendered: desktop header, mobile navigation, or the footer shop column.</dd></div>
+                                <div><dt class="font-semibold text-slate-700">Key</dt><dd>Stable identifier used by the storefront header and mobile navigation.</dd></div>
+                                <div><dt class="font-semibold text-slate-700">Location</dt><dd>Controls whether the menu is rendered in the desktop header or mobile navigation.</dd></div>
                             </dl>
                         </div>
                         <x-ui.button type="button" class="w-full" wire:click="saveMenu" wire:loading.attr="disabled" wire:target="saveMenu">

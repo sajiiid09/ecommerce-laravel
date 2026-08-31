@@ -2,9 +2,12 @@
 
 namespace App\Livewire\Pages\Admin\Catalog\Products;
 
+use App\Enums\ImagePreset;
+use App\Livewire\Concerns\WithCatalogPagination;
 use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductOption;
+use App\Services\MediaService;
 use App\Services\ProductVariantService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -12,10 +15,13 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.admin')]
 class Variants extends Component
 {
+    use WithCatalogPagination, WithFileUploads;
+
     public Product $product;
 
     public string $optionName = '';
@@ -54,21 +60,22 @@ class Variants extends Component
 
     public array $selectedVariantMediaIds = [];
 
+    public $variantImage;
+
     protected ProductVariantService $variants;
 
-    public function boot(ProductVariantService $variants): void
+    protected MediaService $media;
+
+    public function boot(ProductVariantService $variants, MediaService $media): void
     {
         $this->variants = $variants;
+        $this->media = $media;
     }
 
     public function mount(Product $product): void
     {
         $this->product = $product;
         $this->authorize('update', $product);
-        $first = $product->variants()->orderByDesc('is_default')->first();
-        if ($first) {
-            $this->selectVariant($first->id);
-        }
     }
 
     public function addOption(): void
@@ -190,6 +197,12 @@ class Variants extends Component
             ->all();
     }
 
+    public function openVariantEditor(int $id): void
+    {
+        $this->selectVariant($id);
+        $this->dispatch('open-modal', id: 'variant-editor');
+    }
+
     public function saveVariant(): void
     {
         $this->authorize('update', $this->product);
@@ -209,6 +222,7 @@ class Variants extends Component
             'variantIsDefault' => ['boolean'],
             'selectedVariantMediaIds' => ['array'],
             'selectedVariantMediaIds.*' => ['integer', 'exists:media_assets,id'],
+            'variantImage' => ['nullable', 'image', 'max:5120'],
         ]);
         $regularPriceMinor = $this->priceToMinor($data['variantRegularPrice']) ?? 0;
         $salePriceMinor = $this->priceToMinor($data['variantSalePrice'] ?? null);
@@ -218,6 +232,11 @@ class Variants extends Component
             $this->addError('variantSalePrice', 'Sale price must not exceed the regular price.');
 
             return;
+        }
+
+        $mediaIds = $data['selectedVariantMediaIds'];
+        if ($this->variantImage) {
+            $mediaIds[] = $this->media->upload($this->variantImage, 'products', ImagePreset::Product)->id;
         }
 
         $this->variants->save($variant, [
@@ -233,10 +252,12 @@ class Variants extends Component
             'allow_backorders' => $data['variantAllowBackorders'],
             'is_active' => $data['variantIsActive'],
             'is_default' => $data['variantIsDefault'],
-            'media_ids' => $data['selectedVariantMediaIds'],
+            'media_ids' => $mediaIds,
         ]);
         $this->product->refresh();
         $this->selectVariant($variant->id);
+        $this->reset('variantImage');
+        $this->dispatch('close-modal', id: 'variant-editor');
         session()->flash('status', 'Variant saved.');
     }
 
@@ -263,6 +284,12 @@ class Variants extends Component
         ));
     }
 
+    public function removeVariantImageUpload(): void
+    {
+        $this->reset('variantImage');
+        $this->resetValidation('variantImage');
+    }
+
     public function moveMedia(int $index, int $direction): void
     {
         $target = $index + $direction;
@@ -275,7 +302,6 @@ class Variants extends Component
             $this->selectedVariantMediaIds[$target],
             $this->selectedVariantMediaIds[$index],
         ];
-        $this->persistMediaOrder();
     }
 
     public function sortMedia(string|int $item, int $position): void
@@ -290,24 +316,6 @@ class Variants extends Component
 
         array_splice($this->selectedVariantMediaIds, $currentPosition, 1);
         array_splice($this->selectedVariantMediaIds, $position, 0, [$item]);
-        $this->persistMediaOrder();
-    }
-
-    private function persistMediaOrder(): void
-    {
-        if (! $this->selectedVariantId) {
-            return;
-        }
-
-        $this->authorize('update', $this->product);
-        $variant = $this->product->variants()->findOrFail($this->selectedVariantId);
-
-        foreach ($this->selectedVariantMediaIds as $sortOrder => $mediaId) {
-            $variant->media()->where('media_asset_id', $mediaId)->update([
-                'sort_order' => $sortOrder,
-                'role' => $sortOrder === 0 ? 'main' : 'gallery',
-            ]);
-        }
     }
 
     public function toggle(int $id): void
@@ -320,11 +328,49 @@ class Variants extends Component
         }
     }
 
+    public function deleteVariant(int $id): void
+    {
+        $this->authorize('update', $this->product);
+        $variant = $this->product->variants()->findOrFail($id);
+        Gate::authorize('delete', $variant);
+
+        $hasOtherVariant = $this->product->variants()
+            ->whereKeyNot($variant->id)
+            ->exists();
+
+        if (! $hasOtherVariant) {
+            $this->addError('variant', 'A product must retain at least one variant.');
+
+            return;
+        }
+
+        if ($variant->is_default) {
+            $replacement = $this->product->variants()
+                ->whereKeyNot($variant->id)
+                ->orderByDesc('is_active')
+                ->orderBy('sort_order')
+                ->first();
+
+            $replacement?->update(['is_default' => true]);
+        }
+
+        $variant->delete();
+        $this->resetPage();
+
+        if ($this->selectedVariantId === $id) {
+            $this->selectedVariantId = null;
+            $this->selectedVariantMediaIds = [];
+            $this->dispatch('close-modal', id: 'variant-editor');
+        }
+
+        session()->flash('status', 'Variant deleted.');
+    }
+
     public function render()
     {
         return view('livewire.pages.admin.catalog.products.variants', [
             'options' => $this->product->options()->with('values')->orderBy('sort_order')->get(),
-            'variants' => $this->product->variants()->with('inventory', 'optionValues', 'media.asset')->orderByDesc('is_default')->orderBy('sort_order')->get(),
+            'variants' => $this->product->variants()->with('inventory', 'optionValues', 'media.asset')->orderByDesc('is_default')->orderBy('sort_order')->paginate($this->perPage),
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
             'selectedVariantMedia' => $this->selectedVariantMediaIds === [] ? collect() : MediaAsset::query()
                 ->whereKey($this->selectedVariantMediaIds)

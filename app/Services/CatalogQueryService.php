@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\ProductType;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Support\StorefrontDemoData;
@@ -125,7 +127,10 @@ class CatalogQueryService
         return Cache::remember($this->cache->product($slug), 900, function () use ($slug): ?array {
             $product = $this->publicProductsQuery()
                 ->where('slug', $slug)
-                ->with(['categories', 'attributeValues.attribute', 'attributeValues.attributeValue'])
+                ->with([
+                    'categories',
+                    /* 'attributeValues.attribute', 'attributeValues.attributeValue', */
+                ])
                 ->first();
 
             return $product ? $this->toDetail($product) : null;
@@ -273,12 +278,21 @@ class CatalogQueryService
     private function toCard(Product $product): array
     {
         $variant = $product->variants->first();
-        $gallery = $product->media
+        $isVariable = $product->product_type === ProductType::Variable;
+        $parentGallery = $product->media
             ->sortBy('sort_order')
-            ->map(fn ($media): ?string => $media->asset?->url() ?: $media->path)
+            ->map(fn (ProductMedia $media): ?string => $this->mediaUrl($media))
             ->filter()
             ->values()
             ->all();
+        $variantGallery = $variant?->media
+            ->sortBy('sort_order')
+            ->map(fn (ProductMedia $media): ?string => $this->mediaUrl($media))
+            ->filter()
+            ->values()
+            ->all() ?? [];
+        $gallery = $isVariable ? $variantGallery : $parentGallery;
+        $placeholder = asset('images/placeholders/no-image.svg');
         $price = (int) ($variant?->currentPriceMinor() ?? 0);
         $oldPrice = (int) ($variant?->compareAtPriceMinor() ?? 0);
 
@@ -288,8 +302,10 @@ class CatalogQueryService
             'name' => $product->name,
             'brand' => $product->brand?->name ?? 'StoreZ',
             'categorySlug' => $product->primaryCategory?->slug,
-            'image' => $gallery[0] ?? asset('images/placeholders/no-image.svg'),
-            'gallery' => $gallery ?: [asset('images/placeholders/no-image.svg')],
+            'image' => $gallery[0] ?? $placeholder,
+            'gallery' => $gallery ?: [$placeholder],
+            'isVariable' => $isVariable,
+            'shortDescription' => $product->short_description,
             'price' => $price,
             'oldPrice' => $oldPrice ?: null,
             'discount' => $oldPrice > 0 ? max(0, (int) round(($oldPrice - $price) / $oldPrice * 100)) : null,
@@ -311,11 +327,13 @@ class CatalogQueryService
             'descriptionHtml' => $product->description_html,
             'highlights' => $product->short_description ? [$product->short_description] : [],
             'categories' => $product->categories->pluck('name')->all(),
+            /*
             'attributes' => $product->attributeValues->map(fn ($value): array => [
                 'name' => $value->attribute?->name,
                 'value' => $value->attributeValue?->value ?? $value->text_value ?? $value->number_value ?? ($value->boolean_value ? 'Yes' : 'No'),
                 'unit' => $value->attribute?->unit,
             ])->filter(fn (array $attribute): bool => filled($attribute['name']) && filled($attribute['value']))->values()->all(),
+            */
             'metaTitle' => $product->meta_title,
             'stock' => $product->variants->first()?->availableQuantity() ?? 0,
         ];
@@ -349,7 +367,7 @@ class CatalogQueryService
             ])->values()->all(),
             'gallery' => $variant->media
                 ->sortBy('sort_order')
-                ->map(fn ($media): ?string => $media->asset?->url() ?: $media->path)
+                ->map(fn (ProductMedia $media): ?string => $this->mediaUrl($media))
                 ->filter()
                 ->values()
                 ->all(),
@@ -359,6 +377,19 @@ class CatalogQueryService
     private function variantIsAvailable(?ProductVariant $variant): bool
     {
         return $variant !== null && (! $variant->inventory?->track_quantity || $variant->availableQuantity() > 0);
+    }
+
+    private function mediaUrl(ProductMedia $media): ?string
+    {
+        $path = $media->asset?->url() ?: $media->path;
+
+        if (! filled($path)) {
+            return null;
+        }
+
+        return str($path)->startsWith(['http://', 'https://', '/'])
+            ? $path
+            : asset(ltrim($path, '/'));
     }
 
     private function hasMeaningfulFilters(array $filters): bool

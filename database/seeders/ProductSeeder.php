@@ -9,6 +9,8 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
+use App\Models\MediaAsset;
+use App\Models\MediaUsage;
 use App\Models\Product;
 use App\Models\ProductAttributeValue;
 use App\Models\ProductMedia;
@@ -16,6 +18,8 @@ use App\Models\ProductOption;
 use App\Models\ProductOptionValue;
 use App\Models\ProductVariant;
 use App\Models\Tag;
+use App\Services\MediaService;
+use App\Services\ProductVariantService;
 use Database\Seeders\Concerns\SeedsDemoMedia;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -23,6 +27,11 @@ use Illuminate\Support\Str;
 class ProductSeeder extends Seeder
 {
     use SeedsDemoMedia;
+
+    public function __construct(
+        private readonly ProductVariantService $variantService,
+        private readonly MediaService $mediaService,
+    ) {}
 
     private array $brandCache = [];
 
@@ -73,7 +82,7 @@ class ProductSeeder extends Seeder
                 ['slug' => $data['slug']],
                 [
                     'name' => $data['name'],
-                    'brand_id' => $this->brandCache[$data['brand']] ?? null,
+                    'brand_id' => isset($data['brand']) ? ($this->brandCache[$data['brand']] ?? null) : null,
                     'primary_category_id' => $this->categoryCache[$primaryCategorySlug] ?? null,
                     'product_type' => $data['type'],
                     'short_description' => $data['short_description'] ?? $description['short'],
@@ -133,49 +142,165 @@ class ProductSeeder extends Seeder
 
     private function createVariableProduct(Product $product, array $data): void
     {
-        $option = ProductOption::updateOrCreate(
-            ['product_id' => $product->id, 'slug' => Str::slug($data['option_name'])],
-            [
-                'name' => $data['option_name'],
-                'slug' => Str::slug($data['option_name']),
-                'sort_order' => 0,
-            ]
-        );
+        $optionSlugs = collect($data['options'])
+            ->map(fn (array $optionData): string => $optionData['slug'] ?? Str::slug($optionData['name']))
+            ->all();
 
-        $optionValueIds = [];
+        $product->options()
+            ->whereNotIn('slug', $optionSlugs)
+            ->get()
+            ->each(function (ProductOption $option): void {
+                $option->delete();
+            });
 
-        foreach ($data['options'] as $optionData) {
-            $value = ProductOptionValue::updateOrCreate(
-                ['product_option_id' => $option->id, 'slug' => Str::slug($optionData['value'])],
+        foreach ($data['options'] as $optionIndex => $optionData) {
+            $optionSlug = $optionData['slug'] ?? Str::slug($optionData['name']);
+            $option = ProductOption::updateOrCreate(
+                ['product_id' => $product->id, 'slug' => $optionSlug],
                 [
-                    'value' => $optionData['label'],
-                    'slug' => Str::slug($optionData['value']),
-                    'sort_order' => 0,
+                    'name' => $optionData['name'],
+                    'slug' => $optionSlug,
+                    'sort_order' => $optionIndex,
                 ]
             );
 
-            $optionValueIds[$optionData['value']] = $value->id;
+            $valueSlugs = collect($optionData['values'])
+                ->pluck('slug')
+                ->all();
+
+            $option->values()
+                ->whereNotIn('slug', $valueSlugs)
+                ->get()
+                ->each(function (ProductOptionValue $value): void {
+                    $value->variants()->detach();
+                    $value->delete();
+                });
+
+            foreach ($optionData['values'] as $valueIndex => $valueData) {
+                ProductOptionValue::updateOrCreate(
+                    ['product_option_id' => $option->id, 'slug' => $valueData['slug']],
+                    [
+                        'value' => $valueData['label'],
+                        'slug' => $valueData['slug'],
+                        'sort_order' => $valueIndex,
+                    ]
+                );
+            }
         }
 
-        foreach ($data['options'] as $index => $optionData) {
-            $priceMinor = $optionData['price'] * 100;
-            $combinationKey = (string) $optionValueIds[$optionData['value']];
+        $this->quarantineObsoleteVariants($product, array_keys($data['variants']));
 
-            $variant = ProductVariant::updateOrCreate(
-                ['sku' => "STZ-{$product->id}-".strtoupper(substr(md5($combinationKey), 0, 6))],
-                [
-                    'product_id' => $product->id,
-                    'name' => $optionData['label'],
-                    'combination_key' => $combinationKey,
-                    'regular_price_minor' => $priceMinor,
-                    'is_active' => true,
-                    'is_default' => $index === 0,
-                    'sort_order' => $index,
-                ]
+        foreach ($this->variantService->generate($product) as $index => $variant) {
+            $variantData = $data['variants'][$variant->combination_key] ?? null;
+
+            if ($variantData === null) {
+                throw new \InvalidArgumentException("Missing seeded data for {$product->slug}: {$variant->combination_key}");
+            }
+
+            $regularPriceMinor = (int) round($variantData['price'] * 100);
+            $salePriceMinor = isset($variantData['sale_price'])
+                ? (int) round($variantData['sale_price'] * 100)
+                : null;
+
+            $variant->forceFill([
+                'sku' => $variantData['sku'],
+                'regular_price_minor' => $regularPriceMinor,
+                'sale_price_minor' => $salePriceMinor,
+                'compare_at_price_minor' => $salePriceMinor !== null && $salePriceMinor < $regularPriceMinor
+                    ? $regularPriceMinor
+                    : null,
+                'is_active' => true,
+                'is_default' => $index === 0,
+                'sort_order' => $index,
+            ])->save();
+
+            $this->createInventory($variant, $variantData['stock']);
+            $this->syncVariantImages($product, $variant, $variantData['images'] ?? []);
+        }
+    }
+
+    private function quarantineObsoleteVariants(Product $product, array $validCombinationKeys): void
+    {
+        $seenCombinationKeys = [];
+
+        ProductVariant::query()
+            ->whereBelongsTo($product)
+            ->withTrashed()
+            ->get()
+            ->each(function (ProductVariant $variant) use ($validCombinationKeys, &$seenCombinationKeys): void {
+                $combinationKey = $variant->combination_key;
+
+                if ($variant->trashed()) {
+                    $variant->forceFill([
+                        'sku' => 'STZ-LEGACY-'.$variant->id,
+                        'combination_key' => 'seed-legacy-'.$variant->id,
+                    ])->save();
+
+                    return;
+                }
+
+                if (
+                    ! in_array($combinationKey, $validCombinationKeys, true)
+                    || in_array($combinationKey, $seenCombinationKeys, true)
+                ) {
+                    $variant->optionValues()->detach();
+                    $variant->forceFill([
+                        'sku' => 'STZ-LEGACY-'.$variant->id,
+                        'combination_key' => 'seed-legacy-'.$variant->id,
+                    ])->save();
+
+                    return;
+                }
+
+                $seenCombinationKeys[] = $combinationKey;
+            });
+    }
+
+    private function syncVariantImages(Product $product, ProductVariant $variant, array $relativePaths): void
+    {
+        $relativePaths = array_values(array_filter($relativePaths));
+
+        if ($relativePaths === []) {
+            return;
+        }
+
+        $processedMedia = [];
+
+        foreach ($relativePaths as $sortOrder => $relativePath) {
+            $media = $this->seedLocalImage(
+                $relativePath,
+                ImagePreset::Product,
+                "seeded/catalog/variants/{$product->slug}/{$variant->sku}-{$sortOrder}.webp",
             );
 
-            $variant->optionValues()->sync([$optionValueIds[$optionData['value']]]);
-            $this->createInventory($variant, rand(10, 150));
+            if (! $media) {
+                return;
+            }
+
+            $processedMedia[$sortOrder] = $media;
+        }
+
+        MediaUsage::query()
+            ->where('usable_type', ProductVariant::class)
+            ->where('usable_id', $variant->id)
+            ->where('role', 'variant.image')
+            ->delete();
+        $variant->media()->delete();
+
+        foreach ($processedMedia as $sortOrder => $media) {
+            $variant->media()->create([
+                'product_id' => $product->id,
+                'media_asset_id' => $media['id'],
+                'role' => $sortOrder === 0 ? 'main' : 'gallery',
+                'sort_order' => $sortOrder,
+                'alt_text' => $product->name.' '.$variant->name,
+            ]);
+
+            $asset = MediaAsset::query()->find($media['id']);
+
+            if ($asset) {
+                $this->mediaService->attach($asset, $variant, 'variant.image');
+            }
         }
     }
 
@@ -485,6 +610,16 @@ class ProductSeeder extends Seeder
                 ],
                 'note' => 'Choose the storage variant that best matches how many apps, photos and videos you keep locally. Network support, battery life and camera results vary by usage and environment.',
             ],
+            'storez-classic-cotton-shirt' => [
+                'short' => 'A comfortable black cotton shirt with four practical size choices for everyday wear.',
+                'overview' => 'StoreZ Classic Cotton Shirt is an easy everyday wardrobe staple in a versatile black finish, with Small through XL variants for a cleaner demo of size-based product options.',
+                'highlights' => [
+                    'Soft cotton construction is suited to regular casual and smart-casual outfits.',
+                    'Black color pairs easily with jeans, chinos and layered everyday looks.',
+                    'Small, Medium, Large and XL variants keep the sizing flow easy to test in the storefront.',
+                ],
+                'note' => 'Check the selected size before ordering and follow the garment care label when washing. Fit preference can vary by body shape and styling.',
+            ],
             'nivea-soft-300ml' => [
                 'short' => 'A light 300ml moisturizer for everyday face, hand and body care.',
                 'overview' => 'NIVEA Soft Light Moisturizer 300ml is a versatile daily moisturizer with a lighter texture for regular skin-care routines.',
@@ -785,6 +920,56 @@ class ProductSeeder extends Seeder
                 ],
                 'note' => 'Shake if directed on the package, refrigerate after opening and follow the label guidance for storage and consumption.',
             ],
+            'samsung-galaxy-a35-5g' => [
+                'short' => 'A Samsung 5G smartphone with 128GB and 256GB storage choices for everyday apps, media and photography.',
+                'overview' => 'Samsung Galaxy A35 5G is a balanced mid-range Galaxy phone for users who want a bright large-screen experience, 5G connectivity and a choice of two practical storage capacities.',
+                'highlights' => [
+                    'Choose between seeded 8/128GB and 8/256GB storage variants.',
+                    'Well suited to messaging, streaming, navigation, social apps and everyday photography.',
+                    'Galaxy software and expandable-storage support make it flexible for long-term daily use.',
+                ],
+                'note' => 'Storage and network availability can vary by market. Usable storage is lower than the advertised capacity after system files and preinstalled software.',
+            ],
+            'sony-ult-wear-wh-ult900n' => [
+                'short' => 'Sony wireless noise-cancelling headphones with three color choices for bass-focused everyday listening.',
+                'overview' => 'Sony ULT WEAR WH-ULT900N combines active noise cancellation, a comfortable over-ear fit and bass-focused ULT sound in Black, Off White and Forest Gray variants.',
+                'highlights' => [
+                    'Three color variants let the storefront demonstrate image switching by option.',
+                    'Noise-cancelling over-ear design is useful for commuting, travel and focused listening.',
+                    'Wireless playback keeps music, podcasts and calls convenient throughout the day.',
+                ],
+                'note' => 'Actual battery endurance and noise reduction depend on volume, settings and environment. Color appearance may vary slightly with lighting and display calibration.',
+            ],
+            'aarong-black-embroidered-cotton-panjabi' => [
+                'short' => 'A black embroidered cotton Aarong panjabi with four size variants for festive and smart traditional wear.',
+                'overview' => 'Aarong Black Embroidered Cotton Panjabi combines a black cotton base with matching embroidery and a traditional long silhouette, seeded here with four commonly useful size choices.',
+                'highlights' => [
+                    'Cotton construction is suitable for traditional occasion wear and longer events.',
+                    'Black embroidered styling pairs easily with white or neutral pajama and trousers.',
+                    'Size variants 40, 42, 44 and 46 provide a realistic apparel selection flow.',
+                ],
+                'note' => 'Review the size guide before ordering because garment measurements and preferred ease can vary. Follow the care instructions supplied with the garment.',
+            ],
+            'apex-formal-shoe-91313a15' => [
+                'short' => 'A black Apex formal shoe with five seeded size variants for office, events and polished everyday wear.',
+                'overview' => 'Apex Men\'s Formal Shoe 91313A15 is a black slip-on formal style designed for workdays and dressier occasions, with five size variants to exercise the StoreZ footwear option flow.',
+                'highlights' => [
+                    'Black formal styling works with office trousers, suits and traditional formal outfits.',
+                    'Slip-on construction keeps everyday wear straightforward.',
+                    'Sizes 39 through 43 provide five realistic seeded variants without overcomplicating the demo.',
+                ],
+                'note' => 'Use the Apex size guide before ordering. Leather and dark finishes can show natural variation, and footwear comfort depends on foot shape as well as nominal size.',
+            ],
+            'ikea-kallax-77x77-shelf-unit' => [
+                'short' => 'A compact IKEA KALLAX 77x77cm shelf unit in white or black-brown for flexible open storage.',
+                'overview' => 'IKEA KALLAX 77x77cm Shelf Unit uses four open compartments for books, baskets and display pieces, with White and Black-Brown variants that are visually distinct enough to benefit from variant-specific images.',
+                'highlights' => [
+                    'Two color variants demonstrate color-based furniture selection in the StoreZ catalog.',
+                    'Four open compartments work for books, baskets, decor and everyday organization.',
+                    'Compact square footprint suits bedrooms, living rooms and home-office storage.',
+                ],
+                'note' => 'Follow the IKEA assembly and wall-anchoring guidance for your installation. Final color can look different under warm or cool room lighting.',
+            ],
         ];
     }
 
@@ -883,12 +1068,85 @@ class ProductSeeder extends Seeder
                 'categories' => ['electronics', 'phones'],
                 'tags' => ['new-arrival', 'best-seller'],
                 'attributes' => ['warranty' => '1-year'],
-                'option_name' => 'Storage',
                 'options' => [
-                    ['label' => '6/128GB', 'value' => '6-128gb', 'price' => 20999],
-                    ['label' => '8/256GB', 'value' => '8-256gb', 'price' => 22999],
+                    [
+                        'name' => 'Color',
+                        'slug' => 'color',
+                        'values' => [
+                            ['label' => 'Black', 'slug' => 'black'],
+                            ['label' => 'Blue', 'slug' => 'blue'],
+                        ],
+                    ],
+                    [
+                        'name' => 'Storage',
+                        'slug' => 'storage',
+                        'values' => [
+                            ['label' => '6/128GB', 'slug' => '6-128gb'],
+                            ['label' => '8/256GB', 'slug' => '8-256gb'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'color=black|storage=6-128gb' => [
+                        'sku' => 'STZ-REDMI13-BLK-6128', 'price' => 20999, 'stock' => 14,
+                        'images' => ['variants/redmi-note-13-black.jpg'],
+                    ],
+                    'color=black|storage=8-256gb' => [
+                        'sku' => 'STZ-REDMI13-BLK-8256', 'price' => 22999, 'stock' => 9,
+                        'images' => ['variants/redmi-note-13-black.jpg'],
+                    ],
+                    'color=blue|storage=6-128gb' => [
+                        'sku' => 'STZ-REDMI13-BLU-6128', 'price' => 21499, 'stock' => 11,
+                        'images' => ['variants/redmi-note-13-blue.jpg'],
+                    ],
+                    'color=blue|storage=8-256gb' => [
+                        'sku' => 'STZ-REDMI13-BLU-8256', 'price' => 23499, 'stock' => 7,
+                        'images' => ['variants/redmi-note-13-blue.jpg'],
+                    ],
                 ],
                 'image' => 'products/redmi-note-13.png',
+            ],
+            [
+                'slug' => 'storez-classic-cotton-shirt',
+                'name' => 'StoreZ Classic Cotton Shirt',
+                'type' => 'variable',
+                'price' => 899,
+                'stock' => 0,
+                'is_featured' => false,
+                'categories' => ['fashion', 'mens-fashion'],
+                'tags' => ['new-arrival'],
+                'attributes' => ['material' => 'cotton'],
+                'options' => [
+                    [
+                        'name' => 'Size',
+                        'slug' => 'size',
+                        'values' => [
+                            ['label' => 'Small', 'slug' => 'small'],
+                            ['label' => 'Medium', 'slug' => 'medium'],
+                            ['label' => 'Large', 'slug' => 'large'],
+                            ['label' => 'XL', 'slug' => 'xl'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'size=small' => [
+                        'sku' => 'STZ-SHIRT-BLK-S', 'price' => 899, 'stock' => 18,
+                        'images' => ['variants/storez-classic-shirt-black.webp'],
+                    ],
+                    'size=medium' => [
+                        'sku' => 'STZ-SHIRT-BLK-M', 'price' => 949, 'stock' => 25,
+                        'images' => ['variants/storez-classic-shirt-black.webp'],
+                    ],
+                    'size=large' => [
+                        'sku' => 'STZ-SHIRT-BLK-L', 'price' => 999, 'stock' => 12,
+                        'images' => ['variants/storez-classic-shirt-black.webp'],
+                    ],
+                    'size=xl' => [
+                        'sku' => 'STZ-SHIRT-BLK-XL', 'price' => 1049, 'stock' => 8,
+                        'images' => ['variants/storez-classic-shirt-black.webp'],
+                    ],
+                ],
+                'image' => 'variants/storez-classic-shirt-black.webp',
             ],
             [
                 'slug' => 'nivea-soft-300ml',
@@ -1297,6 +1555,173 @@ class ProductSeeder extends Seeder
                 'tags' => ['budget-friendly', 'on-sale'],
                 'attributes' => [],
                 'image' => 'products/pran-frooto-mango-drink-1l.jpg',
+            ],
+            [
+                'slug' => 'samsung-galaxy-a35-5g',
+                'name' => 'Samsung Galaxy A35 5G',
+                'brand' => 'samsung',
+                'type' => 'variable',
+                'price' => 32999,
+                'stock' => 0,
+                'is_featured' => true,
+                'categories' => ['electronics', 'phones'],
+                'tags' => ['new-arrival'],
+                'attributes' => ['warranty' => '1-year'],
+                'options' => [
+                    [
+                        'name' => 'Storage',
+                        'slug' => 'storage',
+                        'values' => [
+                            ['label' => '8/128GB', 'slug' => '8-128gb'],
+                            ['label' => '8/256GB', 'slug' => '8-256gb'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'storage=8-128gb' => [
+                        'sku' => 'STZ-A35-8128', 'price' => 32999, 'stock' => 18,
+                    ],
+                    'storage=8-256gb' => [
+                        'sku' => 'STZ-A35-8256', 'price' => 36999, 'stock' => 12,
+                    ],
+                ],
+                'image' => 'products/samsung-galaxy-a35-5g.jpg',
+            ],
+            [
+                'slug' => 'sony-ult-wear-wh-ult900n',
+                'name' => 'Sony ULT WEAR WH-ULT900N',
+                'brand' => 'sony',
+                'type' => 'variable',
+                'price' => 19990,
+                'stock' => 0,
+                'is_featured' => true,
+                'categories' => ['electronics', 'audio'],
+                'tags' => ['new-arrival', 'premium'],
+                'attributes' => ['warranty' => '1-year'],
+                'options' => [
+                    [
+                        'name' => 'Color',
+                        'slug' => 'color',
+                        'values' => [
+                            ['label' => 'Black', 'slug' => 'black'],
+                            ['label' => 'Off White', 'slug' => 'off-white'],
+                            ['label' => 'Forest Gray', 'slug' => 'forest-gray'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'color=black' => [
+                        'sku' => 'STZ-ULT900N-BLK', 'price' => 19990, 'stock' => 14,
+                        'images' => ['variants/sony-ult-wear-black.jpg'],
+                    ],
+                    'color=off-white' => [
+                        'sku' => 'STZ-ULT900N-WHT', 'price' => 19990, 'stock' => 10,
+                        'images' => ['variants/sony-ult-wear-off-white.jpg'],
+                    ],
+                    'color=forest-gray' => [
+                        'sku' => 'STZ-ULT900N-GRY', 'price' => 19990, 'stock' => 8,
+                        'images' => ['variants/sony-ult-wear-forest-gray.jpg'],
+                    ],
+                ],
+                'image' => 'variants/sony-ult-wear-black.jpg',
+            ],
+            [
+                'slug' => 'aarong-black-embroidered-cotton-panjabi',
+                'name' => 'Aarong Black Embroidered Cotton Panjabi',
+                'brand' => 'aarong',
+                'type' => 'variable',
+                'price' => 2490,
+                'stock' => 0,
+                'is_featured' => true,
+                'categories' => ['fashion', 'mens-fashion'],
+                'tags' => ['premium'],
+                'attributes' => ['material' => 'cotton', 'color' => 'black'],
+                'options' => [
+                    [
+                        'name' => 'Size',
+                        'slug' => 'size',
+                        'values' => [
+                            ['label' => '40', 'slug' => '40'],
+                            ['label' => '42', 'slug' => '42'],
+                            ['label' => '44', 'slug' => '44'],
+                            ['label' => '46', 'slug' => '46'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'size=40' => ['sku' => 'STZ-AAR-PAN-40', 'price' => 2490, 'stock' => 9],
+                    'size=42' => ['sku' => 'STZ-AAR-PAN-42', 'price' => 2490, 'stock' => 15],
+                    'size=44' => ['sku' => 'STZ-AAR-PAN-44', 'price' => 2490, 'stock' => 12],
+                    'size=46' => ['sku' => 'STZ-AAR-PAN-46', 'price' => 2490, 'stock' => 7],
+                ],
+                'image' => 'products/aarong-black-embroidered-cotton-panjabi.jpg',
+            ],
+            [
+                'slug' => 'apex-formal-shoe-91313a15',
+                'name' => 'Apex Men\'s Formal Shoe 91313A15',
+                'brand' => 'apex',
+                'type' => 'variable',
+                'price' => 2286,
+                'old_price' => 2690,
+                'stock' => 0,
+                'is_featured' => false,
+                'categories' => ['fashion', 'mens-fashion'],
+                'tags' => ['on-sale'],
+                'attributes' => ['color' => 'black'],
+                'options' => [
+                    [
+                        'name' => 'Size',
+                        'slug' => 'size',
+                        'values' => [
+                            ['label' => '39', 'slug' => '39'],
+                            ['label' => '40', 'slug' => '40'],
+                            ['label' => '41', 'slug' => '41'],
+                            ['label' => '42', 'slug' => '42'],
+                            ['label' => '43', 'slug' => '43'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'size=39' => ['sku' => 'STZ-APX-91313A15-39', 'price' => 2690, 'sale_price' => 2286, 'stock' => 7],
+                    'size=40' => ['sku' => 'STZ-APX-91313A15-40', 'price' => 2690, 'sale_price' => 2286, 'stock' => 11],
+                    'size=41' => ['sku' => 'STZ-APX-91313A15-41', 'price' => 2690, 'sale_price' => 2286, 'stock' => 16],
+                    'size=42' => ['sku' => 'STZ-APX-91313A15-42', 'price' => 2690, 'sale_price' => 2286, 'stock' => 12],
+                    'size=43' => ['sku' => 'STZ-APX-91313A15-43', 'price' => 2690, 'sale_price' => 2286, 'stock' => 8],
+                ],
+                'image' => 'products/apex-formal-shoe-91313a15.jpg',
+            ],
+            [
+                'slug' => 'ikea-kallax-77x77-shelf-unit',
+                'name' => 'IKEA KALLAX Shelf Unit 77x77cm',
+                'brand' => 'ikea',
+                'type' => 'variable',
+                'price' => 8990,
+                'stock' => 0,
+                'is_featured' => true,
+                'categories' => ['home-living'],
+                'tags' => ['premium'],
+                'attributes' => [],
+                'options' => [
+                    [
+                        'name' => 'Color',
+                        'slug' => 'color',
+                        'values' => [
+                            ['label' => 'White', 'slug' => 'white'],
+                            ['label' => 'Black-Brown', 'slug' => 'black-brown'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    'color=white' => [
+                        'sku' => 'STZ-KALLAX-77-WHT', 'price' => 8990, 'stock' => 6,
+                        'images' => ['variants/ikea-kallax-77x77-white.jpg'],
+                    ],
+                    'color=black-brown' => [
+                        'sku' => 'STZ-KALLAX-77-BBR', 'price' => 8990, 'stock' => 5,
+                        'images' => ['variants/ikea-kallax-77x77-black-brown.jpg'],
+                    ],
+                ],
+                'image' => 'variants/ikea-kallax-77x77-white.jpg',
             ],
         ];
     }

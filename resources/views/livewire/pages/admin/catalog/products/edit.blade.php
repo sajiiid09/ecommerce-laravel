@@ -98,31 +98,87 @@
 
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <div class="flex items-center justify-between gap-3">
-                        <h2 class="font-bold text-[#111827]">Product Images</h2>
+                        <div>
+                            <h2 class="font-bold text-[#111827]">Product Images</h2>
+                            <p class="mt-1 text-xs text-[#6b7280]">Shared product gallery images are separate from variant-specific images.</p>
+                        </div>
                         <button type="button" x-data x-on:click="$dispatch('open-media-picker', { context: 'product-gallery' })" class="rounded-lg border border-[#2563eb] px-3 py-2 text-xs font-bold text-[#2563eb] hover:bg-[#eff6ff]">Select from Media Library</button>
                     </div>
                     <label class="mt-4 flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#d1d5db] bg-[#f9fafb] text-center hover:border-[#2563eb] hover:bg-[#eff6ff]">
                         <svg class="size-10 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
                         <span class="mt-3 text-sm font-semibold text-[#374151]">Drag & drop images here<br>or click to browse</span>
                         <span class="mt-1 text-[11px] text-[#9ca3af]">Recommended size: 1200 x 1200px<br>Max file size: 5MB</span>
-                        <input type="file" wire:model="image" accept="image/*" class="sr-only">
+                        <input type="file" wire:model="image" wire:loading.attr="disabled" wire:target="image" accept="image/*" class="sr-only">
                     </label>
+                    <div wire:loading wire:target="image" class="mt-3 flex items-center gap-2 rounded-lg bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb]">
+                        <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4Z"/></svg>
+                        Uploading image&hellip; please wait.
+                    </div>
                     @if($image)
                         <p class="mt-3 rounded-lg bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb]">New upload ready: {{ $image->getClientOriginalName() }}</p>
+                        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div wire:key="product-image-upload-preview" class="group relative aspect-square overflow-hidden rounded-lg border-2 border-dashed border-[#2563eb] bg-[#eff6ff]">
+                                <img src="{{ $image->temporaryUrl() }}" alt="Preview of {{ $image->getClientOriginalName() }}" class="size-full object-cover">
+                                <span class="absolute left-2 top-2 rounded bg-[#2563eb] px-1.5 py-0.5 text-[10px] font-bold text-white">New</span>
+                                <button type="button" wire:click="removeImageUpload" class="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/95 text-base font-bold leading-none text-red-600 shadow" aria-label="Remove uploaded product image">&times;</button>
+                            </div>
+                        </div>
                     @endif
-                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4" wire:sort="sortMedia" aria-label="Product gallery. Drag images to reorder.">
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4" wire:sort="sortMedia" aria-label="Shared product gallery. Drag images to reorder.">
                         @forelse($selectedMedia as $asset)
                             @php($mediaIndex = array_search($asset->id, $selectedMediaIds, true))
                             <div wire:key="product-media-{{ $asset->id }}" wire:sort:item="{{ $asset->id }}" class="group relative aspect-square overflow-hidden rounded-lg border {{ $mediaIndex === 0 ? 'border-2 border-[#2563eb]' : 'border-[#e5e7eb]' }} bg-[#f9fafb]">
                                 <img src="{{ $asset->url() }}" alt="{{ $asset->alt_text ?: $asset->filename }}" class="size-full object-cover">
                                 @if($mediaIndex === 0)<span class="absolute left-2 top-2 rounded bg-[#2563eb] px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>@endif
-                                <div class="absolute inset-x-1 bottom-1 flex justify-center gap-1 opacity-0 transition group-hover:opacity-100"><button type="button" wire:click="moveMedia({{ $mediaIndex }}, -1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">←</button><button type="button" wire:click="moveMedia({{ $mediaIndex }}, 1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">→</button><button type="button" wire:click="removeMedia({{ $asset->id }})" wire:confirm="Remove this product image?" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-red-600 shadow">×</button></div>
+                                <button type="button" wire:click="removeMedia({{ $asset->id }})" wire:confirm="Remove this product image?" wire:loading.attr="disabled" class="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-white/95 text-base font-bold leading-none text-red-600 shadow" aria-label="Remove product image {{ $asset->filename }}">&times;</button>
+                                <div class="absolute inset-x-1 bottom-1 flex justify-center gap-1 opacity-0 transition group-hover:opacity-100"><button type="button" wire:click="moveMedia({{ $mediaIndex }}, -1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">←</button><button type="button" wire:click="moveMedia({{ $mediaIndex }}, 1)" wire:loading.attr="disabled" class="grid size-7 place-items-center rounded bg-white/95 text-xs font-bold text-[#374151] shadow">→</button></div>
                             </div>
                         @empty
                             <div class="col-span-full rounded-lg border border-dashed border-[#d1d5db] bg-[#f9fafb] px-4 py-6 text-center text-xs text-[#9ca3af]">No product images selected yet. Choose existing media or upload a new image.</div>
                         @endforelse
                     </div>
                     <x-admin.media-picker :assets="$mediaAssets" :selected="$selectedMediaIds[0] ?? null" title="Select product gallery media" context="product-gallery" modal />
+
+                    @if($product?->exists && $product->product_type?->value === 'variable')
+                        <div class="mt-8 border-t border-[#e5e7eb] pt-5">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="font-bold text-[#111827]">Variant images</h3>
+                                    <p class="mt-1 text-xs text-[#6b7280]">These images belong to individual combinations and are separate from the shared product gallery.</p>
+                                </div>
+                                <a href="{{ route('admin.catalog.products.variants', ['product' => $product]) }}" class="rounded-lg border border-[#2563eb] px-3 py-2 text-xs font-bold text-[#2563eb] hover:bg-[#eff6ff]">Manage variant images</a>
+                            </div>
+                            <div class="mt-4 space-y-4">
+                                @forelse($variantMediaGroups as $variant)
+                                    <div class="rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                                <p class="text-sm font-bold text-[#111827]">{{ $variant->name ?: 'Default variant' }}</p>
+                                                <p class="mt-0.5 text-xs text-[#6b7280]">SKU: {{ $variant->sku }}</p>
+                                            </div>
+                                            <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6b7280]">{{ $variant->media->count() }} {{ $variant->media->count() === 1 ? 'image' : 'images' }}</span>
+                                        </div>
+                                        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                                            @forelse($variant->media as $variantMedia)
+                                                @if($variantMedia->asset)
+                                                    <div wire:key="product-variant-media-{{ $variant->id }}-{{ $variantMedia->id }}" class="relative aspect-square overflow-hidden rounded-lg border border-[#e5e7eb] bg-white">
+                                                        <img src="{{ $variantMedia->asset->url() }}" alt="{{ $variantMedia->asset->alt_text ?: $variantMedia->asset->filename }}" class="size-full object-cover">
+                                                        @if($variantMedia->role === 'main')
+                                                            <span class="absolute left-2 top-2 rounded bg-[#2563eb] px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            @empty
+                                                <p class="col-span-full rounded-lg border border-dashed border-[#d1d5db] bg-white px-4 py-5 text-center text-xs text-[#9ca3af]">No variant images assigned. Use Manage variant images to add one or more.</p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="rounded-lg border border-dashed border-[#d1d5db] bg-[#f9fafb] px-4 py-6 text-center text-xs text-[#9ca3af]">Save this variable product and generate variants before assigning variant images.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
                 </section>
 
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
@@ -227,6 +283,7 @@
                     </x-ui.select>
                 </section>
 
+                {{--
                 <section class="rounded-xl border border-[#e5e7eb] bg-white p-5 shadow-sm">
                     <h2 class="font-bold text-[#111827]">Product Attributes</h2>
                     <div class="mt-4 space-y-3">
@@ -252,6 +309,7 @@
                         @endforelse
                     </div>
                 </section>
+                --}}
             </div>
         </form>
     </div>

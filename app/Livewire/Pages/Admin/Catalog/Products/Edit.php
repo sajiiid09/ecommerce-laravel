@@ -3,7 +3,7 @@
 namespace App\Livewire\Pages\Admin\Catalog\Products;
 
 use App\Enums\ImagePreset;
-use App\Models\Attribute;
+// use App\Models\Attribute;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\MediaAsset;
@@ -46,7 +46,7 @@ class Edit extends Component
 
     public array $tag_ids = [];
 
-    public array $attribute_values = [];
+    /* public array $attribute_values = []; */
 
     public array $selectedMediaIds = [];
 
@@ -96,7 +96,7 @@ class Edit extends Component
         if (! $product?->exists) {
             return;
         }
-        $this->product = $product->load('defaultVariant', 'attributeValues.attribute', 'attributeValues.attributeValue');
+        $this->product = $product->load('defaultVariant');
         $this->fill($product->only([
             'name', 'slug', 'brand_id', 'primary_category_id', 'short_description',
             'description_html', 'meta_title', 'meta_description', 'canonical_url',
@@ -104,6 +104,7 @@ class Edit extends Component
         ]));
         $this->category_ids = $product->categories()->pluck('categories.id')->all();
         $this->tag_ids = $product->tags()->pluck('tags.id')->all();
+        /*
         foreach ($product->attributeValues as $attributeValue) {
             $attribute = $attributeValue->attribute;
             if (! $attribute) {
@@ -124,6 +125,7 @@ class Edit extends Component
                 $this->attribute_values[$attribute->id] = $value;
             }
         }
+        */
         $this->selectedMediaIds = $product->media()->orderBy('sort_order')->pluck('media_asset_id')->filter()->map(fn ($id) => (int) $id)->all();
         $this->product_type = $product->product_type?->value ?? 'simple';
         $this->status = $product->status?->value ?? 'draft';
@@ -152,7 +154,7 @@ class Edit extends Component
             'status' => 'required|in:draft,published,archived', 'visibility' => 'required|in:visible,catalog_search,catalog_only,search_only,hidden', 'brand_id' => 'nullable|exists:brands,id',
             'primary_category_id' => 'nullable|exists:categories,id', 'category_ids' => 'array', 'category_ids.*' => 'integer|exists:categories,id',
             'tag_ids' => 'array', 'tag_ids.*' => 'integer|exists:tags,id', 'regular_price' => 'required|numeric|min:0|decimal:0,2', 'sale_price' => 'nullable|numeric|min:0|decimal:0,2',
-            'attribute_values' => 'array',
+            /* 'attribute_values' => 'array', */
             'cost_price' => 'nullable|numeric|min:0|decimal:0,2', 'inventory_quantity' => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0', 'track_quantity' => 'boolean', 'allow_backorders' => 'boolean',
             'is_indexable' => 'boolean', 'taxable' => 'boolean', 'meta_title' => 'nullable|string|max:255',
@@ -185,7 +187,7 @@ class Edit extends Component
         $data['description_html'] = $this->description_html;
         $data['category_ids'] = array_values(array_unique(array_map('intval', $this->category_ids ?: array_filter([$this->primary_category_id]))));
         $data['tag_ids'] = array_values(array_unique(array_map('intval', $this->tag_ids)));
-        $data['attribute_values'] = $this->attribute_values;
+        /* $data['attribute_values'] = $this->attribute_values; */
         $mediaIds = $this->selectedMediaIds;
         if ($this->image) {
             $mediaIds[] = $this->media->upload($this->image, 'products', ImagePreset::Product)->id;
@@ -195,7 +197,7 @@ class Edit extends Component
         $this->selectedMediaIds = $this->product->media()->orderBy('sort_order')->pluck('media_asset_id')->filter()->map(fn ($id) => (int) $id)->all();
         $this->reset('image');
         session()->flash('status', 'Product saved.');
-        $this->redirect('/admin/catalog/products');
+        $this->redirect(route('admin.catalog.products'));
     }
 
     #[On('media-selected')]
@@ -216,6 +218,12 @@ class Edit extends Component
     public function removeMedia(int $id): void
     {
         $this->selectedMediaIds = array_values(array_filter($this->selectedMediaIds, fn ($mediaId) => (int) $mediaId !== $id));
+    }
+
+    public function removeImageUpload(): void
+    {
+        $this->reset('image');
+        $this->resetValidation('image');
     }
 
     public function moveMedia(int $index, int $direction): void
@@ -285,9 +293,16 @@ class Edit extends Component
             'brands' => Brand::orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(),
             'tags' => Tag::orderBy('name')->get(),
-            'attributes' => Attribute::active()->with('values')->orderBy('sort_order')->orderBy('name')->get(),
+            /* 'attributes' => Attribute::active()->with('values')->orderBy('sort_order')->orderBy('name')->get(), */
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
             'selectedMedia' => $this->selectedMediaIds === [] ? collect() : MediaAsset::query()->whereKey($this->selectedMediaIds)->get()->sortBy(fn ($asset) => array_search($asset->id, $this->selectedMediaIds, true))->values(),
+            'variantMediaGroups' => $this->product?->exists
+                ? $this->product->variants()
+                    ->with('media.asset')
+                    ->orderByDesc('is_default')
+                    ->orderBy('sort_order')
+                    ->get()
+                : collect(),
         ]);
     }
 }

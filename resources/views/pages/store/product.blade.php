@@ -1,28 +1,48 @@
 @php
     $related = $related ?? collect();
     $options = $product['options'] ?? [];
-    $gallery = $product['gallery'] ?? [$product['image']];
+    $placeholder = asset('images/placeholders/no-image.svg');
+    $gallery = $product['gallery'] ?? [$placeholder];
+    $gallery = $gallery ?: [$placeholder];
     $imageUrl = fn (string $image): string => str($image)->startsWith(['http://', 'https://', '/']) ? $image : asset(ltrim($image, '/'));
 @endphp
 
 <main
     x-data="{
         quantity: 1,
+        isVariable: @js($product['isVariable'] ?? false),
+        placeholder: @js($placeholder),
         gallery: @js($gallery),
         selectedImage: @js($gallery[0]),
         variants: @js($product['variants'] ?? []),
         selectedVariantId: @js($product['variantId'] ?? null),
-        selectedOptions: Object.fromEntries(@js($options).map((option) => [option.name, option.values[0]?.value ?? null])),
+        selectedOptions: {},
         init() {
-            if (this.variant.gallery?.length) {
-                this.selectedImage = this.variant.gallery[0];
+            const defaultVariant = this.variants.find((variant) => variant.id === this.selectedVariantId) || this.variants[0];
+
+            if (defaultVariant) {
+                this.selectedVariantId = defaultVariant.id;
+                this.selectedOptions = Object.fromEntries((defaultVariant.optionValues || []).map((optionValue) => [optionValue.option, optionValue.value]));
             }
+
+            this.syncSelectedImage();
         },
         get variant() {
             const selected = this.variants.find((variant) => variant.id === this.selectedVariantId);
             const optionNames = Object.keys(this.selectedOptions);
             const matching = this.variants.find((variant) => variant.optionValues.length === optionNames.length && optionNames.every((optionName) => variant.optionValues.some((optionValue) => optionValue.option === optionName && optionValue.value === this.selectedOptions[optionName])));
-            return matching || selected || this.variants[0] || { id: null, price: @js($product['price']), compareAtPrice: @js($product['oldPrice']), available: @js($product['inStock']), gallery: [] };
+            return matching || selected || this.variants[0] || { id: null, sku: null, price: @js($product['price']), compareAtPrice: @js($product['oldPrice']), available: @js($product['inStock']), stock: 0, optionValues: [], gallery: [] };
+        },
+        get activeGallery() {
+            if (!this.isVariable) {
+                return this.gallery.length ? this.gallery : [this.placeholder];
+            }
+
+            return this.variant.gallery?.length ? this.variant.gallery : [this.placeholder];
+        },
+        syncSelectedImage() {
+            const activeGallery = this.activeGallery;
+            this.selectedImage = activeGallery.includes(this.selectedImage) ? this.selectedImage : activeGallery[0];
         },
         isOptionValueAvailable(name, value) {
             const selectedOptions = { ...this.selectedOptions, [name]: value };
@@ -35,8 +55,10 @@
             }
 
             this.selectedOptions[name] = value;
-            this.selectedVariantId = this.variant.id;
-            this.selectedImage = this.variant.gallery?.[0] || this.gallery[0];
+            const optionNames = Object.keys(this.selectedOptions);
+            const matching = this.variants.find((variant) => variant.optionValues.length === optionNames.length && optionNames.every((optionName) => variant.optionValues.some((optionValue) => optionValue.option === optionName && optionValue.value === this.selectedOptions[optionName])));
+            this.selectedVariantId = matching?.id || this.selectedVariantId;
+            this.selectedImage = this.activeGallery[0];
         },
         formatMoney(value) {
             return '৳' + new Intl.NumberFormat().format(Math.round((value || 0) / 100));
@@ -56,14 +78,14 @@
         <div class="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <section class="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)]">
                 <div class="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col">
-                    @foreach ($gallery as $image)
+                    <template x-for="(image, index) in activeGallery" :key="`${image}-${index}`">
                         <button type="button" class="size-20 shrink-0 rounded-control border bg-white p-2"
-                            :class="selectedImage === @js($image) ? 'border-2 border-store-blue' : 'border-store-border'"
-                            @click="selectedImage = @js($image)"
-                            aria-label="Show image {{ $loop->iteration }} of {{ count($gallery) }}">
-                            <img src="{{ $imageUrl($image) }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async" class="size-full object-contain">
+                            :class="selectedImage === image ? 'border-2 border-store-blue' : 'border-store-border'"
+                            @click="selectedImage = image"
+                            :aria-label="`Show image ${index + 1} of ${activeGallery.length}`">
+                            <img :src="image" alt="{{ $product['name'] }}" loading="lazy" decoding="async" class="size-full object-contain">
                         </button>
-                    @endforeach
+                    </template>
                 </div>
                 <div class="order-1 flex aspect-square items-center justify-center rounded-card border border-store-border bg-white p-8 sm:order-2">
                     <img :src="selectedImage" src="{{ $imageUrl($gallery[0]) }}" alt="{{ $product['name'] }}" loading="eager" fetchpriority="high" decoding="async" class="size-full object-contain">
@@ -84,7 +106,7 @@
                 <div class="mt-3 flex flex-wrap items-center gap-3">
                     <x-store.ui.rating :rating="$product['rating']" :reviews="$product['reviews']" />
                     <span class="text-store-border">|</span>
-                    <span class="text-sm text-store-muted">SKU: {{ $product['sku'] ?? '—' }}</span>
+                    <span class="text-sm text-store-muted">SKU: <span x-text="variant.sku || '—'">{{ $product['sku'] ?? '—' }}</span></span>
                 </div>
 
                 <div class="mt-5 flex flex-wrap items-center gap-3">
@@ -134,7 +156,7 @@
                 </div>
 
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" :disabled="!variant.id || !variant.available || quantity < 1" x-on:click="$wire.addToCart(variant.id, quantity)">
+                    <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-blue text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" :disabled="cartAddPending || !variant.id || !variant.available || quantity < 1" x-on:click="addToCart({ name: @js($product['name']), variantId: variant.id }, quantity)">
                         <x-ui.icon name="shopping-cart" class="size-5 !text-white" />Add to Cart
                     </button>
                     <button type="button" class="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-store-red text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50" :disabled="!variant.id || !variant.available || quantity < 1" x-on:click="$wire.buyNow(variant.id, quantity)">
@@ -161,9 +183,9 @@
                 <dl class="divide-y divide-store-border rounded-control border border-store-border">
                     <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">Brand</dt><dd>{{ $product['brand'] }}</dd></div>
                     <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">Categories</dt><dd>{{ implode(', ', $product['categories'] ?? []) ?: '—' }}</dd></div>
-                    @foreach ($product['attributes'] ?? [] as $attribute)
+                    {{-- @foreach ($product['attributes'] ?? [] as $attribute)
                         <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">{{ $attribute['name'] }}</dt><dd>{{ $attribute['value'] }}{{ $attribute['unit'] ? ' '.$attribute['unit'] : '' }}</dd></div>
-                    @endforeach
+                    @endforeach --}}
                     <div class="flex justify-between gap-4 px-3 py-2"><dt class="font-semibold">SKU</dt><dd>{{ $product['sku'] ?? '—' }}</dd></div>
                 </dl>
             </div>

@@ -25,12 +25,14 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AnnouncementService;
 use App\Services\BannerService;
+use App\Services\FooterColumnService;
 use App\Services\HomepageService;
 use App\Services\MenuService;
 use App\Services\PageService;
 use App\Services\RedirectService;
 use App\Services\SiteSettingsService;
 use App\Support\StorefrontCatalog;
+use Database\Seeders\ContentSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
@@ -397,15 +399,35 @@ it('manages the optional WhatsApp floating action from footer settings', functio
         ->assertSee('aria-label="Scroll to top"', false);
 });
 
-it('auto-saves footer and header visibility changes and dispatches Sheaf toasts', function () {
+it('defers footer visibility changes until save and preserves header auto-save behavior', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     SiteSetting::create(['group' => 'footer', 'key' => 'show_footer', 'value' => true, 'is_public' => true]);
     SiteSetting::create(['group' => 'header', 'key' => 'show_search', 'value' => true, 'is_public' => true]);
 
-    Livewire::actingAs($admin)
+    $footerComponent = Livewire::actingAs($admin)
         ->test(FooterEdit::class)
         ->set('show_footer', false)
-        ->assertDispatched('notify', content: 'Footer setting updated.', type: 'success');
+        ->set('show_newsletter', false)
+        ->set('show_payment_methods', false)
+        ->assertNotDispatched('notify');
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_footer'])->firstOrFail()->value)
+        ->toBeTrue()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_newsletter'])->exists())
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_payment_methods'])->exists())
+        ->toBeFalse();
+
+    $footerComponent
+        ->call('saveFooter')
+        ->assertDispatched('notify', content: 'Footer settings updated.', type: 'success');
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_footer'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_newsletter'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(SiteSetting::where(['group' => 'footer', 'key' => 'show_payment_methods'])->firstOrFail()->value)
+        ->toBeFalse();
 
     Livewire::actingAs($admin)
         ->test(HeaderEdit::class)
@@ -423,6 +445,125 @@ it('auto-saves footer and header visibility changes and dispatches Sheaf toasts'
         ->assertDontSee('Header preview')
         ->assertDontSee('Header logo')
         ->assertDontSee('Shared Media Library');
+});
+
+it('edits the four fixed footer columns only when the footer is saved', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $defaults = app(FooterColumnService::class)->defaults();
+    SiteSetting::create(['group' => 'footer', 'key' => 'columns', 'value' => $defaults, 'is_public' => true]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(FooterEdit::class)
+        ->set('footerColumns.0.title', 'Browse')
+        ->set('footerColumns.1.enabled', false)
+        ->call('addFooterLink', 0)
+        ->set('footerColumns.0.links.3.name', 'New arrivals')
+        ->set('footerColumns.0.links.3.url', '/search?sort=newest')
+        ->assertNotDispatched('notify');
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'columns'])->firstOrFail()->value)
+        ->toBe($defaults);
+
+    $component->call('saveFooter')
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Footer settings updated.', type: 'success');
+
+    $saved = SiteSetting::where(['group' => 'footer', 'key' => 'columns'])->firstOrFail()->value;
+    expect($saved[0]['title'])->toBe('Browse')
+        ->and($saved[0]['links'])->toHaveCount(4)
+        ->and($saved[0]['links'][3])->toBe(['name' => 'New arrivals', 'url' => '/search?sort=newest'])
+        ->and($saved[1]['enabled'])->toBeFalse();
+
+    $this->actingAs($admin)->get('/admin/content/footer')
+        ->assertSee('footer-column-shop', false)
+        ->assertSee('footer-column-customer-service', false)
+        ->assertSee('footer-column-company', false)
+        ->assertSee('footer-column-legal', false)
+        ->assertSee('wire:model="footerColumns.0.title"', false)
+        ->assertSee('Add link')
+        ->assertDontSee('Add column')
+        ->assertDontSee('Delete column')
+        ->assertDontSee('wire:model.live', false)
+        ->assertDontSee('Footer settings saved.');
+});
+
+it('keeps at least one footer link and rejects invalid footer link data', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    SiteSetting::create([
+        'group' => 'footer',
+        'key' => 'columns',
+        'value' => app(FooterColumnService::class)->defaults(),
+        'is_public' => true,
+    ]);
+
+    $component = Livewire::actingAs($admin)->test(FooterEdit::class);
+    $component->call('removeFooterLink', 0, 0);
+    expect($component->get('footerColumns.0.links'))->toHaveCount(2);
+
+    $component->set('footerColumns.0.links', [
+        ['name' => 'Only link', 'url' => '/offers'],
+    ])->call('removeFooterLink', 0, 0);
+
+    expect($component->get('footerColumns.0.links'))->toHaveCount(1);
+
+    $component->set('footerColumns.0.links.0.name', 'Only link')
+        ->set('footerColumns.0.links.0.url', 'javascript:alert(1)')
+        ->call('saveFooter')
+        ->assertHasErrors('footerColumns.0.links.0.url')
+        ->set('footerColumns.0.links.0.name', '')
+        ->set('footerColumns.0.links.0.url', '/offers')
+        ->call('saveFooter')
+        ->assertHasErrors('footerColumns.0.links.0.name');
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'columns'])->firstOrFail()->value[0]['links'])
+        ->toHaveCount(3);
+});
+
+it('renders configured footer columns with internal and external links', function () {
+    $columns = app(FooterColumnService::class)->defaults();
+    $columns[0]['title'] = 'Browse our store';
+    $columns[0]['links'][] = ['name' => 'External partner', 'url' => 'https://example.com/partner'];
+    $columns[1]['enabled'] = false;
+    $columns[2]['links'] = [['name' => 'Contact us', 'url' => '/contact']];
+    app(SiteSettingsService::class)->set('footer', 'columns', $columns);
+
+    $this->get('/')->assertSuccessful()
+        ->assertSee('Browse our store')
+        ->assertSee('External partner')
+        ->assertSee('href="'.url('/contact').'"', false)
+        ->assertSee('href="https://example.com/partner"', false)
+        ->assertDontSee('Customer Service')
+        ->assertSee('About StoreZ')
+        ->assertSee('Visa')
+        ->assertSee('Mastercard');
+});
+
+it('uses the general logo in both header and footer unless a footer logo overrides it', function () {
+    $generalLogo = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/general-logo.webp',
+        'filename' => 'general-logo.webp',
+        'mime_type' => 'image/webp',
+        'size' => 100,
+    ]);
+    $footerLogo = MediaAsset::create([
+        'disk' => 'public',
+        'path' => 'media/footer-logo.webp',
+        'filename' => 'footer-logo.webp',
+        'mime_type' => 'image/webp',
+        'size' => 100,
+    ]);
+    $settings = app(SiteSettingsService::class);
+    $settings->set('general', 'logo_media_id', $generalLogo->id);
+    $settings->set('footer', 'logo_media_id', null);
+
+    $generalLogoResponse = $this->get('/')->assertSuccessful();
+    expect(substr_count($generalLogoResponse->getContent(), $generalLogo->url()))->toBe(2);
+
+    $settings->set('footer', 'logo_media_id', $footerLogo->id);
+    $overrideResponse = $this->get('/')->assertSuccessful();
+    expect(substr_count($overrideResponse->getContent(), $generalLogo->url()))->toBe(1)
+        ->and(substr_count($overrideResponse->getContent(), $footerLogo->url()))->toBe(1);
 });
 
 it('auto-saves homepage section visibility changes and dispatches Sheaf toasts', function () {
@@ -473,7 +614,8 @@ it('manages footer visibility and structured social links with the footer editor
         ->set('social_links.2.link', 'https://tiktok.com/@storez')
         ->call('removeSocialLink', 1)
         ->call('saveFooter')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertDispatched('notify', content: 'Footer settings updated.', type: 'success');
 
     expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_footer'])->firstOrFail()->value)
         ->toBeFalse()
@@ -491,6 +633,15 @@ it('manages footer visibility and structured social links with the footer editor
         ->assertSee('data-slot="checkbox-wrapper"', false)
         ->assertSee('Add social link')
         ->assertSee('wire:model="social_links.0.name"', false)
+        ->assertSee('wire:model="description"', false)
+        ->assertSee('wire:model="show_footer"', false)
+        ->assertSee('wire:model="show_newsletter"', false)
+        ->assertSee('wire:model="show_payment_methods"', false)
+        ->assertSee('mb-5 inline-flex', false)
+        ->assertSee('size-4 text-white', false)
+        ->assertSee('Changes are saved when you press Save footer.')
+        ->assertDontSee('wire:model.live', false)
+        ->assertDontSee('Footer settings saved.')
         ->assertDontSee('Footer preview')
         ->assertDontSee('Footer logo')
         ->assertDontSee('Shared Media Library');
@@ -962,6 +1113,63 @@ it('applies structured storefront settings and redirect health checks', function
     $this->get('/')->assertSuccessful()->assertDontSee('Free delivery this week');
 });
 
+it('seeds the requested homepage sections disabled and the delivery announcement red', function () {
+    Artisan::call('db:seed', ['--class' => ContentSeeder::class, '--no-interaction' => true]);
+
+    $disabledSectionKeys = [
+        'newsletter',
+        'banners',
+        'new-arrivals',
+        'brands',
+        'flash-deals',
+    ];
+
+    $sections = HomepageSection::whereIn('section_key', $disabledSectionKeys)->get()->keyBy('section_key');
+
+    expect($sections)->toHaveCount(count($disabledSectionKeys));
+
+    foreach ($disabledSectionKeys as $sectionKey) {
+        expect($sections[$sectionKey]->enabled)->toBeFalse();
+    }
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_newsletter'])->firstOrFail()->value)
+        ->toBeFalse()
+        ->and(Announcement::where('internal_title', 'StoreZ Demo Delivery Notice')->firstOrFail()->style)
+        ->toBe('danger');
+
+    $footer = view('components.store.layout.footer', [
+        'footerColumns' => app(FooterColumnService::class)->defaults(),
+        'footerSocialLinks' => ['facebook' => 'https://facebook.com/storez'],
+        'footerShowNewsletter' => app(SiteSettingsService::class)->get('footer', 'show_newsletter', true),
+        'footerShowPayments' => true,
+        'footerStoreName' => 'StoreZ',
+        'footerDescription' => 'Your trusted online shopping destination in Bangladesh.',
+        'footerCopyright' => '© 2026 StoreZ. All rights reserved.',
+    ])->render();
+
+    expect($footer)
+        ->toContain('StoreZ')
+        ->toContain('Shop')
+        ->toContain('Customer Service')
+        ->toContain('Company')
+        ->toContain('Legal')
+        ->toContain('Facebook')
+        ->toContain('Visa')
+        ->toContain('Mastercard')
+        ->toContain('bKash')
+        ->toContain('Nagad')
+        ->toContain('COD')
+        ->not->toContain('Stay in the loop')
+        ->not->toContain('Your email')
+        ->not->toContain('Subscribe');
+
+    app(SiteSettingsService::class)->set('footer', 'show_newsletter', true);
+    Artisan::call('db:seed', ['--class' => ContentSeeder::class, '--no-interaction' => true]);
+
+    expect(SiteSetting::where(['group' => 'footer', 'key' => 'show_newsletter'])->firstOrFail()->value)
+        ->toBeTrue();
+});
+
 it('seeds idempotent demo CMS content without overwriting settings', function () {
     Artisan::call('db:seed', ['--class' => DatabaseSeeder::class, '--no-interaction' => true]);
 
@@ -978,20 +1186,21 @@ it('seeds idempotent demo CMS content without overwriting settings', function ()
         ->and(SiteSetting::where('group', 'header')->pluck('key')->all())
         ->toEqualCanonicalizing(['logo_url', 'logo_media_id', 'support_text', 'show_search', 'sticky', 'desktop_menu_key', 'mobile_menu_key', 'show_announcement'])
         ->and(SiteSetting::where('group', 'footer')->pluck('key')->all())
-        ->toEqualCanonicalizing(['description', 'copyright', 'support_email', 'whatsapp_number', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'social_links', 'show_newsletter', 'show_payment_methods', 'show_footer'])
-        ->and(Menu::whereIn('key', ['header-primary', 'mobile', 'footer-shop', 'footer-help', 'footer-company', 'footer-legal'])->count())->toBe(6)
-        ->and($sectionCount)->toBe(12)
+        ->toEqualCanonicalizing(['description', 'copyright', 'support_email', 'whatsapp_number', 'logo_media_id', 'columns', 'social_links', 'show_newsletter', 'show_payment_methods', 'show_footer'])
+        ->and(Menu::whereIn('key', ['header-primary', 'mobile'])->count())->toBe(2)
+        ->and(Menu::whereIn('key', ['footer-shop', 'footer-help', 'footer-company', 'footer-legal'])->exists())->toBeFalse()
+        ->and($sectionCount)->toBe(11)
         ->and(Banner::where('placement', 'hero')->count())->toBe(3)
         ->and(HomepageSection::where('section_key', 'testimonials')->firstOrFail()->settings['testimonials'])->toHaveCount(5)
-        ->and(Banner::where('name', 'StoreZ Demo Everyday Savings')->exists())->toBeTrue()
+        ->and(Banner::where('name', 'StoreZ Demo Everyday Savings')->exists())->toBeFalse()
         ->and(Announcement::where('internal_title', 'StoreZ Demo Delivery Notice')->exists())->toBeTrue()
-        ->and($productCount)->toBe(30)
+        ->and($productCount)->toBe(43)
         ->and($approvedReviewCount)->toBe(90);
 
     $this->get('/')->assertSuccessful()
         ->assertSee('Your trusted online shopping destination in Bangladesh.')
-        ->assertSee('Everyday savings are here')
         ->assertSee('Free delivery is available on selected StoreZ orders this week.');
+
     foreach (['Nusrat Jahan', 'Rafiq Ahmed', 'Tania Rahman', 'Farhan Kabir', 'Maliha Sultana'] as $name) {
         $this->get('/')->assertSee($name);
     }

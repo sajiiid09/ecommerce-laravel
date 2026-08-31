@@ -77,7 +77,7 @@ class Product extends Model
 
     public function media(): HasMany
     {
-        return $this->hasMany(ProductMedia::class);
+        return $this->hasMany(ProductMedia::class)->whereNull('product_variant_id');
     }
 
     public function reviews(): HasMany

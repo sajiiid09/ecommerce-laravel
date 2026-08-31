@@ -4,8 +4,8 @@ namespace App\Livewire\Pages\Admin\Content\Footer;
 
 use App\Enums\ImagePreset;
 use App\Models\MediaAsset;
-use App\Models\Menu;
 use App\Models\SiteSetting;
+use App\Services\FooterColumnService;
 use App\Services\MediaService;
 use App\Services\SiteSettingsService;
 use Illuminate\Support\Facades\Gate;
@@ -31,13 +31,10 @@ class Edit extends Component
 
     public $footer_logo_file;
 
-    public string $shop_menu_key = 'footer-shop';
-
-    public string $help_menu_key = 'footer-help';
-
-    public string $company_menu_key = 'footer-company';
-
-    public string $legal_menu_key = 'footer-legal';
+    /**
+     * @var array<int, array{key: string, title: string, enabled: bool, links: array<int, array{name: string, url: string}>}>
+     */
+    public array $footerColumns = [];
 
     /**
      * @var array<int, array{name: string, link: string}>
@@ -54,10 +51,13 @@ class Edit extends Component
 
     protected MediaService $media;
 
-    public function boot(SiteSettingsService $settings, MediaService $media): void
+    protected FooterColumnService $footerColumnService;
+
+    public function boot(SiteSettingsService $settings, MediaService $media, FooterColumnService $footerColumnService): void
     {
         $this->settings = $settings;
         $this->media = $media;
+        $this->footerColumnService = $footerColumnService;
     }
 
     public function mount(): void
@@ -68,10 +68,7 @@ class Edit extends Component
         $this->support_email = (string) $this->settings->get('footer', 'support_email', '');
         $this->whatsapp_number = (string) $this->settings->get('footer', 'whatsapp_number', '');
         $this->logo_media_id = $this->settings->get('footer', 'logo_media_id');
-        $this->shop_menu_key = (string) $this->settings->get('footer', 'shop_menu_key', 'footer-shop');
-        $this->help_menu_key = (string) $this->settings->get('footer', 'help_menu_key', 'footer-help');
-        $this->company_menu_key = (string) $this->settings->get('footer', 'company_menu_key', 'footer-company');
-        $this->legal_menu_key = (string) $this->settings->get('footer', 'legal_menu_key', 'footer-legal');
+        $this->footerColumns = $this->footerColumnService->normalize($this->settings->get('footer', 'columns', []));
         $this->social_links = $this->normalizeSocialLinks($this->settings->get('footer', 'social_links', []));
         $this->show_newsletter = (bool) $this->settings->get('footer', 'show_newsletter', true);
         $this->show_payment_methods = (bool) $this->settings->get('footer', 'show_payment_methods', true);
@@ -119,19 +116,23 @@ class Edit extends Component
         $this->social_links = array_values($this->social_links);
     }
 
-    public function updatedShowFooter(bool $value): void
+    public function addFooterLink(int $columnIndex): void
     {
-        $this->persistVisibilitySetting('show_footer', $value);
+        if (! isset($this->footerColumns[$columnIndex])) {
+            return;
+        }
+
+        $this->footerColumns[$columnIndex]['links'][] = ['name' => '', 'url' => ''];
     }
 
-    public function updatedShowNewsletter(bool $value): void
+    public function removeFooterLink(int $columnIndex, int $linkIndex): void
     {
-        $this->persistVisibilitySetting('show_newsletter', $value);
-    }
+        if (! isset($this->footerColumns[$columnIndex]['links'][$linkIndex]) || count($this->footerColumns[$columnIndex]['links']) <= 1) {
+            return;
+        }
 
-    public function updatedShowPaymentMethods(bool $value): void
-    {
-        $this->persistVisibilitySetting('show_payment_methods', $value);
+        unset($this->footerColumns[$columnIndex]['links'][$linkIndex]);
+        $this->footerColumns[$columnIndex]['links'] = array_values($this->footerColumns[$columnIndex]['links']);
     }
 
     public function saveFooter(): void
@@ -143,10 +144,13 @@ class Edit extends Component
             'support_email' => ['nullable', 'email'],
             'whatsapp_number' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9][0-9\s().-]*$/'],
             'logo_media_id' => ['nullable', 'exists:media_assets,id'],
-            'shop_menu_key' => ['required', 'string', 'max:80'],
-            'help_menu_key' => ['required', 'string', 'max:80'],
-            'company_menu_key' => ['required', 'string', 'max:80'],
-            'legal_menu_key' => ['required', 'string', 'max:80'],
+            'footerColumns' => ['required', 'array', 'size:4'],
+            'footerColumns.*.key' => ['required', 'string', 'in:shop,customer-service,company,legal'],
+            'footerColumns.*.title' => ['required', 'string', 'max:80'],
+            'footerColumns.*.enabled' => ['required', 'boolean'],
+            'footerColumns.*.links' => ['required', 'array', 'min:1'],
+            'footerColumns.*.links.*.name' => ['required', 'string', 'max:80'],
+            'footerColumns.*.links.*.url' => ['required', 'string', 'max:2048'],
             'social_links' => ['array'],
             'social_links.*' => ['array'],
             'social_links.*.name' => ['required', 'string', 'max:50', 'distinct'],
@@ -155,6 +159,27 @@ class Edit extends Component
             'show_payment_methods' => ['boolean'],
             'show_footer' => ['boolean'],
         ]);
+
+        $expectedKeys = ['shop', 'customer-service', 'company', 'legal'];
+        $actualKeys = array_map(fn (array $column): ?string => $column['key'] ?? null, $this->footerColumns);
+
+        if ($actualKeys !== $expectedKeys) {
+            $this->addError('footerColumns', 'Footer columns must keep their fixed order and keys.');
+
+            return;
+        }
+
+        foreach ($this->footerColumns as $columnIndex => $column) {
+            foreach ($column['links'] as $linkIndex => $link) {
+                if (! $this->footerColumnService->isAllowedUrl($link['url'])) {
+                    $this->addError("footerColumns.{$columnIndex}.links.{$linkIndex}.url", 'Use an internal path or an absolute HTTP(S) URL.');
+                }
+            }
+        }
+
+        if ($this->getErrorBag()->any()) {
+            return;
+        }
 
         $whatsappNumber = $this->normalizeWhatsappNumber();
         if ($this->getErrorBag()->has('whatsapp_number')) {
@@ -165,21 +190,23 @@ class Edit extends Component
             $socialLinks[trim($socialLink['name'])] = trim($socialLink['link']);
         }
 
-        foreach (['description', 'copyright', 'support_email', 'logo_media_id', 'shop_menu_key', 'help_menu_key', 'company_menu_key', 'legal_menu_key', 'show_newsletter', 'show_payment_methods', 'show_footer'] as $key) {
+        $this->footerColumns = $this->footerColumnService->normalize($this->footerColumns);
+        $this->settings->set('footer', 'columns', $this->footerColumns);
+
+        foreach (['description', 'copyright', 'support_email', 'logo_media_id', 'show_newsletter', 'show_payment_methods', 'show_footer'] as $key) {
             $this->settings->set('footer', $key, $this->{$key});
         }
         $this->settings->set('footer', 'whatsapp_number', $whatsappNumber);
         $this->whatsapp_number = $whatsappNumber ?? '';
         $this->settings->set('footer', 'social_links', $socialLinks);
 
-        session()->flash('status', 'Footer settings saved.');
+        $this->dispatch('notify', content: 'Footer settings updated.', type: 'success');
     }
 
     public function render()
     {
         return view('livewire.pages.admin.content.footer.edit', [
             'mediaAssets' => MediaAsset::query()->latest()->limit(20)->get(),
-            'menus' => Menu::enabled()->orderBy('name')->get(['key', 'name']),
         ]);
     }
 
@@ -224,12 +251,5 @@ class Edit extends Component
         }
 
         return $normalized;
-    }
-
-    private function persistVisibilitySetting(string $key, bool $value): void
-    {
-        $this->authorize('update', SiteSetting::class);
-        $this->settings->set('footer', $key, $value);
-        $this->dispatch('notify', content: 'Footer setting updated.', type: 'success');
     }
 }

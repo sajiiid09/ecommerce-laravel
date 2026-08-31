@@ -3,7 +3,7 @@
 namespace App\View\Composers;
 
 use App\Models\MediaAsset;
-use App\Services\MenuService;
+use App\Services\FooterColumnService;
 use App\Services\SiteSettingsService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -12,14 +12,17 @@ class StorefrontFooterComposer
 {
     public function __construct(
         private readonly SiteSettingsService $settings,
-        private readonly MenuService $menus,
+        private readonly FooterColumnService $footerColumns,
     ) {}
 
     public function compose(View $view): void
     {
         $hasSettings = Schema::hasTable('site_settings');
-        $generalLogo = $hasSettings && ($logoId = $this->settings->get('general', 'logo_media_id'))
-            ? MediaAsset::find($logoId)?->url()
+        $generalLogo = $hasSettings && ($generalLogoId = $this->settings->get('general', 'logo_media_id'))
+            ? MediaAsset::find($generalLogoId)?->url()
+            : null;
+        $footerLogo = $hasSettings && ($footerLogoId = $this->settings->get('footer', 'logo_media_id'))
+            ? MediaAsset::find($footerLogoId)?->url()
             : null;
 
         $view->with([
@@ -36,9 +39,7 @@ class StorefrontFooterComposer
             'footerSupportEmail' => $hasSettings
                 ? $this->settings->get('footer', 'support_email') ?: $this->settings->get('general', 'support_email', 'support@storez.local')
                 : 'support@storez.local',
-            'footerLogo' => $hasSettings && ($logoId = $this->settings->get('footer', 'logo_media_id'))
-                ? (MediaAsset::find($logoId)?->url() ?: $generalLogo)
-                : $generalLogo,
+            'footerLogo' => $footerLogo ?: $generalLogo,
             'footerSocialLinks' => $hasSettings
                 ? (array) $this->settings->get('footer', 'social_links', [])
                 : [],
@@ -51,12 +52,9 @@ class StorefrontFooterComposer
             'footerVisible' => $hasSettings
                 ? (bool) $this->settings->get('footer', 'show_footer', true)
                 : true,
-            'footerMenus' => Schema::hasTable('menus') ? [
-                'shop' => $this->menus->navigation((string) $this->settings->get('footer', 'shop_menu_key', 'footer-shop')),
-                'help' => $this->menus->navigation((string) $this->settings->get('footer', 'help_menu_key', 'footer-help')),
-                'company' => $this->menus->navigation((string) $this->settings->get('footer', 'company_menu_key', 'footer-company')),
-                'legal' => $this->menus->navigation((string) $this->settings->get('footer', 'legal_menu_key', 'footer-legal')),
-            ] : [],
+            'footerColumns' => $hasSettings
+                ? $this->footerColumns->forStorefront($this->settings->get('footer', 'columns', []))
+                : $this->footerColumns->forStorefront([]),
         ]);
     }
 }

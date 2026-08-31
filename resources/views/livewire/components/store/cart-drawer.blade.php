@@ -14,7 +14,7 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-drawer-title"
-        :aria-busy="(!cartLoaded).toString()"
+        :aria-busy="(!cartLoaded || cartAddPending).toString()"
         @click.stop
         @keydown.escape.stop.prevent="closeCart()"
         @keydown.tab="trapCartFocus($event)"
@@ -22,8 +22,9 @@
         <div class="flex items-center justify-between border-b border-store-border px-5 py-4">
             <div>
                 <h2 id="cart-drawer-title" class="text-lg font-extrabold text-store-ink">Your Cart</h2>
-                <p x-show="!cartLoaded" class="sr-only" aria-live="polite">Loading your cart</p>
-                <p x-show="cartLoaded" class="sr-only" aria-live="polite">
+                <p x-show="!cartLoaded && !cartAddPending" class="sr-only" aria-live="polite">Loading your cart</p>
+                <p x-show="cartAddPending" class="sr-only" aria-live="polite">Adding item to your cart</p>
+                <p x-show="cartLoaded && !cartAddPending" class="sr-only" aria-live="polite">
                     <span x-text="`${cart.reduce((total, item) => total + item.quantity, 0)} items in your cart`"></span>
                 </p>
             </div>
@@ -38,7 +39,7 @@
             </button>
         </div>
 
-        <div x-show="!cartLoaded" class="flex min-h-0 flex-1 flex-col overflow-y-auto p-5" aria-label="Loading shopping cart">
+        <div x-show="!cartLoaded || cartAddPending" class="flex min-h-0 flex-1 flex-col overflow-y-auto p-5" :aria-label="cartAddPending ? 'Adding item to cart' : 'Loading shopping cart'">
             <div class="space-y-4">
                 @foreach (range(1, 3) as $item)
                     <div class="flex gap-3 border-b border-store-border py-4">
@@ -53,7 +54,7 @@
             </div>
         </div>
 
-        <div x-show="cartLoaded" class="min-h-0 flex-1 overflow-y-auto px-5" aria-label="Shopping cart contents">
+        <div x-show="cartLoaded && !cartAddPending" class="min-h-0 flex-1 overflow-y-auto px-5" aria-label="Shopping cart contents">
             @forelse($items as $item)
                 <article wire:key="drawer-item-{{ $item['id'] }}" class="flex gap-3 border-b border-store-border py-4">
                     <img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" loading="lazy" decoding="async" class="size-16 rounded-control border border-store-border object-contain">
@@ -75,7 +76,7 @@
             @endforelse
         </div>
 
-        <div x-show="cartLoaded" class="border-t border-store-border bg-white p-5">
+        <div x-show="cartLoaded && !cartAddPending" class="border-t border-store-border bg-white p-5">
             <div class="flex items-center justify-between text-base font-bold text-store-ink">
                 <span>Subtotal</span>
                 <span>৳{{ number_format($subtotal / 100, 2) }}</span>

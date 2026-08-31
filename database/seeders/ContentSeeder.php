@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ImagePreset;
 use App\Models\Announcement;
 use App\Models\Banner;
 use App\Models\HomepageSection;
@@ -9,30 +10,52 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\SiteSetting;
 use App\Services\ContentPublishingService;
+use App\Services\FooterColumnService;
+use Database\Seeders\Concerns\SeedsDemoMedia;
 use Illuminate\Database\Seeder;
 
 class ContentSeeder extends Seeder
 {
-    public function __construct(private readonly ContentPublishingService $publishing) {}
+    use SeedsDemoMedia;
+
+    public function __construct(
+        private readonly ContentPublishingService $publishing,
+        private readonly FooterColumnService $footerColumns,
+    ) {}
 
     public function run(): void
     {
         $this->seedSettings();
         $this->seedMenus();
         $this->seedHomepageSections();
-        $this->seedBanner();
+        // $this->seedBanner();
         $this->seedHeroBanners();
         $this->seedAnnouncement();
     }
 
     private function seedSettings(): void
     {
+        $logoMedia = $this->seedLocalImage(
+            'app-brand/storez-logo.png',
+            ImagePreset::Logo,
+            'seeded/app-brand/storez-logo.webp',
+        );
+        $faviconMedia = $this->seedLocalImage(
+            'app-brand/favicon.png',
+            ImagePreset::Favicon,
+            'seeded/app-brand/favicon.webp',
+        );
+
+        $generalMediaDefaults = [
+            'logo_media_id' => $logoMedia['id'] ?? null,
+            'favicon_media_id' => $faviconMedia['id'] ?? null,
+        ];
+
         $settings = [
             'general' => [
                 'store_name' => 'StoreZ',
                 'tagline' => 'Shop smarter every day.',
-                'logo_media_id' => null,
-                'favicon_media_id' => null,
+                ...$generalMediaDefaults,
                 'support_email' => 'support@storez.local',
                 'support_phone' => null,
                 'address' => 'Dhaka, 1205, Bangladesh',
@@ -54,15 +77,12 @@ class ContentSeeder extends Seeder
                 'support_email' => 'support@storez.local',
                 'whatsapp_number' => null,
                 'logo_media_id' => null,
-                'shop_menu_key' => 'footer-shop',
-                'help_menu_key' => 'footer-help',
-                'company_menu_key' => 'footer-company',
-                'legal_menu_key' => 'footer-legal',
+                'columns' => $this->footerColumns->defaults(),
                 'social_links' => [
                     'facebook' => 'https://facebook.com/storez',
                     'instagram' => 'https://instagram.com/storez',
                 ],
-                'show_newsletter' => true,
+                'show_newsletter' => false,
                 'show_payment_methods' => true,
                 'show_footer' => true,
             ],
@@ -74,6 +94,16 @@ class ContentSeeder extends Seeder
                     ['group' => $group, 'key' => $key],
                     ['value' => $value, 'is_public' => true],
                 );
+
+                if (
+                    $group === 'general'
+                    && array_key_exists($key, $generalMediaDefaults)
+                    && $setting->value === null
+                    && $value !== null
+                ) {
+                    $setting->forceFill(['value' => $value])->save();
+                    $this->publishing->invalidate('settings', $group.':'.$key);
+                }
 
                 if ($setting->wasRecentlyCreated) {
                     $this->publishing->invalidate('settings', $group.':'.$key);
@@ -103,42 +133,6 @@ class ContentSeeder extends Seeder
                     ['label' => 'Shop', 'url' => '/category', 'type' => 'custom_url'],
                     ['label' => 'Offers', 'url' => '/offers', 'type' => 'custom_url'],
                     ['label' => 'Account', 'url' => '/account', 'type' => 'custom_url'],
-                ],
-            ],
-            'footer-shop' => [
-                'name' => 'Footer Shop',
-                'location' => 'footer_shop',
-                'items' => [
-                    ['label' => 'All Categories', 'url' => '/category', 'type' => 'custom_url'],
-                    ['label' => 'Offers', 'url' => '/offers', 'type' => 'custom_url'],
-                    ['label' => 'Search Products', 'url' => '/search', 'type' => 'custom_url'],
-                ],
-            ],
-            'footer-help' => [
-                'name' => 'Footer Help',
-                'location' => 'footer_help',
-                'items' => [
-                    ['label' => 'My Account', 'url' => '/account', 'type' => 'custom_url'],
-                    ['label' => 'Orders', 'url' => '/orders', 'type' => 'custom_url'],
-                    ['label' => 'Wishlist', 'url' => '/wishlist', 'type' => 'custom_url'],
-                ],
-            ],
-            'footer-company' => [
-                'name' => 'Footer Company',
-                'location' => 'footer_company',
-                'items' => [
-                    ['label' => 'Featured Brands', 'url' => '/brands/sony', 'type' => 'custom_url'],
-                    ['label' => 'Electronics', 'url' => '/category/electronics', 'type' => 'custom_url'],
-                    ['label' => 'Contact StoreZ', 'url' => '/offers', 'type' => 'custom_url'],
-                ],
-            ],
-            'footer-legal' => [
-                'name' => 'Footer Legal',
-                'location' => 'footer_legal',
-                'items' => [
-                    ['label' => 'Sign In', 'url' => '/login', 'type' => 'custom_url'],
-                    ['label' => 'Create Account', 'url' => '/register', 'type' => 'custom_url'],
-                    ['label' => 'StoreZ Home', 'type' => 'route', 'route_name' => 'store.home'],
                 ],
             ],
         ];
@@ -177,15 +171,15 @@ class ContentSeeder extends Seeder
             ['section_key' => 'hero', 'type' => 'hero', 'title' => 'Back to Better Deals Every Day!', 'eyebrow' => 'StoreZ everyday value', 'subtitle' => 'Groceries, fashion, electronics and more at unbeatable prices.', 'settings' => ['cta' => 'Shop Now', 'url' => '/offers']],
             ['section_key' => 'trust', 'type' => 'trust', 'title' => 'Why Shop with StoreZ?', 'settings' => []],
             ['section_key' => 'categories', 'type' => 'categories', 'title' => 'Shop by Category', 'settings' => ['limit' => 12]],
-            ['section_key' => 'flash-deals', 'type' => 'products', 'title' => 'Flash Sale', 'settings' => ['source' => 'on_sale', 'sort' => 'default', 'limit' => 6]],
+            ['section_key' => 'flash-deals', 'type' => 'products', 'title' => 'Flash Sale', 'settings' => ['source' => 'on_sale', 'sort' => 'default', 'limit' => 6], 'enabled' => false],
             ['section_key' => 'bestsellers', 'type' => 'products', 'title' => 'Best Sellers', 'settings' => ['source' => 'bestsellers', 'sort' => 'default', 'limit' => 6]],
-            ['section_key' => 'featured-products', 'type' => 'products', 'title' => 'Fresh Picks for You', 'settings' => ['source' => 'featured', 'sort' => 'default', 'limit' => 6]],
-            ['section_key' => 'brands', 'type' => 'brands', 'title' => 'Top Brands You Trust', 'settings' => ['limit' => 12]],
-            ['section_key' => 'new-arrivals', 'type' => 'products', 'title' => 'New Arrivals', 'settings' => ['source' => 'newest', 'sort' => 'default', 'limit' => 6]],
-            ['section_key' => 'banners', 'type' => 'banners', 'title' => 'Featured Promotions', 'settings' => ['placement' => 'homepage', 'limit' => 6]],
+            ['section_key' => 'featured-products', 'type' => 'products', 'title' => 'Fresh Picks for You', 'settings' => ['source' => 'featured', 'sort' => 'default', 'limit' => 6], 'enabled' => false],
+            ['section_key' => 'brands', 'type' => 'brands', 'title' => 'Top Brands You Trust', 'settings' => ['limit' => 12], 'enabled' => false],
+            ['section_key' => 'new-arrivals', 'type' => 'products', 'title' => 'New Arrivals', 'settings' => ['source' => 'newest', 'sort' => 'default', 'limit' => 6], 'enabled' => false],
+            ['section_key' => 'banners', 'type' => 'banners', 'title' => 'Featured Promotions', 'settings' => ['placement' => 'homepage', 'limit' => 6], 'enabled' => false],
             // ['section_key' => 'shop-by-need', 'type' => 'shop_by_need', 'title' => 'Shop by Need', 'subtitle' => 'Find practical picks for every part of your day.', 'settings' => ['content_json' => "Daily essentials\nHome upgrades\nPersonal care"]],
             ['section_key' => 'testimonials', 'type' => 'testimonials', 'title' => 'What Our Customers Say', 'subtitle' => 'Real value, delivered with care.', 'settings' => ['content_json' => '“Great value and fast delivery.” — A StoreZ customer']],
-            ['section_key' => 'newsletter', 'type' => 'newsletter', 'title' => 'Stay in the loop', 'subtitle' => 'Get offers and product updates in your inbox.', 'settings' => []],
+            ['section_key' => 'newsletter', 'type' => 'newsletter', 'title' => 'Stay in the loop', 'subtitle' => 'Get offers and product updates in your inbox.', 'settings' => [], 'enabled' => false],
         ];
 
         foreach ($sections as $sortOrder => $section) {
@@ -196,7 +190,7 @@ class ContentSeeder extends Seeder
                     'title' => $section['title'],
                     'eyebrow' => $section['eyebrow'] ?? null,
                     'subtitle' => $section['subtitle'] ?? null,
-                    'enabled' => true,
+                    'enabled' => $section['enabled'] ?? true,
                     'sort_order' => $sortOrder,
                     'settings' => $section['settings'],
                 ],
@@ -319,7 +313,7 @@ class ContentSeeder extends Seeder
             $announcement = Announcement::create([
                 'internal_title' => 'StoreZ Demo Delivery Notice',
                 'message' => 'Free delivery is available on selected StoreZ orders this week.',
-                'style' => 'info',
+                'style' => 'danger',
                 'placement' => 'top_bar',
                 'link_label' => 'Shop offers',
                 'link_url' => '/offers',
