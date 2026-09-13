@@ -1,0 +1,99 @@
+# StoreZ production stack for the Hostinger VPS.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Topology:
+#   - app   : nginx + php-fpm + scheduler, bound to 127.0.0.1 only.
+#             The host's nginx terminates TLS and proxies to it.
+#   - redis : private to this stack; cache, sessions and scheduler locks.
+#   - Postgres is NOT here - it is the host's existing instance, reached
+#     over the docker bridge via host.docker.internal.
+#
+# Nothing is published to a public interface, so this cannot collide with
+# the other apps on the box.
+
+# Fixes the project name so volume names are stable regardless of the
+# directory this is deployed from (volumes become storez_storez_public etc).
+name: storez
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: storez-app:prod
+    container_name: storez-app
+    restart: unless-stopped
+
+    # Runtime configuration. This file is NOT in the image and NOT in git -
+    # it is placed on the server by hand. See DEPLOYMENT.md.
+    env_file: .env
+
+    # Loopback-only: unreachable from the internet regardless of ufw.
+    ports:
+      - "127.0.0.1:${APP_BIND_PORT:-8092}:8080"
+
+    # Lets the container reach the host's Postgres on the docker bridge.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    volumes:
+      # Uploaded media. Losing this loses every product image.
+      - storez_public:/var/www/html/storage/app/public
+      # CSV imports/exports and Livewire temporary uploads.
+      - storez_private:/var/www/html/storage/app/private
+      - storez_logs:/var/www/html/storage/logs
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/up || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    # Same version already running elsewhere on this box, so the image layer
+    # is likely cached. Private to this stack - no port published.
+    image: redis:7.2.3-alpine
+    container_name: storez-redis
+    restart: unless-stopped
+
+    # Cache/session/lock data only, so persistence is unnecessary; bound the
+    # memory so this cannot starve the other services on a shared VPS.
+    command:
+      - redis-server
+      - --maxmemory
+      - "256mb"
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  storez_public:
+  storez_private:
+  storez_logs:
