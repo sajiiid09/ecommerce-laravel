@@ -291,7 +291,7 @@ class CatalogQueryService
             ->filter()
             ->values()
             ->all() ?? [];
-        $gallery = $isVariable ? $variantGallery : $parentGallery;
+        $gallery = $isVariable ? ($variantGallery ?: $parentGallery) : $parentGallery;
         $placeholder = asset('images/placeholders/no-image.svg');
         $price = (int) ($variant?->currentPriceMinor() ?? 0);
         $oldPrice = (int) ($variant?->compareAtPriceMinor() ?? 0);
