@@ -135,9 +135,9 @@ else
     log 'Skipping migrations (RUN_MIGRATIONS is not "true")'
 fi
 
-# First boot only. Seeding populates the demo catalog and copies ~90 images
-# onto the public disk, and creates the admin user from ADMIN_EMAIL /
-# ADMIN_PASSWORD. Set back to false afterwards.
+# First boot only. Seeding populates the demo catalog and copies ~83 images
+# onto the public disk (58 of them product and variant photos), and creates the
+# admin user from ADMIN_EMAIL / ADMIN_PASSWORD. Set back to false afterwards.
 if [ "${RUN_SEEDERS:-false}" = "true" ]; then
     log 'Running seeders'
     php artisan db:seed --force
